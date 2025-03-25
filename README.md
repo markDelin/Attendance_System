@@ -126,7 +126,3 @@ Pull requests are welcome. For major changes, please open an issue first to disc
 - Reporting and analytics
 - Bulk import/export functionality
 - Email notifications
-
----
-
-This documentation provides a comprehensive overview of your system for GitHub. You can add screenshots to make it more visually appealing. The documentation covers all key aspects while excluding the download and events features as requested.
