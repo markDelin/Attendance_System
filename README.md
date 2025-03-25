@@ -115,9 +115,6 @@ Returns JSON response with:
 ## License
 [MIT License](LICENSE)
 
-## Screenshots
-(Include screenshots of main interfaces in your GitHub repository)
-
 ## Contributing
 Pull requests are welcome. For major changes, please open an issue first to discuss proposed changes.
 
