@@ -2,11 +2,11 @@
 // view_attendance.php - Display attendance records with status
 require 'db.php';
 
-// Kunin ang listahan ng distinct dates ng attendance records
+
 $stmt = $pdo->query("SELECT DISTINCT date FROM attendance ORDER BY date DESC");
 $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-// Kunin ang current settings para sa time rules
+
 $settingsStmt = $pdo->query("SELECT * FROM settings LIMIT 1");
 $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC) ?: [
     'call_time' => '08:00',
