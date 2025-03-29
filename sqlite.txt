@@ -1,0 +1,20 @@
+CREATE TABLE users (
+        qr_code TEXT PRIMARY KEY,
+        name TEXT NOT NULL
+    );
+CREATE TABLE attendance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        qr_code TEXT NOT NULL,
+        date TEXT NOT NULL,
+        time TEXT NOT NULL, status VARCHAR(10) DEFAULT 'present',
+        FOREIGN KEY(qr_code) REFERENCES users(qr_code)
+    );
+CREATE TABLE sqlite_sequence(name,seq);
+CREATE TABLE android_metadata (locale TEXT);
+CREATE TABLE settings (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  call_time VARCHAR(5) NOT NULL DEFAULT '08:00',
+  grace_period INT NOT NULL DEFAULT 20,
+  absent_after INT NOT NULL DEFAULT 30,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
