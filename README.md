@@ -101,12 +101,6 @@ Returns JSON response with:
 - `attendance_status`: (On success) present/late/absent
 - `time_recorded`: Time of recording
 
-## Security Considerations
-- Input sanitization on all user-provided data
-- SQL injection prevention using prepared statements
-- No sensitive data is stored in the system
-- Recommended to run behind HTTPS in production
-
 ## Troubleshooting
 - **Camera not working**: Ensure browser has camera permissions
 - **Database errors**: Check write permissions on directory
