@@ -24,12 +24,16 @@ $todaysRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $totalToday = count($todaysRecords);
 
-// Fetch Subjects
-$stmt = $pdo->query("SELECT id, name, semester FROM subjects ORDER BY semester DESC, name ASC");
+// Fetch Subjects & Events
+$stmt = $pdo->query("SELECT id, name, semester, category FROM subjects WHERE is_active = 1 ORDER BY category ASC, semester DESC, name ASC");
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
-$groupedSubjects = [];
+$groupedContexts = ['subject' => [], 'event' => []];
 foreach ($subjects as $s) {
-    $groupedSubjects[$s['semester']][] = $s;
+    if ($s['category'] === 'event') {
+        $groupedContexts['event']['Special Events'][] = $s;
+    } else {
+        $groupedContexts['subject'][$s['semester']][] = $s;
+    }
 }
 ?>
 
@@ -37,12 +41,13 @@ foreach ($subjects as $s) {
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Scanner | QR Tools by MCK</title>
     <link href="assets/css/style.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="assets/js/html5-qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php include 'includes/theme_loader.php'; ?>
     <style>
         /* Modal Styles matching Billing */
         #scannerModal {
@@ -54,11 +59,13 @@ foreach ($subjects as $s) {
             justify-content: center;
         }
         .scanner-content {
-            background: white;
+            background: var(--bg-card);
             width: 95%; max-width: 400px;
-            padding: 1rem;
+            padding: 2rem;
             border-radius: var(--radius-lg);
             position: relative;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            border: none;
         }
 
         /* Mobile Adjustments */
@@ -72,94 +79,83 @@ foreach ($subjects as $s) {
             }
         }
         
-        /* List Styles */
-        .attendance-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            background: white;
-        }
-        .attendance-row:first-child { border-top-left-radius: var(--radius-lg); border-top-right-radius: var(--radius-lg); }
-        .attendance-row:last-child { border-bottom: none; border-bottom-left-radius: var(--radius-lg); border-bottom-right-radius: var(--radius-lg); }
-        
-        /* Status Badges */
-        .badge-present { color: #166534; background: #dcfce7; }
-        .badge-late { color: #d97706; background: #ffedd5; }
-        .badge-absent { color: #dc2626; background: #fee2e2; }
     </style>
 </head>
 <body>
 
     <!-- Nav -->
-    <nav class="navbar">
-        <a href="index.php" class="btn btn-ghost" style="border: none; padding-left: 0;">
-            <i class="bi bi-arrow-left"></i> <span class="d-none-mobile">Back</span>
-        </a>
-        <h3 class="text-gradient">Class Check-In</h3>
-        <div class="flex-center" style="gap: 10px;">
-            <i class="bi bi-clock" style="color: var(--secondary);"></i> 
-            <span id="clock" style="font-weight: 600; font-size: 0.9rem;"><?= date('h:i A') ?></span>
-        </div>
-    </nav>
+    <?php 
+    $show_clock = true;
+    include 'includes/navbar.php'; 
+    ?>
 
-    <main class="container" style="padding-top: 2rem;">
+    <main class="container" style="padding-top: 1rem;">
         
         <!-- Main Actions -->
         <div style="text-align: center; margin-bottom: 2rem;" class="animate-fade-up">
-            <h1 style="margin-bottom: 1rem;">Attendance Scanner</h1>
-            <p style="color: var(--text-muted); margin-bottom: 1.5rem;">
-                Scan QR codes to mark attendance.
-            </p>
-            <button onclick="toggleScanner()" class="btn btn-primary" style="padding: 1rem 3rem; font-size: 1.2rem; border-radius: 50px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
-                <i class="bi bi-qr-code-scan"></i> Scan Now
-            </button>
-            <div style="margin-bottom: 1rem;">
-                <label for="scanSubject" style="font-weight: bold; margin-bottom: 0.5rem; display: block; color: var(--text-muted);">Subject Mode (Optional)</label>
-                <select id="scanSubject" class="form-control" style="width: 100%; max-width: 300px; margin: 0 auto;">
-                    <option value="">-- Daily Attendance (Default) --</option>
-                    <?php foreach ($groupedSubjects as $sem => $subs): ?>
-                        <optgroup label="<?= htmlspecialchars($sem) ?>">
-                            <?php foreach ($subs as $s): ?>
-                                <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['name']) ?></option>
-                            <?php endforeach; ?>
-                        </optgroup>
-                    <?php endforeach; ?>
-                </select>
-                <small style="display: block; margin-top: 0.5rem; color: var(--text-muted);">Select a subject to log attendance for that class specifically.</small>
+            <div class="glass-panel" style="padding: 2.5rem 1.5rem; border-radius: 24px; margin-bottom: 2rem;">
+                <div class="flex-center" style="flex-direction: column; gap: 15px;">
+                    <div style="width: 80px; height: 80px; background: rgba(30, 41, 59, 0.05); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
+                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem;"></i>
+                    </div>
+                    <button onclick="toggleScanner()" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-size: 1.1rem; border-radius: 50px; box-shadow: 0 10px 25px -5px rgba(30, 41, 59, 0.2);">
+                        Scan Now
+                    </button>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin: 0;">Tap to begin capturing student QR codes</p>
+                </div>
             </div>
 
+            <div class="card" style="padding: 1.25rem; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-card); max-width: 400px; margin: 0 auto; box-shadow: var(--glass-shadow);">
+                <label for="scanSubject" style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.75rem;">Active Context</label>
+                <select id="scanSubject" class="form-control" style="width: 100%; border-radius: 12px; height: 45px;">
+                    <option value="">-- Daily Attendance --</option>
+                    
+                    <?php if (!empty($groupedContexts['subject'])): ?>
+                        <optgroup label="Academic Subjects">
+                            <?php foreach ($groupedContexts['subject'] as $sem => $subs): ?>
+                                <?php foreach ($subs as $s): ?>
+                                    <option value="<?= $s['id'] ?>">[<?= htmlspecialchars($sem) ?>] <?= htmlspecialchars($s['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endif; ?>
 
+                    <?php if (!empty($groupedContexts['event'])): ?>
+                        <optgroup label="Special Events">
+                            <?php foreach ($groupedContexts['event'] as $sem => $subs): ?>
+                                <?php foreach ($subs as $s): ?>
+                                    <option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['name']) ?></option>
+                                <?php endforeach; ?>
+                            <?php endforeach; ?>
+                        </optgroup>
+                    <?php endif; ?>
+                </select>
+            </div>
         </div>
 
         <!-- Recent Scans List -->
         <div class="animate-fade-up delay-1">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h4 style="color: var(--text-main);">Today's Scans (<?= $totalToday ?>)</h4>
-                <a href="view_attendance.php" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">View All</a>
+            <div class="mobile-stack" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; gap: 1rem;">
+                <div>
+                    <h5 style="color: var(--text-main); font-weight: 800; margin: 0; letter-spacing: -0.02em;">
+                        Recent Scans 
+                        <span id="subjectIndicator" style="font-size: 0.75em; color: var(--text-muted); font-weight: 600; display: block; margin-top: 4px;">(Daily Mode)</span>
+                    </h5>
+                </div>
+                <div style="text-align:right; display: flex; align-items: center; gap: 10px;">
+                     <button id="btnNotify" onclick="finishAndNotify()" class="btn btn-ghost btn-sm" style="color: var(--primary); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 6px; border-radius: 50px; font-weight: 700;">
+                        <i class="bi bi-bell-fill"></i> <span class="hide-mobile">Notify</span>
+                     </button>
+                     <span id="countBadge" style="background:var(--bg-main); color:var(--primary); padding:4px 12px; border: 1px solid var(--border); border-radius:12px; font-size:0.8rem; font-weight:800;">0</span>
+                     <a href="view_attendance.php" style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 700; border-bottom: 2px solid var(--primary);">Records</a>
+                </div>
             </div>
 
-            <div style="box-shadow: var(--shadow-sm); border-radius: var(--radius-lg); border: 1px solid var(--border);">
-                <?php if (empty($todaysRecords)): ?>
-                    <div style="padding: 2rem; text-align: center; background: white; border-radius: var(--radius-lg);">
-                        <p style="color: var(--text-muted);">No scans yet today.</p>
-                    </div>
-                <?php else: ?>
-                    <?php foreach($todaysRecords as $r): 
-                        $time = date('h:i A', strtotime($r['time']));
-                        $statusClass = 'badge-' . strtolower($r['status']);
-                        $statusText = strtoupper($r['status']);
-                    ?>
-                    <div class="attendance-row">
-                        <div>
-                            <div style="font-weight: 600; font-size: 1rem;"><?= htmlspecialchars($r['name'] ?? 'Unknown') ?></div>
-                            <small style="color: var(--text-muted);"><i class="bi bi-clock"></i> <?= $time ?></small>
-                        </div>
-                        <span class="badge <?= $statusClass ?>"><?= $statusText ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                <?php endif; ?>
+            <div id="attendanceList" class="attendance-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                <!-- Content injected via JS -->
+                <div style="padding: 2rem; text-align: center;">
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...
+                </div>
             </div>
         </div>
 
@@ -196,7 +192,7 @@ foreach ($subjects as $s) {
         }, 1000);
 
         // Scanner Logic
-        let html5QrcodeScanner = null;
+        let html5QrCode = null;
         let lastScanned = "";
         let isProcessing = false;
         
@@ -216,14 +212,16 @@ foreach ($subjects as $s) {
             if (modal.style.display === 'flex') {
                 // Close Scanner
                 modal.style.display = 'none';
-                if (html5QrcodeScanner) {
+                if (html5QrCode) {
                     try {
-                        await html5QrcodeScanner.clear();
-                        console.log("Scanner cleared.");
+                        if(html5QrCode.isScanning) {
+                            await html5QrCode.stop();
+                        }
+                        await html5QrCode.clear();
                     } catch (error) {
-                        console.error("Failed to clear scanner", error);
+                        console.error("Failed to stop scanner", error);
                     }
-                    html5QrcodeScanner = null;
+                    html5QrCode = null;
                 }
             } else {
                 // Open Scanner
@@ -234,37 +232,70 @@ foreach ($subjects as $s) {
         }
 
         function startScanning() {
-            if (html5QrcodeScanner) {
-                // Already running
-                return;
-            }
+             if (html5QrCode) {
+                 // Already initialized
+                 return;
+             }
 
-            try {
-                // Using Html5QrcodeScanner with simplified UI config
-                // Use current div size
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "reader", 
-                    { 
-                        fps: 10, 
-                        qrbox: { width: 250, height: 250 },
-                        aspectRatio: 1.0,
-                        showTorchButtonIfSupported: true,
-                        rememberLastUsedCamera: true
-                    }, 
-                    false
-                );
-                
-                html5QrcodeScanner.render(processScan, (errorMessage) => {
-                    // parse error, ignore it.
-                });
-            } catch(e) {
-                console.error(e);
-                alert("Scanner Error: " + e.message);
-                // Fallback for missing lib
-                if(e.message.includes('Html5QrcodeScanner')) {
-                    alert("Library missing. Please check internet or assets.");
-                }
+             // Initialize the scanner
+             html5QrCode = new Html5Qrcode("reader");
+
+             const config = { 
+                 fps: 10, 
+                 qrbox: { width: 250, height: 250 },
+                 aspectRatio: 1.0 
+             };
+
+             // Try environment camera first (back camera), fallback to user (front/webcam)
+             // Ideally 'facingMode: "environment"' works, but on desktop it might fail.
+             // We can use the generic { facingMode: "environment" } which usually falls back, 
+             // but explicit handling is safer.
+             
+             html5QrCode.start(
+                 { facingMode: "environment" }, 
+                 config, 
+                 processScan, 
+                 (errorMessage) => { 
+                     // frame error, ignore 
+                 }
+             ).catch(err => {
+                 console.warn("Environment camera failed, trying user camera...", err);
+                 // Fallback to user camera (webcam)
+                 html5QrCode.start(
+                     { facingMode: "user" }, 
+                     config, 
+                     processScan, 
+                     (errorMessage) => { /* ignore */ }
+                 ).catch(err2 => {
+                     // Both failed
+                     handleCameraError(err2);
+                 });
+             });
+        }
+
+        // Removed initScannerUI as we use start() directly now
+        function handleCameraError(e) {
+            console.error(e);
+            let msg = "Scanner Error: " + (e.message || e);
+            
+            // Friendly Error Messages
+            if (e.name === 'NotAllowedError' || (e.message && e.message.includes('permission'))) {
+                    msg = "Camera Access Denied.<br><br>The browser blocked the camera. If you are on Windows/Android, ensure you are using <b>HTTPS</b> or <b>localhost</b>.";
+            } else if (e.name === 'NotFoundError') {
+                    msg = "No camera found on this device.";
+            } else if (e.name === 'NotReadableError') {
+                    msg = "Camera is being used by another application.";
+            } else if (e.message && e.message.indexOf("The request is not not allowed") > -1) {
+                    msg = "Permission denied. Check browser settings.";
             }
+            
+            Swal.fire({
+                title: 'Camera Error',
+                html: msg,
+                icon: 'error',
+                footer: '<a href="manual.php" class="btn btn-sm btn-secondary">Go to Manual Entry</a>',
+                showConfirmButton: true
+            });
         }
 
         function processScan(qrCode) {
@@ -276,14 +307,16 @@ foreach ($subjects as $s) {
             console.log("Scanned:", qrCode);
 
             // Pause scanning while processing
-            if(html5QrcodeScanner) html5QrcodeScanner.pause();
+            // if(html5QrcodeScanner) html5QrcodeScanner.pause(); // Not strictly necessary if we use isProcessing flag
+
+            const subjectId = document.getElementById('scanSubject').value;
 
             fetch('api/process.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: new URLSearchParams({ 
                     qr_code: qrCode,
-                    subject_id: document.getElementById('scanSubject').value 
+                    subject_id: subjectId
                 })
             })
             .then(r => r.json())
@@ -292,16 +325,31 @@ foreach ($subjects as $s) {
                     // New Registration
                     Swal.fire({
                         title: 'New Student',
-                        text: 'Register Name:',
-                        input: 'text',
+                        html: `
+                            <p style="margin-bottom:15px; color:#666;">Unknown QR. Register new student?</p>
+                            <input id="reg-firstname" class="swal2-input" placeholder="First Name" style="margin-bottom: 10px;">
+                            <input id="reg-lastname" class="swal2-input" placeholder="Last Name">
+                        `,
                         showCancelButton: true,
-                        confirmButtonText: 'Register'
+                        confirmButtonText: 'Register',
+                        preConfirm: () => {
+                            const fname = document.getElementById('reg-firstname').value.trim();
+                            const lname = document.getElementById('reg-lastname').value.trim();
+                            if(!fname || !lname) {
+                                Swal.showValidationMessage('First and Last Name required');
+                            }
+                            return { first_name: fname, last_name: lname };
+                        }
                     }).then((result) => {
                         if (result.isConfirmed && result.value) {
                             fetch('api/process.php', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                body: new URLSearchParams({ qr_code: qrCode, name: result.value })
+                                body: new URLSearchParams({ 
+                                    qr_code: qrCode, 
+                                    first_name: result.value.first_name, 
+                                    last_name: result.value.last_name 
+                                })
                             }).then(r => r.json()).then(regHelper);
                         } else {
                             resumeScanning();
@@ -310,38 +358,37 @@ foreach ($subjects as $s) {
                 } else if (data.status === 'duplicate') {
                     playSound('warning');
                     shortToast('info', `${data.user_name} already scanned.`);
-                    resumeScanning();
+                    // resumeScanning(); // Let finally handle delay
                 } else if (data.status === 'success') {
                     playSound('success');
                     shortToast('success', `Marked ${data.attendance_status.toUpperCase()}: ${data.user_name}`);
-                    resumeScanning();
+                    fetchRecentList(); // Update List Immediately
+                    // resumeScanning(); // Let finally handle delay
                 } else {
                     playSound('error');
                     shortToast('error', data.message);
-                    resumeScanning();
+                    // resumeScanning(); // Let finally handle delay
                 }
             })
             .catch((err) => {
                 console.error(err);
                 shortToast('error', 'Database Error');
-                resumeScanning();
+                // resumeScanning(); // Let finally handle delay
             })
             .finally(() => {
                 // Reset scan lock after delay
                 setTimeout(() => { 
                     lastScanned = ""; 
                     isProcessing = false; 
-                }, 2500);
+                }, 3000);
             });
         }
 
         function resumeScanning() {
-             if(html5QrcodeScanner) {
-                 try {
-                    html5QrcodeScanner.resume(); 
-                 } catch(e) {
-                     console.log("Scanner resume failed (maybe not paused):", e);
-                 }
+             if(html5QrCode) {
+                 isProcessing = false;
+                 // Allow re-scanning same code if needed? 
+                 lastScanned = ""; 
              }
         }
         
@@ -349,7 +396,8 @@ foreach ($subjects as $s) {
              if(data.status === 'success') {
                 playSound('success');
                 Swal.fire('Registered!', 'Student added.', 'success').then(() => {
-                    location.reload(); // Reload to show in list
+                    fetchRecentList(); // Refresh list
+                    resumeScanning();
                 });
             } else {
                 Swal.fire('Error', data.message, 'error').then(() => {
@@ -369,7 +417,128 @@ foreach ($subjects as $s) {
             });
         }
 
+        // --- Real-time List Logic ---
+        
+        function fetchRecentList() {
+            const subjectId = document.getElementById('scanSubject').value;
+            const indicator = document.getElementById('subjectIndicator');
+            
+            // Update UI Title
+            if (subjectId) {
+                const sel = document.getElementById('scanSubject');
+                const text = sel.options[sel.selectedIndex].text;
+                indicator.innerText = `(${text})`;
+                indicator.style.color = 'var(--primary)';
+                indicator.style.fontWeight = 'bold';
+            } else {
+                indicator.innerText = '(Daily)';
+                indicator.style.color = 'var(--text-muted)';
+                indicator.style.fontWeight = 'normal';
+            }
 
+            fetch(`api/get_recent.php?subject_id=${subjectId}`)
+                .then(r => r.json())
+                .then(res => {
+                    if (res.status === 'success') {
+                        renderList(res.data);
+                        
+                        // Update Notify Button
+                        const btnNotify = document.getElementById('btnNotify');
+                        if (res.is_notified) {
+                            btnNotify.innerHTML = '<i class="bi bi-check-all"></i> <span style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">NOTIFIED</span>';
+                            btnNotify.style.opacity = '0.6';
+                            btnNotify.style.pointerEvents = 'none';
+                        } else {
+                            btnNotify.innerHTML = '<i class="bi bi-bell"></i> Finish & Notify';
+                            btnNotify.style.opacity = '1';
+                            btnNotify.style.pointerEvents = 'auto';
+                        }
+                    }
+                })
+                .catch(e => console.error(e));
+        }
+
+        function renderList(data) {
+            const attendanceList = document.getElementById('attendanceList');
+            const countBadge = document.getElementById('countBadge');
+            
+            countBadge.innerText = data.length;
+            attendanceList.innerHTML = '';
+
+            if (data.length === 0) {
+                attendanceList.innerHTML = `
+                    <div style="padding: 2rem; text-align: center;">
+                        <p style="color: var(--text-muted);">No scans yet for this mode.</p>
+                    </div>`;
+                return;
+            }
+
+            data.forEach(record => {
+                const badgeClass = 'badge-' + (record.status || 'present').toLowerCase();
+                // Minimalist Card Style for Scanner
+                const row = document.createElement('div');
+                row.className = 'student-row animate-fade-in';
+                row.style.background = 'var(--bg-card)';
+                row.style.border = '1px solid var(--border)';
+                row.style.borderRadius = 'var(--radius-md)';
+                row.style.padding = '0.8rem 1rem';
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.alignItems = 'center';
+
+                row.innerHTML = `
+                    <div class="student-info">
+                        <h6 style="margin:0; font-size: 0.95rem; font-weight: 600;">${escapeHtml(record.name)}</h6>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">${record.time}</span>
+                        <span class="badge ${badgeClass}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${(record.status || 'PRESENT').toUpperCase()}</span>
+                    </div>
+                `;
+                attendanceList.appendChild(row);
+            });
+        }
+
+        function escapeHtml(text) {
+            if (!text) return text;
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        window.onload = function() {
+            // Check for Secure Context
+            if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'HTTPS Required for Camera',
+                    html: `
+                        <div style="text-align: left; font-size: 0.9rem;">
+                            <p>Mobile browsers block the camera on <b>HTTP</b> connections for security.</p>
+                            <p style="margin-top: 10px;"><b>How to fix:</b></p>
+                            <ul style="padding-left: 20px;">
+                                <li>Use a tunnel: <code>npx localtunnel --port 8000</code> to get a secure link.</li>
+                                <li>Or use Chrome flags bypass on Android.</li>
+                            </ul>
+                            <p style="margin-top: 10px;">Check <code>CONNECT_MOBILE.md</code> in the project folder for a full guide.</p>
+                        </div>
+                    `,
+                    confirmButtonText: 'I Understand',
+                    backdrop: 'rgba(0,0,0,0.8)'
+                });
+            }
+            
+            fetchRecentList();
+            setInterval(fetchRecentList, 5000);
+        };
+
+        // Subject Change Listener
+        document.getElementById('scanSubject').addEventListener('change', () => {
+             fetchRecentList();
+        });
         
         // Auto-select subject on load
         window.addEventListener('load', () => {
@@ -387,26 +556,63 @@ foreach ($subjects as $s) {
                          shortToast('info', `Auto-selected: ${d.data.name}`);
                      }
                 }
+                // Fetch list initially (after auto-select check logic or default)
+                // We add a small delay or just call it.
+                // Parameter override check takes precedence
+                checkUrlParam();
+            })
+            .catch(() => {
+                // Determine list anyway if fetch fails
+                checkUrlParam();
             });
-
         });
 
-        // URL Parameter Check
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlSubId = urlParams.get('subject_id');
-        if(urlSubId) {
-            // override auto-detect for now, or wait for load?
-            // Let's rely on the element being present.
-            const checkSel = setInterval(() => {
-                const sel = document.getElementById('scanSubject');
-                if(sel) {
-                    clearInterval(checkSel);
-                    sel.value = urlSubId;
-                    toggleScanner(); // Auto-open scanner if subject provided
-                }
-            }, 100);
-        }
-        
+         function checkUrlParam() {
+              const urlParams = new URLSearchParams(window.location.search);
+              const urlSubId = urlParams.get('subject_id');
+              if(urlSubId) {
+                  const sel = document.getElementById('scanSubject');
+                  if(sel) {
+                      sel.value = urlSubId;
+                      toggleScanner();
+                  }
+              }
+              // Initial Fetch
+              fetchRecentList();
+         }
+
+         function finishAndNotify() {
+             const subjectId = document.getElementById('scanSubject').value;
+             const modeName = subjectId ? 'this Subject' : 'Daily Attendance';
+             
+             Swal.fire({
+                 title: 'Finish & Notify?',
+                 text: `This will mark all remaining students as Absent for ${modeName} and notify the Group Chat.`,
+                 icon: 'question',
+                 showCancelButton: true,
+                 confirmButtonText: 'Yes, Notify Now',
+                 showLoaderOnConfirm: true,
+                 confirmButtonColor: 'var(--primary)',
+                 preConfirm: () => {
+                     const formData = new FormData();
+                     formData.append('subject_id', subjectId);
+                     return fetch('api/mark_absentees.php', { method: 'POST', body: formData })
+                            .then(r => r.json())
+                            .then(d => {
+                                if (d.status !== 'success') throw new Error(d.message);
+                                return d;
+                            }).catch(error => {
+                                Swal.showValidationMessage(`Request failed: ${error}`);
+                            });
+                 }
+             }).then((result) => {
+                 if (result.isConfirmed) {
+                     Swal.fire('Success', result.value.message, 'success').then(() => {
+                         fetchRecentList();
+                     });
+                 }
+             });
+         }
     </script>
 </body>
 </html>

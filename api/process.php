@@ -3,6 +3,7 @@
 date_default_timezone_set("Asia/Manila");
 header("Content-Type: application/json");
 require "../includes/db.php";
+require_once "../includes/telegram.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") exit(json_encode(["status" => "error", "message" => "Invalid request method"]));
 if (empty(trim($_POST["qr_code"]))) exit(json_encode(["status" => "error", "message" => "QR code is required"]));
@@ -16,13 +17,18 @@ $qr = trim($_POST["qr_code"]);
 $name = trim($_POST["name"] ?? "");
 $subjectId = isset($_POST["subject_id"]) && $_POST["subject_id"] !== "" ? intval($_POST["subject_id"]) : null;
 
-$today = date("Y-m-d");
+$today = $_POST['custom_date'] ?? date("Y-m-d");
 $now = date("H:i:s");
 $nowDisplay = date("h:i A");
 
+// If custom date is used, we might want to set time to 12:00 PM or keep current time?
+// Let's keep current time for log, but date is custom.
+// Or if it's a past date, maybe user wants to set specific time? 
+// For now, simple re-attendance usually implies just marking it for that day.
+
 try {
   // Check if user exists
-  $stmt = $pdo->prepare("SELECT * FROM users WHERE qr_code = ?");
+  $stmt = $pdo->prepare("SELECT * FROM users WHERE qr_code = ? AND deleted_at IS NULL");
   $stmt->execute([$qr]);
   $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -37,18 +43,22 @@ try {
         exit();
     }
 
-    if (empty($name)) {
+    if (empty($_POST['first_name']) || empty($_POST['last_name'])) {
       echo json_encode([
         "status" => "new",
-        "message" => "New QR code detected. Please provide your name.",
+        "message" => "New QR code detected. Please Register.",
       ]);
       exit();
     }
+    
+    $first_name = trim($_POST['first_name']);
+    $last_name = trim($_POST['last_name']);
+    $name = $last_name . ', ' . $first_name;
 
     // Register new user
     $pdo
-      ->prepare("INSERT INTO users (qr_code, name) VALUES (?, ?)")
-      ->execute([$qr, $name]);
+      ->prepare("INSERT INTO users (qr_code, name, first_name, last_name) VALUES (?, ?, ?, ?)")
+      ->execute([$qr, $name, $first_name, $last_name]);
     $user = ['name' => $name]; 
   }
 
@@ -74,6 +84,25 @@ try {
 
   // 3a. Subject Attendance Handling
   if ($subjectId) {
+      // STRICT ENROLLMENT CHECK (Modified)
+      // Regular students: ALLOW (Skip check)
+      // Irregular students: MUST be in student_subjects
+      
+      $type = $user['student_type'] ?? 'regular'; // Default to regular if null
+      
+      if ($type === 'irregular') {
+          $checkEnrollment = $pdo->prepare("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?");
+          $checkEnrollment->execute([$qr, $subjectId]);
+          if (!$checkEnrollment->fetch()) {
+              echo json_encode([
+                  "status" => "error", 
+                  "message" => "Student NOT enrolled in this subject.",
+                  "user_name" => $user["name"] ?? "Unknown"
+              ]);
+              exit();
+          }
+      }
+
       // Check Existing Subject Record
       $stmt = $pdo->prepare("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?");
       $stmt->execute([$subjectId, $qr, $today]);
@@ -116,7 +145,7 @@ try {
 
         echo json_encode([
             "status" => "success",
-            "message" => "Updated: " . getStatusMessage($status),
+            "message" => strtoupper($status),
             "attendance_status" => $status,
             "time_recorded" => $nowDisplay,
             "user_name" => $user["name"] ?? $name,
@@ -134,15 +163,16 @@ try {
   }
 
   // 4. Record attendance (Insert)
+  $schoolYear = $s['active_school_year'] ?? 'SY 2024-2025';
   $pdo->prepare(
-      "INSERT INTO attendance (qr_code, date, time, status) VALUES (?, ?, ?, ?)"
+      "INSERT INTO attendance (qr_code, date, time, status, school_year) VALUES (?, ?, ?, ?, ?)"
     )
-    ->execute([$qr, $today, $nowDisplay, $status]);
+    ->execute([$qr, $today, $nowDisplay, $status, $schoolYear]);
 
   // Prepare response
   $response = [
     "status" => "success",
-    "message" => getStatusMessage($status),
+    "message" => strtoupper($status),
     "attendance_status" => $status,
     "time_recorded" => $nowDisplay,
     "user_name" => $user["name"] ?? $name,
@@ -191,16 +221,7 @@ function calculateAttendanceStatus(
  */
 function getStatusMessage($status)
 {
-  switch ($status) {
-    case "present":
-      return "Attendance recorded successfully!";
-    case "late":
-      return "Late attendance recorded";
-    case "absent":
-      return "Marked as absent";
-    default:
-      return "Attendance recorded";
-  }
+  return strtoupper($status);
 }
 ?>
 

@@ -3,8 +3,48 @@
 date_default_timezone_set("Asia/Manila");
 require_once "includes/db.php";
 
-// Fetch dates
-$stmt = $pdo->query("SELECT DISTINCT date FROM attendance ORDER BY date DESC");
+// Fetch Distinct Dates with Pagination
+$limit = 10;
+$page = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$offset = ($page - 1) * $limit;
+
+// Count total unique dates for pagination links
+$totalDates = $pdo->query("SELECT COUNT(DISTINCT date) FROM attendance")->fetchColumn();
+$totalPages = ceil($totalDates / $limit);
+
+// Fetch Only dates with pre-calculated counts and notification status
+$stmt = $pdo->prepare("
+    SELECT 
+        DISTINCT date,
+        (SELECT COUNT(*) FROM attendance WHERE date = a.date) as record_count,
+        (SELECT 1 FROM notified_contexts WHERE subject_id = 0 AND date = a.date LIMIT 1) as is_notified
+    FROM attendance a
+    ORDER BY date DESC 
+    LIMIT ? OFFSET ?
+");
+$stmt->execute([$limit, $offset]);
+$dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// Fetch All Available School Years for Filter
+$sy_list = $pdo->query("SELECT DISTINCT school_year FROM attendance WHERE school_year IS NOT NULL ORDER BY school_year DESC")->fetchAll(PDO::FETCH_COLUMN);
+$active_sy = $_GET['sy'] ?? $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+
+// Handle Filtered Counts & Dates
+$where_sy = $active_sy ? "WHERE school_year = '$active_sy'" : "";
+$totalDates = $pdo->query("SELECT COUNT(DISTINCT date) FROM attendance $where_sy")->fetchColumn();
+$totalPages = ceil($totalDates / $limit);
+
+$stmt = $pdo->prepare("
+    SELECT 
+        DISTINCT date,
+        (SELECT COUNT(*) FROM attendance WHERE date = a.date AND (school_year = ? OR school_year IS NULL)) as record_count,
+        (SELECT 1 FROM notified_contexts WHERE subject_id = 0 AND date = a.date LIMIT 1) as is_notified
+    FROM attendance a
+    WHERE school_year = ? OR school_year IS NULL
+    ORDER BY date DESC 
+    LIMIT ? OFFSET ?
+");
+$stmt->execute([$active_sy, $active_sy, $limit, $offset]);
 $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>
 
@@ -12,116 +52,172 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Records | QR Tools by MCK</title>
     <link href="assets/css/style.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <?php include 'includes/theme_loader.php'; ?>
     <style>
         .table-wrapper {
-            background: white;
+            background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
+            border-radius: var(--radius-md); /* Sharper Swiss Look */
             overflow: hidden;
-            box-shadow: var(--shadow-sm);
         }
         table { width: 100%; border-collapse: collapse; }
         th { 
-            text-align: left; padding: 1.25rem; 
-            background: #f8fafc; color: var(--text-muted); 
-            font-size: 0.85rem; text-transform: uppercase;
-            border-bottom: 1px solid var(--border);
+            text-align: left; padding: 0.75rem 1rem; /* Tighter padding */
+            background: var(--bg-card); color: var(--text-muted); 
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
+            border-bottom: 2px solid var(--border);
+            font-weight: 800;
         }
-        td { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+        td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         tr:last-child td { border-bottom: none; }
         
-        .section-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1rem; margin-top: 3rem;
+        /* Pagination Styles */
+        .pagination {
+            display: flex; justify-content: center; align-items: center; gap: 1rem;
+            margin-top: 3rem; margin-bottom: 4rem;
         }
+        .pagination-btn {
+            padding: 0.6rem 1.25rem; border-radius: 50px; border: 1px solid var(--border);
+            color: var(--text-main); font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
+            transition: all 0.2s; background: var(--bg-card);
+        }
+        .pagination-btn:hover:not(:disabled) { border-color: var(--primary); background: var(--bg-hover); }
+        .pagination-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .page-info { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
     </style>
 </head>
 <body>
 
-    <nav class="navbar">
-        <a href="index.php" class="btn btn-ghost" style="border: none; padding-left: 0;">
-            <i class="bi bi-arrow-left"></i> <span class="d-none-mobile">Dashboard</span>
-        </a>
-        <h3 class="text-gradient">Records</h3>
+    <?php 
+    $navbar_actions = '
         <a href="settings.php" class="btn btn-ghost">
             <i class="bi bi-gear"></i> <span class="d-none-mobile">Settings</span>
         </a>
         <button onclick="exportRange()" class="btn btn-ghost">
             <i class="bi bi-calendar-range"></i> <span class="d-none-mobile">Export Range</span>
         </button>
-    </nav>
+    ';
+    include 'includes/navbar.php'; 
+    ?>
 
     <main class="container">
+        <!-- View Toggle -->
+        <div class="animate-fade-up">
+            <div class="nav-tabs">
+                <a href="view_subjects_list.php" class="nav-link">Subject Records</a>
+                <a href="view_attendance.php" class="nav-link active">Daily Records</a>
+                <a href="groups.php" class="nav-link">Groups</a>
+                <a href="calendar.php" class="nav-link">Calendar</a>
+            </div>
+            
+            <div class="mobile-force-stack" style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
+                <div>
+                    <h1 style="margin-bottom: 0.5rem; letter-spacing: -0.03em;">Daily Records</h1>
+                    <p style="color: var(--text-muted); font-size: 1.1rem; line-height: 1.2;">
+                        View attendance logs grouped by date.
+                    </p>
+                </div>
+                <div style="flex-shrink: 0; display: flex; gap: 1rem; align-items: flex-end;">
+                     <div style="text-align: right;">
+                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: block;">Academic Year</label>
+                        <select onchange="window.location.href='?sy='+this.value" class="form-control" style="font-weight: 800; border-radius: 12px; font-size: 0.85rem; padding: 0.5rem 1rem; cursor: pointer; background: var(--bg-card);">
+                            <?php foreach ($sy_list as $sy): ?>
+                                <option value="<?= htmlspecialchars($sy) ?>" <?= $active_sy == $sy ? 'selected' : '' ?>><?= htmlspecialchars($sy) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                     </div>
+                     <button onclick="window.location.href='scan.php'" class="btn btn-primary btn-sm" style="padding: 0.75rem 1.5rem; font-weight: 800; border-radius: 12px; height: fit-content;">
+                        <i class="bi bi-qr-code-scan"></i> Scanner
+                     </button>
+                </div>
+            </div>
+        </div>
+
         <?php if (empty($dates)): ?>
-            <div class="card animate-fade-up" style="padding: 4rem; text-align: center; margin-top: 2rem;">
-                <i class="bi bi-database-exclamation" style="font-size: 3rem; color: var(--text-muted); display: block; margin-bottom: 1rem;"></i>
-                <h4 style="color: var(--text-muted);">No records found</h4>
+            <div class="animate-fade-up" style="padding: 4rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-lg);">
+                <i class="bi bi-calendar-x" style="font-size: 2rem; color: var(--text-muted); display: block; margin-bottom: 1rem;"></i>
+                <p style="color: var(--text-muted); margin-bottom: 1.5rem;">No attendance records found.</p>
+                <a href="scan.php" class="btn btn-primary" style="font-size: 0.9rem;">Start Scanning</a>
             </div>
         <?php else: ?>
 
-            <?php foreach ($dates as $index => $row): ?>
-                <div class="animate-fade-up delay-<?= min($index + 1, 3) ?>">
+            <?php foreach ($dates as $idx => $row): 
+                $stagger = "stagger-" . min($idx + 1, 8);
+            ?>
+                <div class="animate-fade-up <?= $stagger ?>" style="margin-bottom: 2rem;">
                     
-                    <div class="section-header">
-                        <div class="flex-center" style="gap: 1rem;">
-                            <h4 style="margin: 0; color: var(--text-main);"><?= date('F j, Y', strtotime($row['date'])) ?></h4>
-                            <span class="badge" style="background: white; border: 1px solid var(--border);">
-                                <?php
-                                $count = $pdo->query("SELECT COUNT(*) FROM attendance WHERE date = '{$row['date']}'")->fetchColumn();
-                                echo "$count Entries";
-                                ?>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.01em;">
+                                <?= date('F j, Y', strtotime($row['date'])) ?>
+                            </h3>
+                            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; margin-top: 2px; display: block;">
+                                <?= $row['record_count'] ?> Entries
                             </span>
                         </div>
                         
-                        <div style="display: flex; gap: 0.5rem;">
-                             <form method="post" action="api/export.php" target="_blank">
-                                <input type="hidden" name="export_date" value="<?= $row['date'] ?>">
-                                <button type="submit" class="btn btn-ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
-                                    <i class="bi bi-download"></i> Export
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <?php if ($row['is_notified']): ?>
+                                <span style="font-size: 0.65rem; color: var(--text-muted); padding: 0.25rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 4px; font-weight: 800;">
+                                    <i class="bi bi-check2-all"></i> SENT
+                                </span>
+                            <?php else: ?>
+                                <button onclick="notifyAbsentees('<?= $row['date'] ?>')" class="btn btn-ghost" style="color: var(--primary); font-size: 0.65rem; padding: 0.25rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; font-weight: 800; text-transform: uppercase;">
+                                    Notify
                                 </button>
-                            </form>
+                            <?php endif; ?>
+
+                            <button onclick="exportDay('<?= $row['date'] ?>')" class="btn btn-ghost" style="font-size: 0.8rem; padding: 0; height: 28px; width: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--border);" title="Export">
+                                <i class="bi bi-download"></i>
+                            </button>
                             
                             <button onclick="confirmDelete('date', '<?= $row['date'] ?>')" 
-                                    class="btn btn-ghost" style="color: var(--danger); font-size: 0.85rem; padding: 0.5rem 1rem;">
-                                <i class="bi bi-trash"></i> Clear
+                                    class="btn btn-ghost" style="color: var(--danger); font-size: 0.8rem; padding: 0; height: 28px; width: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid var(--border);" title="Clear All">
+                                <i class="bi bi-trash"></i>
                             </button>
                         </div>
                     </div>
 
                     <div class="table-wrapper">
-                        <table>
+                        <table class="mobile-card-table">
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Time</th>
-                                    <th>Status</th>
-                                    <th style="text-align: right;"></th>
+                                    <th style="width: 40%;">Name</th>
+                                    <th style="width: 25%;">Time</th>
+                                    <th style="width: 25%;">Status</th>
+                                    <th style="width: 10%; text-align: right;"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
-                                $records = $pdo->query("SELECT a.id, a.time, a.status, u.name 
+                                 $records = $pdo->prepare("SELECT a.id, a.time, a.status, u.name 
                                                       FROM attendance a 
                                                       JOIN users u ON a.qr_code = u.qr_code 
-                                                      WHERE a.date = '{$row['date']}' 
-                                                      ORDER BY a.time DESC")->fetchAll(PDO::FETCH_ASSOC);
+                                                      WHERE a.date = ? AND (a.school_year = ? OR a.school_year IS NULL)
+                                                      ORDER BY a.time DESC");
+                                 $records->execute([$row['date'], $active_sy]);
+                                 $records = $records->fetchAll(PDO::FETCH_ASSOC);
 
                                 foreach ($records as $r): 
                                 ?>
-                                <tr>
-                                    <td style="font-weight: 500; color: var(--text-main);"><?= htmlspecialchars($r['name']) ?></td>
-                                    <td style="color: var(--text-muted);"><?= $r['status'] == 'absent' ? '--' : date('h:i A', strtotime($r['time'])) ?></td>
-                                    <td>
-                                        <span class="badge <?= $r['status'] ?>"><?= ucfirst($r['status']) ?></span>
+                                <tr class="hover-lift">
+                                    <td data-label="Name" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($r['name']) ?></td>
+                                    <td data-label="Time" style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                                        <?= $r['status'] == 'absent' ? '--' : date('h:i A', strtotime($r['time'])) ?>
                                     </td>
-                                    <td style="text-align: right;">
-                                        <button onclick="confirmDelete('id', <?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">
-                                            <i class="bi bi-x-lg"></i>
+                                    <td data-label="Status">
+                                        <button onclick="toggleStatus(<?= $r['id'] ?>, 'global', this)" class="badge <?= $r['status'] ?>" style="border:1px solid var(--border); font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; min-width: 80px; font-weight: 800; text-transform: uppercase;">
+                                            <?= $r['status'] ?>
+                                        </button>
+                                    </td>
+                                    <td data-label="Action" style="text-align: right;">
+                                        <button onclick="confirmDelete('id', <?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0.5rem; transition: color 0.2s;">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -132,6 +228,26 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
                 </div>
             <?php endforeach; ?>
+
+            <!-- Pagination Navigation -->
+            <?php if ($totalPages > 1): ?>
+                <div class="pagination animate-fade-up">
+                    <button onclick="window.location.href='?page=<?= $page - 1 ?>'" 
+                            class="pagination-btn" <?= $page <= 1 ? 'disabled' : '' ?>>
+                        <i class="bi bi-chevron-left"></i> Prev
+                    </button>
+                    
+                    <span class="page-info">
+                        Page <?= $page ?> of <?= $totalPages ?>
+                    </span>
+                    
+                    <button onclick="window.location.href='?page=<?= $page + 1 ?>'" 
+                            class="pagination-btn" <?= $page >= $totalPages ? 'disabled' : '' ?>>
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            <?php endif; ?>
+
         <?php endif; ?>
     </main>
 
@@ -141,10 +257,27 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 title: 'Export Attendance',
                 html: `
                     <div style="text-align:left">
-                        <label>Start Date</label>
-                        <input type="date" id="swal-start" class="swal2-input" value="<?= date('Y-m-d') ?>">
-                        <label>End Date</label>
-                        <input type="date" id="swal-end" class="swal2-input" value="<?= date('Y-m-d') ?>">
+                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Date Range</label>
+                        <div style="display:flex; gap:10px; margin-bottom:15px;">
+                            <input type="date" id="swal-start" class="swal2-input" value="<?= date('Y-m-d') ?>" style="margin:0; flex:1">
+                            <input type="date" id="swal-end" class="swal2-input" value="<?= date('Y-m-d') ?>" style="margin:0; flex:1">
+                        </div>
+                        
+                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Format</label>
+                        <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px;"> 
+                                <span>Excel (.xls)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px;"> 
+                                <span>Raw CSV (.csv)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="html" style="margin-right:8px;"> 
+                                <span>Google Sheets (.html)</span>
+                            </label>
+                        </div>
                     </div>
                 `,
                 showCancelButton: true,
@@ -152,12 +285,13 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 preConfirm: () => {
                     return [
                         document.getElementById('swal-start').value,
-                        document.getElementById('swal-end').value
+                        document.getElementById('swal-end').value,
+                        document.querySelector('input[name="swal-format"]:checked').value
                     ]
                 }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    const [start, end] = result.value;
+                    const [start, end, format] = result.value;
                     const form = document.createElement('form');
                     form.method = 'POST';
                     form.action = 'api/export.php';
@@ -173,11 +307,104 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     endInput.value = end;
                     form.appendChild(endInput);
 
+                    const formatInput = document.createElement('input');
+                    formatInput.name = 'format';
+                    formatInput.value = format;
+                    form.appendChild(formatInput);
+
                     document.body.appendChild(form);
                     form.submit();
                     document.body.removeChild(form);
                 }
             })
+        }
+
+        function exportDay(date) {
+            Swal.fire({
+                title: 'Export Day',
+                html: `
+                    <div style="text-align:left">
+                        <p style="margin-bottom:15px">Exporting records for <b>${date}</b></p>
+                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Format</label>
+                        <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px;"> 
+                                <span>Excel (.xls)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px;"> 
+                                <span>Raw CSV (.csv)</span>
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer;">
+                                <input type="radio" name="swal-format" value="html" style="margin-right:8px;"> 
+                                <span>Google Sheets (.html)</span>
+                            </label>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Download',
+                preConfirm: () => {
+                    return document.querySelector('input[name="swal-format"]:checked').value;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const format = result.value;
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'api/export.php';
+                    form.target = '_blank';
+                    
+                    const startInput = document.createElement('input');
+                    startInput.name = 'start_date';
+                    startInput.value = date;
+                    form.appendChild(startInput);
+
+                    const formatInput = document.createElement('input');
+                    formatInput.name = 'format';
+                    formatInput.value = format;
+                    form.appendChild(formatInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                }
+            })
+        }
+
+        function notifyAbsentees(date) {
+            Swal.fire({
+                title: 'Notify Absentees?',
+                text: `This will mark all students who did NOT scan on ${date} as ABSENT and notify the Telegram GC.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: 'var(--primary)',
+                confirmButtonText: 'Yes, Notify Now',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const formData = new FormData();
+                    formData.append('subject_id', '0'); // Daily Mode
+                    formData.append('date', date);
+                    return fetch('api/mark_absentees.php', { method: 'POST', body: formData })
+                           .then(r => r.json())
+                           .then(d => {
+                               if (d.status !== 'success') throw new Error(d.message);
+                               return d;
+                           }).catch(error => {
+                               Swal.showValidationMessage(`Request failed: ${error}`);
+                           });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Success',
+                        text: result.value.message,
+                        icon: 'success'
+                    }).then(() => {
+                        window.location.reload();
+                    });
+                }
+            });
         }
 
         function confirmDelete(type, value) {
@@ -197,6 +424,33 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     window.location.href = `api/delete.php?${type}=${value}`;
                 }
             })
+        }
+
+        function toggleStatus(id, type, btnElement) {
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('type', type);
+            
+            // Show subtle saving state
+            const originalText = btnElement.innerText;
+            btnElement.innerText = '...';
+            
+            fetch('api/update_attendance_status.php', { method: 'POST', body: formData })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.status === 'success') {
+                        btnElement.innerText = d.new_status.charAt(0).toUpperCase() + d.new_status.slice(1);
+                        btnElement.className = `badge ${d.new_status}`;
+                        // Success toast
+                        Swal.mixin({toast: true, position: 'top-end', showConfirmButton: false, timer: 1500}).fire({icon: 'success', title: 'Status Updated'});
+                    } else {
+                        btnElement.innerText = originalText;
+                        Swal.fire('Error', d.message, 'error');
+                    }
+                }).catch(err => {
+                    btnElement.innerText = originalText;
+                    Swal.fire('Error', err.message, 'error');
+                });
         }
     </script>
 </body>

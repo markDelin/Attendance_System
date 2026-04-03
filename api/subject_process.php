@@ -2,6 +2,7 @@
 // api/subject_process.php
 date_default_timezone_set('Asia/Manila');
 require '../includes/db.php';
+require_once '../includes/telegram.php';
 
 header('Content-Type: application/json');
 
@@ -10,28 +11,32 @@ $action = $_POST['action'] ?? '';
 try {
     // 1. Add Subject
     if ($action === 'add_subject') {
+        $category = trim($_POST['category'] ?? 'subject');
         $name = trim($_POST['name'] ?? '');
         $semester = trim($_POST['semester'] ?? '');
+        $school_year = trim($_POST['school_year'] ?? '');
         
         if (empty($name) || empty($semester)) {
             echo json_encode(['status' => 'error', 'message' => 'Name and Semester are required.']);
             exit;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO subjects (name, semester) VALUES (?, ?)");
-        $stmt->execute([$name, $semester]);
+        $stmt = $pdo->prepare("INSERT INTO subjects (name, semester, school_year, category) VALUES (?, ?, ?, ?)");
+        $stmt->execute([$name, $semester, $school_year, $category]);
         
-        echo json_encode(['status' => 'success', 'message' => 'Subject added.', 'id' => $pdo->lastInsertId()]);
+        echo json_encode(['status' => 'success', 'message' => ucfirst($category) . ' added.', 'id' => $pdo->lastInsertId()]);
 
     // 2. Get Subjects
     } elseif ($action === 'get_subjects') {
-        $stmt = $pdo->query("SELECT * FROM subjects ORDER BY semester DESC, name ASC");
+        $stmt = $pdo->query("SELECT * FROM subjects ORDER BY school_year DESC, semester DESC, name ASC");
         $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        // Group by Semester
+        // Group by School Year -> Semester
         $grouped = [];
         foreach ($subjects as $s) {
-            $grouped[$s['semester']][] = $s;
+            $sy = $s['school_year'] ?: 'No School Year';
+            $sem = $s['semester'] ?: 'No Semester';
+            $grouped[$sy][$sem][] = $s;
         }
         
         echo json_encode(['status' => 'success', 'data' => $grouped]);
@@ -41,7 +46,23 @@ try {
         $subject_id = $_POST['subject_id'] ?? 0;
         $qr_code = $_POST['qr_code'] ?? '';
         $status = $_POST['status'] ?? 'present';
-        $date = date('Y-m-d');
+        $date = $_POST['custom_date'] ?? date('Y-m-d');
+
+        // ENROLLMENT CHECK (Modified)
+        // 1. Get User Type
+        $uStmt = $pdo->prepare("SELECT student_type FROM users WHERE qr_code = ?");
+        $uStmt->execute([$qr_code]);
+        $uType = $uStmt->fetchColumn() ?: 'regular';
+
+        // 2. If Irregular, Check Enrollment
+        if ($uType === 'irregular') {
+             $check = $pdo->prepare("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?");
+             $check->execute([$qr_code, $subject_id]);
+             if (!$check->fetch()) {
+                 echo json_encode(['status' => 'error', 'message' => 'Student NOT enrolled in this subject.']);
+                 exit;
+             }
+        }
 
         // Check if exists today
         $stmt = $pdo->prepare("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?");
@@ -61,6 +82,7 @@ try {
             // Insert new record
             $insert = $pdo->prepare("INSERT INTO subject_attendance (subject_id, qr_code, date, time, status) VALUES (?, ?, ?, ?, ?)");
             $insert->execute([$subject_id, $qr_code, $date, $timeNow, $status]);
+            
             echo json_encode(['status' => 'success', 'message' => 'Recorded: ' . ucfirst($status)]);
         }
     } catch (PDOException $e) {
@@ -89,37 +111,52 @@ try {
         $id = $_POST['id'] ?? 0;
         $name = trim($_POST['name'] ?? '');
         $semester = trim($_POST['semester'] ?? '');
+        $school_year = trim($_POST['school_year'] ?? '');
+        $category = trim($_POST['category'] ?? 'subject');
+        $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
         
         if (empty($name) || empty($semester)) { echo json_encode(['status' => 'error', 'message' => 'Invalid data.']); exit; }
 
-        $pdo->prepare("UPDATE subjects SET name = ?, semester = ? WHERE id = ?")->execute([$name, $semester, $id]);
-        echo json_encode(['status' => 'success', 'message' => 'Subject updated.']);
+        $pdo->prepare("UPDATE subjects SET name = ?, semester = ?, school_year = ?, category = ?, is_active = ? WHERE id = ?")->execute([$name, $semester, $school_year, $category, $is_active, $id]);
+        echo json_encode(['status' => 'success', 'message' => ucfirst($category) . ' updated.']);
         
     // 6. Get Realtime Attendance (For UI Highlight)
     } elseif ($action === 'get_subject_attendance') {
         $subject_id = $_POST['subject_id'] ?? 0;
-        $date = date('Y-m-d');
+        $date = $_POST['custom_date'] ?? date('Y-m-d');
         
         $stmt = $pdo->prepare("SELECT qr_code, status FROM subject_attendance WHERE subject_id = ? AND date = ?");
         $stmt->execute([$subject_id, $date]);
         $logs = $stmt->fetchAll(PDO::FETCH_KEY_PAIR); // returns [qr => status]
+
+        // Check notification status
+        $nStmt = $pdo->prepare("SELECT 1 FROM notified_contexts WHERE subject_id = ? AND date = ?");
+        $nStmt->execute([$subject_id, $date]);
+        $is_notified = (bool)$nStmt->fetch();
         
-        echo json_encode(['status' => 'success', 'data' => $logs]);
+        echo json_encode(['status' => 'success', 'data' => $logs, 'is_notified' => $is_notified]);
 
     // 7. Mark All Present
     } elseif ($action === 'mark_all') {
         $subject_id = $_POST['subject_id'] ?? 0;
         $date = date('Y-m-d');
         
-        // Fetch all users
-        $allUsers = $pdo->query("SELECT qr_code FROM users")->fetchAll(PDO::FETCH_COLUMN);
+        // Fetch Eligible Users: Regular (All) + Irregular (Enrolled)
+        $q = "SELECT u.qr_code FROM users u 
+              LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
+              WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
+                 OR (u.student_type = 'irregular' AND ss.subject_id = ?)";
+        
+        $stmtUsers = $pdo->prepare($q);
+        $stmtUsers->execute([$subject_id]);
+        $eligibleUsers = $stmtUsers->fetchAll(PDO::FETCH_COLUMN);
         
         // Fetch already marked
         $marked = $pdo->prepare("SELECT qr_code FROM subject_attendance WHERE subject_id = ? AND date = ?");
         $marked->execute([$subject_id, $date]);
         $existingQRs = $marked->fetchAll(PDO::FETCH_COLUMN);
         
-        $toInsert = array_diff($allUsers, $existingQRs);
+        $toInsert = array_diff($eligibleUsers, $existingQRs);
         
         if (!empty($toInsert)) {
             $sql = "INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES ";
@@ -131,7 +168,7 @@ try {
             $pdo->exec($sql);
         }
         
-        echo json_encode(['status' => 'success', 'message' => 'All remaining students marked Present.']);
+        echo json_encode(['status' => 'success', 'message' => 'All remaining eligible students marked Present.']);
 
     // 8. Auto-Detect Current Subject
     } elseif ($action === 'get_current_subject') {
@@ -188,10 +225,6 @@ try {
         $pdo->prepare("DELETE FROM schedules WHERE id = ?")->execute([$id]);
         echo json_encode(['status' => 'success', 'message' => 'Schedule removed']);
 
-    } elseif ($action === 'delete_schedule') {
-        $id = $_POST['id'] ?? 0;
-        $pdo->prepare("DELETE FROM schedules WHERE id = ?")->execute([$id]);
-        echo json_encode(['status' => 'success', 'message' => 'Schedule removed']);
 
     // 12. Reset Subject Attendance
     } elseif ($action === 'reset_attendance') {

@@ -9,6 +9,8 @@ ini_set('display_errors', 0);
 $subjectId = $_GET['subject_id'] ?? 0;
 $startDate = $_GET['start'] ?? date('Y-m-d');
 $endDate = $_GET['end'] ?? $startDate;
+$format = $_GET['format'] ?? 'xls';
+$ext = ($format === 'html') ? 'html' : 'xls';
 
 if (!$subjectId) { die("Error: No Subject Selected"); }
 
@@ -19,10 +21,21 @@ try {
     $subject = $stmt->fetch(PDO::FETCH_ASSOC);
     if (!$subject) die("Subject not found");
 
-    $filename = "Attendance_" . preg_replace('/[^a-zA-Z0-9]/', '_', $subject['name']) . "_" . $startDate . ".xls";
+    $filename = "Attendance_" . preg_replace('/[^a-zA-Z0-9]/', '_', $subject['name']) . "_" . $startDate . "." . $ext;
 
-    // 2. Fetch All Students (Rows)
-    $users = $pdo->query("SELECT qr_code, name FROM users ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+    // 2. Fetch Students (Rows)
+    // RESTORED: Regular (All) + Irregular (Enrolled)
+    $q = "SELECT u.qr_code, u.name 
+          FROM users u 
+          LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
+          WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
+             OR (u.student_type = 'irregular' AND ss.subject_id = ?)
+          GROUP BY u.qr_code 
+          ORDER BY u.name ASC";
+    
+    $stmtUser = $pdo->prepare($q);
+    $stmtUser->execute([$subjectId]);
+    $users = $stmtUser->fetchAll(PDO::FETCH_ASSOC);
 
     // 3. Fetch Dates (Columns) - distinct dates recorded for this subject in range
     $stmt = $pdo->prepare("SELECT DISTINCT date FROM subject_attendance WHERE subject_id = ? AND date BETWEEN ? AND ? ORDER BY date ASC");
@@ -59,81 +72,137 @@ $headerTitle = $isSingleDay ? "DATE: " . date('F j, Y', strtotime($startDate)) :
 
 // Output
 while (ob_get_level()) ob_end_clean();
-header("Content-Type: application/vnd.ms-excel; charset=UTF-8");
-header("Content-Disposition: attachment; filename=\"$filename\"");
-header("Pragma: no-cache");
-header("Expires: 0");
+
+if ($format === 'html') {
+    header("Content-Type: text/html; charset=UTF-8");
+    header("Content-Disposition: attachment; filename=\"$filename\"");
+} else {
+    header("Content-Type: application/vnd.ms-excel; charset=UTF-8");
+    header("Content-Disposition: attachment; filename=\"$filename\"");
+    header("Pragma: no-cache");
+    header("Expires: 0");
+}
 ?>
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: Arial, sans-serif; font-size: 10pt; }
-        table { border-collapse: collapse; width: 100%; }
-        td, th { border: 1px solid #000; padding: 5px 8px; vertical-align: middle; text-align: center; }
-        .left { text-align: left; }
-        .header { background-color: #7c3aed; color: #fff; font-weight: bold; font-size: 14pt; height: 40px; }
-        .subheader { background-color: #f3e8ff; color: #5b21b6; font-weight: bold; }
-        .col-header { background-color: #e2e8f0; font-weight: bold; }
-        .present { background-color: #dcfce7; color: #166534; }
-        .late { background-color: #ffedd5; color: #9a3412; }
-        .absent { background-color: #fee2e2; color: #991b1b; }
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; font-size: 10pt; background: #fff; }
+        
+        /* Table Structure */
+        table { border-collapse: collapse; table-layout: fixed; width: auto; margin-bottom: 30px; border: 1px solid #94a3b8; }
+        
+        /* Cells */
+        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; text-align: center; height: 30px; }
+        
+        /* Headers */
+        .header-title { background-color: #4338ca; color: #ffffff; font-weight: bold; font-size: 14pt; height: 45px; text-transform: uppercase; }
+        .header-meta { background-color: #e0e7ff; color: #3730a3; font-weight: bold; height: 35px; }
+        .col-header { background-color: #f1f5f9; color: #334155; font-weight: bold; font-size: 9pt; }
+        
+        /* Column Specifics */
+        .num-col { width: 30px; font-size: 8pt; color: #64748b; background-color: #f8fafc; }
+        .name-col { width: 350px; text-align: left; padding-left: 10px; font-weight: bold; color: #0f172a; white-space: nowrap; }
+        .date-col { width: 100px; }
+        .summary-col { width: 60px; font-weight: bold; }
+
+        /* Status Colors */
+        .status-header-p { background-color: #dcfce7; color: #166534; }
+        .status-header-l { background-color: #ffedd5; color: #9a3412; }
+        .status-header-a { background-color: #fee2e2; color: #991b1b; }
+
+        .p-cell { background-color: #dcfce7; color: #166534; font-weight: bold; }
+        .l-cell { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
+        .a-cell { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+        .empty-cell { color: #cbd5e1; }
+
+        /* Footer/Stats */
+        .stat-p { background-color: #d1fae5; color: #065f46; font-weight: bold; }
+        .stat-l { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
+        .stat-a { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
     </style>
 </head>
 <body>
-<table>
-    <tr><td colspan="<?= count($dates) + 5 ?>" class="header">SUBJECT ATTENDANCE: <?= htmlspecialchars($subject['name']) ?></td></tr>
-    <tr><td colspan="<?= count($dates) + 5 ?>" class="subheader">Semester: <?= htmlspecialchars($subject['semester']) ?> | <?= $headerTitle ?></td></tr>
-    <tr><td colspan="<?= count($dates) + 5 ?>" style="border:none; height:10px;"></td></tr>
+    <table>
+        <colgroup>
+            <col width="30" style="width:30px"> <!-- Number -->
+            <col width="350" style="width:350px"> <!-- Name -->
+            <?php foreach ($dates as $d): ?><col width="100" style="width:100px"><?php endforeach; ?>
+            <?php if(!$isSingleDay): ?>
+                <col width="60" style="width:60px">
+                <col width="60" style="width:60px">
+                <col width="60" style="width:60px">
+            <?php endif; ?>
+        </colgroup>
 
-    <tr>
-        <th class="col-header" width="40">#</th>
-        <th class="col-header left" width="250">STUDENT NAME</th>
-        <?php foreach ($dates as $d): ?>
-            <th class="col-header" width="100">
-                <?php if($isSingleDay): ?>
-                    STATUS
-                <?php else: ?>
-                    <?= date('M j', strtotime($d)) ?><br><small><?= date('D', strtotime($d)) ?></small>
-                <?php endif; ?>
-            </th>
-        <?php endforeach; ?>
-        <?php if(!$isSingleDay): ?>
-            <th class="col-header" width="80" style="background:#f0fdf4">PRESENT</th>
-            <th class="col-header" width="80" style="background:#fff7ed">LATE</th>
-            <th class="col-header" width="80" style="background:#fef2f2">ABSENT</th>
-        <?php endif; ?>
-    </tr>
+        <!-- Main Headers -->
+        <tr>
+            <td colspan="<?= count($dates) + ($isSingleDay ? 2 : 5) ?>" class="header-title">
+                SUBJECT ATTENDANCE: <?= htmlspecialchars($subject['name']) ?>
+            </td>
+        </tr>
+        <tr>
+            <td colspan="<?= count($dates) + ($isSingleDay ? 2 : 5) ?>" class="header-meta">
+                SEMESTER: <?= htmlspecialchars($subject['semester']) ?> &nbsp;|&nbsp; <?= $headerTitle ?>
+            </td>
+        </tr>
+        <tr><td colspan="<?= count($dates) + ($isSingleDay ? 2 : 5) ?>" style="border:none; height:10px;"></td></tr>
 
-    <?php foreach ($users as $i => $u): 
-        $qr = $u['qr_code'];
-        $p=0; $l=0; $a=0;
-    ?>
-    <tr>
-        <td><?= $i + 1 ?></td>
-        <td class="left"><strong><?= htmlspecialchars($u['name']) ?></strong></td>
-        <?php foreach ($dates as $d): 
-            $entry = $map[$qr][$d] ?? null;
-            $st = $entry ? $entry['status'] : '-';
+        <!-- Column Headers -->
+        <tr>
+            <th class="col-header" style="width:30px">#</th>
+            <th class="col-header" style="width:350px; text-align:left;">STUDENT NAME</th>
             
-            $cls = ''; $txt = '-';
-            
-            if ($st !== '-') {
-                if ($st == 'present') { $p++; $cls='present'; $txt='P'; }
-                elseif ($st == 'late') { $l++; $cls='late'; $txt='L'; }
-                elseif ($st == 'absent') { $a++; $cls='absent'; $txt='A'; }
-            }
+            <?php foreach ($dates as $d): ?>
+                <th class="col-header" style="width:100px">
+                    <?php if($isSingleDay): ?>
+                        STATUS
+                    <?php else: ?>
+                        <?= date('M j', strtotime($d)) ?><br>
+                        <span style="font-weight:normal; font-size:8pt;"><?= date('D', strtotime($d)) ?></span>
+                    <?php endif; ?>
+                </th>
+            <?php endforeach; ?>
+
+            <?php if(!$isSingleDay): ?>
+                <th class="summary-col status-header-p">PRES</th>
+                <th class="summary-col status-header-l">LATE</th>
+                <th class="summary-col status-header-a">ABS</th>
+            <?php endif; ?>
+        </tr>
+
+        <!-- Data Rows -->
+        <?php foreach ($users as $i => $u): 
+            $qr = $u['qr_code'];
+            $p=0; $l=0; $a=0;
         ?>
-            <td class="<?= $cls ?>"><?= $txt ?></td>
+        <tr>
+            <td class="num-col"><?= $i + 1 ?></td>
+            <td class="name-col"><?= htmlspecialchars($u['name']) ?></td>
+            
+            <?php foreach ($dates as $d): 
+                $entry = $map[$qr][$d] ?? null;
+                $st = $entry ? strtolower($entry['status']) : '-';
+                
+                $cls = 'empty-cell'; $txt = '-';
+                
+                if ($st !== '-') {
+                    if ($st == 'present') { $p++; $cls='p-cell'; $txt='P'; }
+                    elseif ($st == 'late') { $l++; $cls='l-cell'; $txt='L'; }
+                    elseif ($st == 'absent') { $a++; $cls='a-cell'; $txt='A'; }
+                }
+            ?>
+                <td class="<?= $cls ?>"><?= $txt ?></td>
+            <?php endforeach; ?>
+
+            <?php if(!$isSingleDay): ?>
+                <td class="stat-p"><?= $p ?></td>
+                <td class="stat-l"><?= $l ?></td>
+                <td class="stat-a"><?= $a ?></td>
+            <?php endif; ?>
+        </tr>
         <?php endforeach; ?>
-        <?php if(!$isSingleDay): ?>
-            <td style="background:#f0fdf4; font-weight:bold"><?= $p ?></td>
-            <td style="background:#fff7ed; font-weight:bold"><?= $l ?></td>
-            <td style="background:#fef2f2; font-weight:bold"><?= $a ?></td>
-        <?php endif; ?>
-    </tr>
-    <?php endforeach; ?>
-</table>
+    </table>
 </body>
 </html>

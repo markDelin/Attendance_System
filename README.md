@@ -31,6 +31,8 @@ _The `-c php.ini` flag is critical as it loads the required SQLite database driv
 - **Configurable**: Adjust Call Time, Grace Period, and Absent Thresholds in Settings.
 - **User Management**: Auto-registration for new QR codes.
 - **Billing**: Track payments and billing history (if enabled).
+- **Schedule Maker**: Create, edit, and export class schedules with multiple premium templates.
+- **Unified Navigation**: Glassmorphism navbar and mobile-ready bottom navigation.
 
 ## 📂 File Structure
 
@@ -60,9 +62,27 @@ This usually means PHP cannot find the SQLite extension.
 
 ### System Requirements
 
-- PHP 7.4+ (Included `php.ini` targets PHP 8.x)
-- SQLite3
 - Modern Web Browser (Chrome, Edge, Firefox, Safari)
+
+## 📱 Mobile/Linux (Termux) Deployment
+
+If you are running the system on an Android device via Termux or a Linux server, follow these steps:
+
+1.  **Run the Setup Script**:
+    ```bash
+    bash setup_mobile.sh
+    ```
+    _This will automatically install PHP, Python, SQLite, and necessary libraries._
+
+2.  **Start the Services**:
+    ```bash
+    bash start_mobile.sh
+    ```
+
+3.  **Access the System**:
+    Open Chrome/Browser and navigate to `http://localhost:8000`.
+
+> **Tip**: To access student records from your phone's camera, ensure you use `localhost`. If accessing from another device on the same Wi-Fi, you may need to use `https` or configure browser flags to allow camera access on insecure origins.
 
 ## License
 

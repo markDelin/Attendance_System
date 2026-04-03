@@ -1,5 +1,9 @@
 <?php
 // db.php - Secure SQLite3 Database Connection with Time In/Out and Billing Support
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+date_default_timezone_set('Asia/Manila');
 $database = __DIR__ . '/../database/attendance.db';
 $errorLog = __DIR__ . '/../database/database_errors.log';
 
@@ -23,6 +27,27 @@ try {
         // Ignore "duplicate column" error
     }
 
+    // Auto-Migration for 'student_type' column in users
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN student_type TEXT DEFAULT 'regular'");
+    } catch (PDOException $e) {}
+
+    // Auto-Migration for 'course' and 'section'
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN course TEXT");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN section TEXT");
+    } catch (PDOException $e) {}
+
+    // Auto-Migration for 'deleted_at' (Soft Delete)
+    try {
+        $pdo->exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+    try {
+        $pdo->exec("ALTER TABLE attendance ADD COLUMN deleted_at DATETIME DEFAULT NULL");
+    } catch (PDOException $e) {}
+
     // 2. Table Definitions
     $tables = [
         "users" => "CREATE TABLE IF NOT EXISTS users (
@@ -39,6 +64,7 @@ try {
             time TEXT NOT NULL,
             status TEXT NOT NULL CHECK(status IN ('present', 'late', 'absent')),
             session TEXT CHECK(session IN ('morning', 'afternoon')),
+            school_year TEXT,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
         )",
@@ -52,6 +78,9 @@ try {
             registration_lock INTEGER NOT NULL DEFAULT 0,
             billing_quota REAL NOT NULL DEFAULT 1000.00,
             billing_target_date TEXT,
+            active_school_year TEXT DEFAULT 'SY 2024-2025',
+            sy_start_date TEXT,
+            sy_end_date TEXT,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         
@@ -69,10 +98,16 @@ try {
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
 
-        "subjects" => "CREATE TABLE IF NOT EXISTS subjects (
+    "subjects" => "CREATE TABLE IF NOT EXISTS subjects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            code TEXT,
+            room TEXT,
+            lecturer TEXT,
             semester TEXT NOT NULL,
+            school_year TEXT,
+            category TEXT DEFAULT 'subject',
+            is_active INTEGER DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )",
         
@@ -102,6 +137,7 @@ try {
             event_id INTEGER DEFAULT 1, -- Default to General
             amount REAL NOT NULL,
             payment_date TEXT NOT NULL,
+            school_year TEXT,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE,
             FOREIGN KEY(event_id) REFERENCES billing_events(id) ON DELETE CASCADE
@@ -114,8 +150,47 @@ try {
             amount REAL NOT NULL,
             payment_date TEXT NOT NULL,
             description TEXT,
+            school_year TEXT,
             recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
+        )",
+        
+        "student_subjects" => "CREATE TABLE IF NOT EXISTS student_subjects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qr_code TEXT NOT NULL,
+            subject_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE,
+            FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+        )",
+        
+        "schedule_settings" => "CREATE TABLE IF NOT EXISTS schedule_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        
+        "notified_contexts" => "CREATE TABLE IF NOT EXISTS notified_contexts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(subject_id, date)
+        )",
+        
+        "telegram_queue" => "CREATE TABLE IF NOT EXISTS telegram_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            status TEXT DEFAULT 'pending', -- pending, sent, failed
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+
+        "birthday_greetings" => "CREATE TABLE IF NOT EXISTS birthday_greetings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qr_code TEXT NOT NULL,
+            year TEXT NOT NULL,
+            sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(qr_code, year)
         )"
     ];
 
@@ -154,6 +229,18 @@ try {
     if (!in_array('email', $uCols)) {
         try { $pdo->exec("ALTER TABLE users ADD COLUMN email TEXT"); } catch (Exception $e) {}
     }
+    // New Student Info Columns
+    if (!in_array('first_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN first_name TEXT"); } catch (Exception $e) {} }
+    if (!in_array('last_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN last_name TEXT"); } catch (Exception $e) {} }
+    if (!in_array('middle_initial', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN middle_initial TEXT"); } catch (Exception $e) {} }
+    if (!in_array('course', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN course TEXT"); } catch (Exception $e) {} }
+    if (!in_array('place_of_birth', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN place_of_birth TEXT"); } catch (Exception $e) {} }
+    if (!in_array('sex', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN sex TEXT"); } catch (Exception $e) {} }
+    if (!in_array('civil_status', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN civil_status TEXT"); } catch (Exception $e) {} }
+    if (!in_array('religion', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN religion TEXT"); } catch (Exception $e) {} }
+    if (!in_array('citizenship', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN citizenship TEXT"); } catch (Exception $e) {} }
+    if (!in_array('contact_number', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN contact_number TEXT"); } catch (Exception $e) {} }
+    if (!in_array('year_level', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN year_level TEXT DEFAULT '1st'"); } catch (Exception $e) {} }
 
     if (!in_array('registration_lock', $cols)) {
         $pdo->exec("ALTER TABLE settings ADD COLUMN registration_lock INTEGER NOT NULL DEFAULT 0");
@@ -164,6 +251,99 @@ try {
     if (!in_array('billing_mode', $cols)) {
         $pdo->exec("ALTER TABLE settings ADD COLUMN billing_mode TEXT NOT NULL DEFAULT 'fixed'"); // 'fixed' or 'quota'
     }
+
+    if (!in_array('telegram_bot_token', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN telegram_bot_token TEXT DEFAULT ''"); } catch (Exception $e) {}
+    }
+    if (!in_array('telegram_group_id', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN telegram_group_id TEXT DEFAULT ''"); } catch (Exception $e) {}
+    }
+    if (!in_array('admin_telegram_id', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN admin_telegram_id TEXT DEFAULT ''"); } catch (Exception $e) {}
+    }
+    
+    // School Year Settings Migration
+    if (!in_array('active_school_year', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN active_school_year TEXT DEFAULT 'SY 2024-2025'"); } catch (Exception $e) {}
+    }
+    if (!in_array('sy_start_date', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN sy_start_date TEXT"); } catch (Exception $e) {}
+    }
+    if (!in_array('sy_end_date', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN sy_end_date TEXT"); } catch (Exception $e) {}
+    }
+
+    // Attendance & Billing SY Migration
+    $attCols = $pdo->query("PRAGMA table_info(attendance)")->fetchAll(PDO::FETCH_ASSOC);
+    if (!in_array('school_year', array_column($attCols, 'name'))) {
+        try { 
+            $pdo->exec("ALTER TABLE attendance ADD COLUMN school_year TEXT"); 
+            $pdo->exec("UPDATE attendance SET school_year = (SELECT active_school_year FROM settings LIMIT 1) WHERE school_year IS NULL");
+        } catch (Exception $e) {}
+    }
+
+    $billCols = $pdo->query("PRAGMA table_info(billing)")->fetchAll(PDO::FETCH_ASSOC);
+    if (!in_array('school_year', array_column($billCols, 'name'))) {
+        try { 
+            $pdo->exec("ALTER TABLE billing ADD COLUMN school_year TEXT"); 
+            $pdo->exec("UPDATE billing SET school_year = (SELECT active_school_year FROM settings LIMIT 1) WHERE school_year IS NULL");
+        } catch (Exception $e) {}
+    }
+
+    $billHistCols = $pdo->query("PRAGMA table_info(billing_history)")->fetchAll(PDO::FETCH_ASSOC);
+    if (!in_array('school_year', array_column($billHistCols, 'name'))) {
+        try { 
+            $pdo->exec("ALTER TABLE billing_history ADD COLUMN school_year TEXT"); 
+            $pdo->exec("UPDATE billing_history SET school_year = (SELECT active_school_year FROM settings LIMIT 1) WHERE school_year IS NULL");
+        } catch (Exception $e) {}
+    }
+
+    // Subjects Migration (Code, Room, Lecturer)
+    $subjectCols = $pdo->query("PRAGMA table_info(subjects)")->fetchAll(PDO::FETCH_ASSOC);
+    $sCols = array_column($subjectCols, 'name');
+
+    if (!in_array('code', $sCols)) {
+        try { $pdo->exec("ALTER TABLE subjects ADD COLUMN code TEXT"); } catch (Exception $e) {}
+    }
+    if (!in_array('room', $sCols)) {
+        try { $pdo->exec("ALTER TABLE subjects ADD COLUMN room TEXT"); } catch (Exception $e) {}
+    }
+    if (!in_array('lecturer', $sCols)) {
+        try { $pdo->exec("ALTER TABLE subjects ADD COLUMN lecturer TEXT"); } catch (Exception $e) {}
+    }
+    if (!in_array('category', $sCols)) {
+        try { $pdo->exec("ALTER TABLE subjects ADD COLUMN category TEXT DEFAULT 'subject'"); } catch (Exception $e) {}
+    }
+    if (!in_array('is_active', $sCols)) {
+        try { $pdo->exec("ALTER TABLE subjects ADD COLUMN is_active INTEGER DEFAULT 1"); } catch (Exception $e) {}
+    }
+    if (!in_array('school_year', $sCols)) {
+        try { 
+            $pdo->exec("ALTER TABLE subjects ADD COLUMN school_year TEXT"); 
+            
+            // Auto-Migration of data
+            $stmt = $pdo->query("SELECT id, semester FROM subjects");
+            $subs = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($subs as $sub) {
+                if (preg_match('/(\d{4}-\d{4})/', $sub['semester'], $m)) {
+                    $sy = 'SY ' . $m[1];
+                    $upd = $pdo->prepare("UPDATE subjects SET school_year = ? WHERE id = ?");
+                    $upd->execute([$sy, $sub['id']]);
+                }
+            }
+        } catch (Exception $e) {}
+    }
+
+    // Notified Contexts Migration
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS notified_contexts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(subject_id, date)
+        )");
+    } catch (Exception $e) {}
 
     // Billing Events Migration
     $billingCols = $pdo->query("PRAGMA table_info(billing)")->fetchAll(PDO::FETCH_ASSOC);
@@ -188,8 +368,8 @@ try {
 
     $settingsCount = $pdo->query("SELECT COUNT(*) FROM settings")->fetchColumn();
     if ($settingsCount == 0) {
-        $pdo->exec("INSERT INTO settings (call_time, grace_period, absent_after, time_in_out_enabled, billing_quota, billing_mode) 
-                    VALUES ('08:00', 20, 30, 0, 50.00, 'fixed')");
+        $pdo->exec("INSERT INTO settings (call_time, grace_period, absent_after, time_in_out_enabled, billing_quota, billing_mode, active_school_year) 
+                    VALUES ('08:00', 20, 30, 0, 50.00, 'fixed', 'SY 2024-2025')");
     }
 
     /**
@@ -224,7 +404,7 @@ try {
                     SUM(status = 'late') as late,
                     SUM(status = 'absent') as absent
                     FROM attendance 
-                    WHERE qr_code = ?");
+                    WHERE qr_code = ? AND (school_year = (SELECT active_school_year FROM settings LIMIT 1) OR school_year IS NULL)");
                 $stmt->execute([$qr_code]);
                 $data = $stmt->fetch(PDO::FETCH_ASSOC);
                 
