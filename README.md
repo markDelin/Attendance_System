@@ -1,96 +1,80 @@
-# Attendance System
+# 🎓 QR Tools - Advanced Attendance System
 
-A QR code-based attendance tracking system with automated late/absent marking functionality. The system records attendance via QR scan and automatically categorizes status (Present, Late, Absent) based on configurable time rules.
+A comprehensive, high-performance QR code-based attendance tracking system. Designed with a sleek "Swiss Academic" minimalist UI, this system automates entry logging, subject-specific attendance, robust Telegram integrations, and school year progress tracking.
 
-## 🚀 Quick Start (Windows)
+## 🌟 Key Features
 
-**The easiest way to run the application:**
-
-1.  Open the project folder.
-2.  Double-click the **`run.bat`** file.
-3.  The application will start at **[http://localhost:8000](http://localhost:8000)**.
-
-> **Note**: This script automatically applies the correct PHP configuration to ensure the database works correctly.
+- **Blazing Fast QR Scanning**: Real-time scanning for both Desktop and Mobile devices.
+- **Smart Status Calculation**: Automated evaluation of Present/Late/Absent status based on configurable Grace Periods.
+- **Telegram Bot Integration**: Full administrative control from Telegram. Query student dossiers, generate PDF reports, pull latest stats, and send broadcast announcements directly to group chats.
+- **School Year Management**: Seamlessly switch between academic years or semesters and track overall progress inside the main dashboard.
+- **Subject & Event Specific Tracking**: Record attendance independently for daily general ingress, specific class subjects, or special events.
+- **Ambagan (Billing) Module**: Track payments, classroom contributions, and billing histories.
+- **Swiss Academic UI**: A focused, dark-mode-first aesthetic with high-density data tables and fluid micro-animations.
 
 ---
 
-## 🛠️ Manual Run (Command Line)
+## 🚀 Quick Start (Windows)
 
-If you prefer using the terminal, run the following command in the project directory:
+**The easiest way to launch both the Web Server and the Telegram Bot:**
 
-```bash
-C:\php\php.exe -S localhost:8000 -c php.ini
-```
+1. Open the project folder.
+2. Double-click the **`START_SYSTEM.bat`** file.
+3. The Web Application will be available at **[http://localhost:8000](http://localhost:8000)**.
+4. The Telegram Bot will be operational (check the console for details).
 
-_The `-c php.ini` flag is critical as it loads the required SQLite database drivers._
+> **Note**: This batch file automatically manages the PHP configuration and loads the bot logic to ensure everything runs seamlessly together.
 
-## Features
+## 📱 Mobile/Linux Deployment (Termux)
 
-- **QR Scanning**: Real-time scanning for Desktop and Mobile.
-- **Automated Status**: Smart calculation of Present/Late/Absent status.
-- **Configurable**: Adjust Call Time, Grace Period, and Absent Thresholds in Settings.
-- **User Management**: Auto-registration for new QR codes.
-- **Billing**: Track payments and billing history (if enabled).
-- **Schedule Maker**: Create, edit, and export class schedules with multiple premium templates.
-- **Unified Navigation**: Glassmorphism navbar and mobile-ready bottom navigation.
+If you are running the system on an Android device via Termux or a Linux server, follow these steps:
 
-## 📂 File Structure
+1. **Run the Setup Script**:
+   ```bash
+   bash scripts/mobile/setup_mobile.sh
+   ```
+   *This automatically installs PHP, Python, SQLite, and necessary Telegram bot libraries.*
 
-```
+2. **Start the Services**:
+   ```bash
+   bash scripts/mobile/start_mobile.sh
+   ```
+
+3. **Access the System**:
+   Open a browser and navigate to `http://localhost:8000`.
+
+---
+
+## 📂 Project Structure
+
+Following a modular directory structure for enhanced maintainability:
+
+```text
 attendance-system/
-├── db.php               # Database connection
-├── index.php            # Dashboard
-├── scan.php             # Scanner Interface
-├── view_attendance.php  # Records & Reports
-├── settings.php         # Configuration
-├── run.bat              # Windows Launcher
-├── php.ini              # Local PHP Config
-└── attendance.db        # SQLite Database
+├── START_SYSTEM.bat         # Master Launcher (Windows)
+├── index.php                # Main Dashboard
+├── scan.php                 # Scanner Interface
+├── settings.php             # Core Configuration
+├── api/                     # Backend API Processors
+├── assets/                  # CSS, JS, and Media assets
+├── bot/                     # Python logic for Telegram Bot (attendance_bot.py) 
+├── config/                  # Server configuration (php.ini)
+├── database/                # Local SQLite Database (attendance.db)
+├── docs/                    # Additional Documentation
+├── includes/                # Shared UI components and DB connector
+└── scripts/                 # OS-specific sub-scripts (Windows/unix)
 ```
 
 ## ❓ Troubleshooting
 
 ### "Could not find driver" / Database Errors
-
 This usually means PHP cannot find the SQLite extension.
-**Solution**: Always use `run.bat` or include `-c php.ini` when running the server manually.
+**Solution**: Always use the provided `START_SYSTEM.bat` or ensure you run the server using `php -S 0.0.0.0:8000 -c config/php.ini`.
 
 ### Camera Not Working
+- **Desktop**: Ensure your browser has not blocked camera access (check the icon near the address bar).
+- **Mobile Network Access**: If accessing via a local network IP (e.g., `192.168.1.x`), browsers often block the camera on unencrypted `http`. Navigate to `chrome://flags` on your mobile browser and add your IP to "Insecure origins treated as secure".
 
-- **Desktop**: Check if your browser has blocked camera access (look for an icon in the address bar).
-- **Mobile**: Ensure you are on a secure context (localhost always works). If accessing via network IP, some browsers might block the camera on HTTP.
-
-### System Requirements
-
-- Modern Web Browser (Chrome, Edge, Firefox, Safari)
-
-## 📱 Mobile/Linux (Termux) Deployment
-
-If you are running the system on an Android device via Termux or a Linux server, follow these steps:
-
-1.  **Run the Setup Script**:
-    ```bash
-    bash setup_mobile.sh
-    ```
-    _This will automatically install PHP, Python, SQLite, and necessary libraries._
-
-2.  **Start the Services**:
-    ```bash
-    bash start_mobile.sh
-    ```
-
-3.  **Access the System**:
-    Open Chrome/Browser and navigate to `http://localhost:8000`.
-
-<<<<<<< HEAD
-> **Tip**: To access student records from your phone's camera, ensure you use `localhost`. If accessing from another device on the same Wi-Fi, you may need to use `https` or configure browser flags to allow camera access on insecure origins.
-=======
-## Troubleshooting
-- **Camera not working**: Ensure browser has camera permissions
-- **Database errors**: Check write permissions on directory
-- **QR codes not scanning**: Ensure good lighting and camera focus
->>>>>>> 5c2cd2ac737a8a5a0041ab7575efc1272119761a
-
-## License
+## 📜 License
 
 [MIT License](LICENSE)
