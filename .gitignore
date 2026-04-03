@@ -1,0 +1,15 @@
+# Databases
+*.db
+*.sqlite
+database/
+backups/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local Environment
+.env
+
+# MacOS
+.DS_Store
