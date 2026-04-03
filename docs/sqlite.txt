@@ -18,3 +18,19 @@ CREATE TABLE settings (
   absent_after INT NOT NULL DEFAULT 30,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE billing (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qr_code TEXT NOT NULL,
+    amount REAL NOT NULL,
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(qr_code) REFERENCES users(qr_code)
+);
+
+CREATE TABLE billing_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qr_code TEXT NOT NULL,
+    amount REAL NOT NULL,
+    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    description TEXT
+);

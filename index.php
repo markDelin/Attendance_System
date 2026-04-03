@@ -1,117 +1,144 @@
 <?php
-// index.php - Landing page with Settings option
+// index.php - Student Attendance System
+date_default_timezone_set('Asia/Manila');
+require_once 'includes/db.php';
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Attendance System</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-  <style>
-    .feature-card {
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      border: none;
-      border-radius: 15px;
-    }
-    .feature-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .gradient-bg {
-      background: linear-gradient(135deg, #6B46C1 0%, #4299E1 100%);
-    }
-    .icon-wrapper {
-      width: 80px;
-      height: 80px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Tools by MCK</title>
+    <link href="assets/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 </head>
-<body class="bg-light">
-  <!-- Navigation -->
-  <nav class="navbar navbar-expand-lg navbar-dark gradient-bg">
-    <div class="container">
-      <a class="navbar-brand" href="#">
-        <i class="bi bi-calendar-check fs-4"></i>
-        <span class="ms-2 fw-bold">Attendance System</span>
-      </a>
-    </div>
-  </nav>
+<body>
 
-  <main class="container my-5">
-    <div class="text-center mb-5">
-      <h1 class="display-4 fw-bold text-primary mb-3">
-        <i class="bi bi-fingerprint"></i> Attendance Portal
-      </h1>
-      <p class="lead text-muted">Manage attendance records with modern digital solutions</p>
-    </div>
-
-    <div class="row g-4 justify-content-center">
-      <!-- Scan Card -->
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="feature-card card h-100 shadow-lg">
-          <div class="card-body text-center p-4">
-            <div class="icon-wrapper bg-primary rounded-circle p-3 d-inline-block mb-4 mx-auto">
-              <i class="bi bi-qr-code-scan fs-1 text-white"></i>
-            </div>
-            <h3 class="card-title mb-3">Scan Attendance</h3>
-            <p class="card-text text-muted mb-4">
-              Quickly scan QR codes to record attendance in real-time
-            </p>
-            <a href="scan.php" class="btn btn-primary btn-lg w-100">
-              <i class="bi bi-camera me-2"></i> Start Scanning
-            </a>
-          </div>
+    <!-- Navigation -->
+    <nav class="navbar animate-fade-up">
+        <div class="brand flex-center" style="gap: 12px;">
+            <i class="bi bi-qr-code-scan" style="color: var(--primary); font-size: 1.5rem;"></i>
+            <h3>QR Tools<span class="text-gradient"> by MCK</span></h3>
         </div>
-      </div>
-
-      <!-- View Card -->
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="feature-card card h-100 shadow-lg">
-          <div class="card-body text-center p-4">
-            <div class="icon-wrapper bg-success rounded-circle p-3 d-inline-block mb-4 mx-auto">
-              <i class="bi bi-clipboard-data fs-1 text-white"></i>
-            </div>
-            <h3 class="card-title mb-3">View Records</h3>
-            <p class="card-text text-muted mb-4">
-              Access and manage historical attendance data with ease
-            </p>
-            <a href="view_attendance.php" class="btn btn-success btn-lg w-100">
-              <i class="bi bi-table me-2"></i> View History
-            </a>
-          </div>
+        <div>
+            <span class="badge" style="background: transparent; border: 1px solid var(--border); color: var(--text-muted);">
+                <?php echo date('F j, Y'); ?>
+            </span>
         </div>
-      </div>
+    </nav>
 
-      <!-- Settings Card -->
-      <div class="col-12 col-md-6 col-lg-4">
-        <div class="feature-card card h-100 shadow-lg">
-          <div class="card-body text-center p-4">
-            <div class="icon-wrapper bg-info rounded-circle p-3 d-inline-block mb-4 mx-auto">
-              <i class="bi bi-gear fs-1 text-white"></i>
-            </div>
-            <h3 class="card-title mb-3">System Settings</h3>
-            <p class="card-text text-muted mb-4">
-              Configure call time and attendance rules
+    <!-- Main Content -->
+    <main class="container">
+        
+        <!-- Hero Section -->
+        <section class="hero animate-fade-up delay-1" style="text-align: center; margin-top: 5rem; margin-bottom: 4rem;">
+            <h1 style="font-size: 3rem; margin-bottom: 1rem; color: var(--text-main);">
+                Student Management <span style="color: var(--primary);">Suite</span>
+            </h1>
+            <p style="color: var(--secondary); font-size: 1.1rem; max-width: 600px; margin: 0 auto 2rem;">
+                Efficiently manage attendance, track contributions (Ambagan), and maintain student records.
             </p>
-            <a href="settings.php" class="btn btn-info btn-lg w-100">
-              <i class="bi bi-sliders me-2"></i> Adjust Settings
+            <div class="flex-center" style="gap: 1rem;">
+                <a href="scan.php" class="btn btn-primary" style="padding: 0.8rem 2rem;">
+                    <i class="bi bi-qr-code-scan"></i> Start Scanning
+                </a>
+                <a href="view_attendance.php" class="btn btn-ghost" style="padding: 0.8rem 2rem;">
+                    <i class="bi bi-arrow-right"></i> View Records
+                </a>
+            </div>
+        </section>
+
+        <!-- Feature Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;" class="animate-fade-up delay-2">
+            
+            <!-- Card 1: Scan -->
+            <a href="scan.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #eff6ff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-qr-code" style="font-size: 1.5rem; color: var(--primary);"></i>
+                </div>
+                <h3>Class Check-In</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Instant attendance marking via QR code scanning.
+                </p>
             </a>
-          </div>
+
+            <!-- Card 2: Manual -->
+            <a href="manual.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #f0fdf4; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-pen" style="font-size: 1.5rem; color: var(--success);"></i>
+                </div>
+                <h3>Manual Entry</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Manually search and record attendance.
+                </p>
+            </a>
+
+            <!-- Card 3: Reports -->
+            <a href="view_attendance.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #fff7ed; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-bar-chart-fill" style="font-size: 1.5rem; color: var(--warning);"></i>
+                </div>
+                <h3>Records</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    View history & export data.
+                </p>
+            </a>
+
+            <!-- Card 4: Manage Students -->
+            <a href="manage_students.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #ecfeff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-people-fill" style="font-size: 1.5rem; color: var(--accent);"></i>
+                </div>
+                <h3>Students</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Edit names or remove users.
+                </p>
+            </a>
+
+            <!-- Card 5: Ambagan (Billing) -->
+            <a href="billing.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #f0fdf4; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-wallet2" style="font-size: 1.5rem; color: #16a34a;"></i>
+                </div>
+                <h3>Ambagan</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Track contributions & payments.
+                </p>
+            </a>
+
+
+            <!-- Card 6: Group Randomizer -->
+            <a href="groups.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #fdf4ff; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-shuffle" style="font-size: 1.5rem; color: #d946ef;"></i>
+                </div>
+                <h3>Groups</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Randomize student groups.
+                </p>
+            </a>
+
+            <!-- Card 7: Settings (Full Width on Mobile, Tile on Desktop) -->
+            <a href="settings.php" class="card" style="padding: 2rem; transition: transform 0.2s; display: block;">
+                <div style="background: #f1f5f9; width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+                    <i class="bi bi-gear-fill" style="font-size: 1.5rem; color: var(--secondary);"></i>
+                </div>
+                <h3>Settings</h3>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.95rem;">
+                    Configure app behavior.
+                </p>
+            </a>
+
         </div>
-      </div>
-    </div>
-  </main>
 
-  <footer class="bg-dark text-white text-center py-3 mt-5">
-    <div class="container">
-      <p class="mb-0">&copy; <?php echo date('Y'); ?> Gmzn_Programming. All rights reserved.</p>
-    </div>
-  </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</main>
+
+    <footer style="text-align: center; color: var(--text-muted); padding: 3rem; margin-top: auto;">
+        <small>Made with ❤️ by MCK</small>
+    </footer>
+
 </body>
 </html>

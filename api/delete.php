@@ -1,6 +1,6 @@
 <?php
 // delete.php - Delete attendance record(s)
-require 'db.php';
+require '../includes/db.php';
 
 if (isset($_GET['id'])) {
     $id = intval($_GET['id']);
@@ -12,6 +12,6 @@ if (isset($_GET['id'])) {
     $stmt->execute([':date' => $date]);
 }
 
-header("Location: view_attendance.php");
+header("Location: ../view_attendance.php");
 exit;
 ?>

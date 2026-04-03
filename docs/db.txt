@@ -1,0 +1,186 @@
+<?php
+// db.php - Secure SQLite3 Database Connection with Time In/Out and Billing Support
+$database = __DIR__ . '/attendance.db';
+$errorLog = __DIR__ . '/database_errors.log';
+
+try {
+    // 1. Directory and Connection Setup
+    if (!is_writable(dirname($database))) {
+        throw new Exception("Database directory is not writable");
+    }
+
+    $pdo = new PDO("sqlite:" . $database);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $pdo->exec("PRAGMA foreign_keys = ON");
+
+    // 2. Table Definitions
+    $tables = [
+        "users" => "CREATE TABLE IF NOT EXISTS users (
+            qr_code TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        
+        "attendance" => "CREATE TABLE IF NOT EXISTS attendance (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qr_code TEXT NOT NULL,
+            date TEXT NOT NULL,
+            time TEXT NOT NULL,
+            status TEXT NOT NULL CHECK(status IN ('present', 'late', 'absent')),
+            session TEXT CHECK(session IN ('morning', 'afternoon')),
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
+        )",
+        
+        "settings" => "CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            call_time TEXT NOT NULL DEFAULT '08:00',
+            grace_period INTEGER NOT NULL DEFAULT 20,
+            absent_after INTEGER NOT NULL DEFAULT 30,
+            time_in_out_enabled INTEGER NOT NULL DEFAULT 0,
+            billing_quota REAL NOT NULL DEFAULT 1000.00,
+            billing_target_date TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        
+        "billing" => "CREATE TABLE IF NOT EXISTS billing (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qr_code TEXT NOT NULL,
+            amount REAL NOT NULL,
+            payment_date TEXT NOT NULL,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
+        )",
+        
+        "billing_history" => "CREATE TABLE IF NOT EXISTS billing_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            qr_code TEXT NOT NULL,
+            amount REAL NOT NULL,
+            payment_date TEXT NOT NULL,
+            description TEXT,
+            recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
+        )"
+    ];
+
+    foreach ($tables as $table => $sql) {
+        $pdo->exec($sql);
+    }
+
+    // 3. Check and add columns if missing
+    $columns = $pdo->query("PRAGMA table_info(attendance)")->fetchAll(PDO::FETCH_ASSOC);
+    $sessionColumnExists = false;
+    foreach ($columns as $column) {
+        if ($column['name'] === 'session') {
+            $sessionColumnExists = true;
+            break;
+        }
+    }
+    if (!$sessionColumnExists) {
+        $pdo->exec("ALTER TABLE attendance ADD COLUMN session TEXT CHECK(session IN ('morning', 'afternoon'))");
+    }
+
+    // 4. Initialize Default Settings
+    $settingsCount = $pdo->query("SELECT COUNT(*) FROM settings")->fetchColumn();
+    if ($settingsCount == 0) {
+        $pdo->exec("INSERT INTO settings (call_time, grace_period, absent_after, time_in_out_enabled, billing_quota) 
+                    VALUES ('08:00', 20, 30, 0, 1000.00)");
+    }
+
+    /**
+     * Get Attendance Summary with Time In/Out Support
+     */
+    function getAttendanceSummary($qr_code) {
+        global $pdo;
+        
+        $summary = [
+            'total' => 0,
+            'present' => 0,
+            'late' => 0,
+            'absent' => 0,
+            'percentage' => 0,
+            'today_status' => 'Not Recorded',
+            'morning' => null,
+            'afternoon' => null,
+            'recent' => []
+        ];
+        
+        try {
+            // Get total days
+            $stmt = $pdo->prepare("SELECT COUNT(DISTINCT date) FROM attendance");
+            $stmt->execute();
+            $total_days = $stmt->fetchColumn();
+            
+            if ($total_days > 0) {
+                // Get summary counts
+                $stmt = $pdo->prepare("SELECT 
+                    COUNT(*) as total,
+                    SUM(status = 'present') as present,
+                    SUM(status = 'late') as late,
+                    SUM(status = 'absent') as absent
+                    FROM attendance 
+                    WHERE qr_code = ?");
+                $stmt->execute([$qr_code]);
+                $data = $stmt->fetch(PDO::FETCH_ASSOC);
+                
+                if ($data) {
+                    $summary['total'] = (int)$data['total'];
+                    $summary['present'] = (int)$data['present'];
+                    $summary['late'] = (int)$data['late'];
+                    $summary['absent'] = (int)$data['absent'];
+                    $summary['percentage'] = $total_days > 0 ? round(($data['present'] / $total_days) * 100) : 0;
+                }
+                
+                // Get today's records
+                $stmt = $pdo->prepare("SELECT id, time, status, session 
+                                      FROM attendance 
+                                      WHERE qr_code = ? AND date = DATE('now')
+                                      ORDER BY time");
+                $stmt->execute([$qr_code]);
+                $todayRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                
+                if (!empty($todayRecords)) {
+                    foreach ($todayRecords as $record) {
+                        if ($record['session'] === 'morning') {
+                            $summary['morning'] = [
+                                'time' => $record['time'],
+                                'status' => $record['status']
+                            ];
+                        } elseif ($record['session'] === 'afternoon') {
+                            $summary['afternoon'] = [
+                                'time' => $record['time'],
+                                'status' => $record['status']
+                            ];
+                        }
+                    }
+                    $summary['today_status'] = 'Recorded';
+                }
+                
+                // Get recent records
+                $stmt = $pdo->prepare("SELECT date, time, status, session 
+                                      FROM attendance 
+                                      WHERE qr_code = ?
+                                      ORDER BY date DESC, time DESC
+                                      LIMIT 5");
+                $stmt->execute([$qr_code]);
+                $summary['recent'] = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        } catch (PDOException $e) {
+            error_log("Attendance summary error: " . $e->getMessage());
+        }
+        
+        return $summary;
+    }
+
+    // ... [Other functions remain the same as in your original db.php]
+    // Include all the other functions exactly as you have them
+    
+} catch (PDOException $e) {
+    $errorMessage = date('[Y-m-d H:i:s]') . " DB Error: " . $e->getMessage() . PHP_EOL;
+    file_put_contents($errorLog, $errorMessage, FILE_APPEND);
+    die("System maintenance in progress. Please try again later.");
+} catch (Exception $e) {
+    die("Configuration error: " . htmlspecialchars($e->getMessage()));
+}
+?>

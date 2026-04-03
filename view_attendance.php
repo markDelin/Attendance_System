@@ -1,170 +1,203 @@
 <?php
-// view_attendance.php - Display attendance records with status
-require 'db.php';
+// view_attendance.php - Records
+date_default_timezone_set("Asia/Manila");
+require_once "includes/db.php";
 
-
+// Fetch dates
 $stmt = $pdo->query("SELECT DISTINCT date FROM attendance ORDER BY date DESC");
 $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-
-$settingsStmt = $pdo->query("SELECT * FROM settings LIMIT 1");
-$settings = $settingsStmt->fetch(PDO::FETCH_ASSOC) ?: [
-    'call_time' => '08:00',
-    'grace_period' => 20,
-    'absent_after' => 30
-];
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Attendance Records</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
-  <style>
-    .attendance-card {
-      transition: transform 0.2s;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }
-    .attendance-card:hover {
-      transform: translateY(-2px);
-    }
-    .table-hover tbody tr:hover {
-      background-color: rgba(13,110,253,0.05);
-    }
-    .status-badge {
-      font-size: 0.8rem;
-      padding: 0.35em 0.65em;
-      min-width: 70px;
-      display: inline-block;
-      text-align: center;
-    }
-    .badge-present {
-      background-color: #28a745;
-    }
-    .badge-late {
-      background-color: #ffc107;
-      color: #212529;
-    }
-    .badge-absent {
-      background-color: #dc3545;
-    }
-    .time-info {
-      font-size: 0.85rem;
-      color: #6c757d;
-    }
-  </style>
-</head>
-<body class="bg-light">
-  <!-- Navigation Bar -->
-  <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-4">
-    <div class="container">
-      <a class="navbar-brand" href="#">
-        <i class="bi bi-calendar-check"></i> Attendance System
-      </a>
-      <div class="d-flex">
-        <a href="index.php" class="btn btn-light me-2">
-          <i class="bi bi-arrow-left-circle"></i> Back to Home
-        </a>
-        <a href="settings.php" class="btn btn-info">
-          <i class="bi bi-gear"></i> Settings
-        </a>
-      </div>
-    </div>
-  </nav>
-
-  <div class="container mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <h2 class="text-primary mb-0"><i class="bi bi-clock-history"></i> Attendance History</h2>
-      <div class="time-info">
-        <i class="bi bi-info-circle"></i> Call Time: <?php echo htmlspecialchars($settings['call_time']); ?> 
-        (Grace: <?php echo htmlspecialchars($settings['grace_period']); ?> mins, 
-        Absent after: <?php echo htmlspecialchars($settings['grace_period'] + $settings['absent_after']); ?> mins)
-      </div>
-    </div>
-    
-    <?php if(empty($dates)): ?>
-      <div class="alert alert-info text-center">
-        <i class="bi bi-info-circle"></i> No attendance records found.
-      </div>
-    <?php endif; ?>
-
-    <?php foreach ($dates as $row): ?>
-      <div class="card attendance-card mb-4">
-        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <div>
-            <i class="bi bi-calendar-date"></i>
-            <?php echo htmlspecialchars($row['date']); ?>
-          </div>
-          <div>
-            <span class="badge bg-light text-dark me-2">
-              <?php 
-                $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM attendance WHERE date = ?");
-                $stmtCount->execute([$row['date']]);
-                echo $stmtCount->fetchColumn() . ' entries';
-              ?>
-            </span>
-            <a href="delete.php?date=<?php echo urlencode($row['date']); ?>" 
-               class="btn btn-danger btn-sm" 
-               onclick="return confirm('Delete all records for <?php echo $row['date']; ?>?');">
-              <i class="bi bi-trash"></i> Delete All
-            </a>
-          </div>
-        </div>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Records | QR Tools by MCK</title>
+    <link href="assets/css/style.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        .table-wrapper {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { 
+            text-align: left; padding: 1.25rem; 
+            background: #f8fafc; color: var(--text-muted); 
+            font-size: 0.85rem; text-transform: uppercase;
+            border-bottom: 1px solid var(--border);
+        }
+        td { padding: 1.25rem; border-bottom: 1px solid var(--border); }
+        tr:last-child td { border-bottom: none; }
         
-        <div class="card-body p-0">
-          <div class="table-responsive">
-            <table class="table table-hover table-striped mb-0">
-              <thead class="table-light">
-                <tr>
-                  <th>#</th>
-                  <th><i class="bi bi-upc-scan"></i> QR Code</th>
-                  <th><i class="bi bi-person"></i> Name</th>
-                  <th><i class="bi bi-clock"></i> Time</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <?php 
-                  $stmtRecords = $pdo->prepare("SELECT a.id, a.qr_code, a.time, a.status, u.name FROM attendance a JOIN users u ON a.qr_code = u.qr_code WHERE a.date = :date ORDER BY a.time ASC");
-                  $stmtRecords->execute([':date' => $row['date']]);
-                  $records = $stmtRecords->fetchAll(PDO::FETCH_ASSOC);
-                  $counter = 1; // Initialize counter for each day
-                  foreach ($records as $record):
-                ?>
-                <tr>
-                  <td class="fw-bold"><?php echo $counter; ?></td>
-                  <td><code><?php echo htmlspecialchars($record['qr_code']); ?></code></td>
-                  <td><?php echo htmlspecialchars($record['name']); ?></td>
-                  <td><?php echo htmlspecialchars($record['time']); ?></td>
-                  <td>
-                    <span class="status-badge badge-<?php echo htmlspecialchars($record['status']); ?>">
-                      <?php echo ucfirst(htmlspecialchars($record['status'])); ?>
-                    </span>
-                  </td>
-                  <td>
-                    <div class="d-flex gap-2">
-                      <a href="delete.php?id=<?php echo $record['id']; ?>" 
-                         class="btn btn-sm btn-danger" 
-                         onclick="return confirm('Delete this record?');">
-                        <i class="bi bi-trash"></i> Delete
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-                <?php 
-                  $counter++; // Increment counter for the next record
-                  endforeach; 
-                ?>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    <?php endforeach; ?>
-  </div>
+        .section-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <nav class="navbar">
+        <a href="index.php" class="btn btn-ghost" style="border: none; padding-left: 0;">
+            <i class="bi bi-arrow-left"></i> <span class="d-none-mobile">Dashboard</span>
+        </a>
+        <h3 class="text-gradient">Records</h3>
+        <a href="settings.php" class="btn btn-ghost">
+            <i class="bi bi-gear"></i> <span class="d-none-mobile">Settings</span>
+        </a>
+        <button onclick="exportRange()" class="btn btn-ghost">
+            <i class="bi bi-calendar-range"></i> <span class="d-none-mobile">Export Range</span>
+        </button>
+    </nav>
+
+    <main class="container">
+        <?php if (empty($dates)): ?>
+            <div class="card animate-fade-up" style="padding: 4rem; text-align: center; margin-top: 2rem;">
+                <i class="bi bi-database-exclamation" style="font-size: 3rem; color: var(--text-muted); display: block; margin-bottom: 1rem;"></i>
+                <h4 style="color: var(--text-muted);">No records found</h4>
+            </div>
+        <?php else: ?>
+
+            <?php foreach ($dates as $index => $row): ?>
+                <div class="animate-fade-up delay-<?= min($index + 1, 3) ?>">
+                    
+                    <div class="section-header">
+                        <div class="flex-center" style="gap: 1rem;">
+                            <h4 style="margin: 0; color: var(--text-main);"><?= date('F j, Y', strtotime($row['date'])) ?></h4>
+                            <span class="badge" style="background: white; border: 1px solid var(--border);">
+                                <?php
+                                $count = $pdo->query("SELECT COUNT(*) FROM attendance WHERE date = '{$row['date']}'")->fetchColumn();
+                                echo "$count Entries";
+                                ?>
+                            </span>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.5rem;">
+                             <form method="post" action="api/export.php" target="_blank">
+                                <input type="hidden" name="export_date" value="<?= $row['date'] ?>">
+                                <button type="submit" class="btn btn-ghost" style="font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                    <i class="bi bi-download"></i> Export
+                                </button>
+                            </form>
+                            
+                            <button onclick="confirmDelete('date', '<?= $row['date'] ?>')" 
+                                    class="btn btn-ghost" style="color: var(--danger); font-size: 0.85rem; padding: 0.5rem 1rem;">
+                                <i class="bi bi-trash"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Time</th>
+                                    <th>Status</th>
+                                    <th style="text-align: right;"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php
+                                $records = $pdo->query("SELECT a.id, a.time, a.status, u.name 
+                                                      FROM attendance a 
+                                                      JOIN users u ON a.qr_code = u.qr_code 
+                                                      WHERE a.date = '{$row['date']}' 
+                                                      ORDER BY a.time DESC")->fetchAll(PDO::FETCH_ASSOC);
+
+                                foreach ($records as $r): 
+                                ?>
+                                <tr>
+                                    <td style="font-weight: 500; color: var(--text-main);"><?= htmlspecialchars($r['name']) ?></td>
+                                    <td style="color: var(--text-muted);"><?= $r['status'] == 'absent' ? '--' : date('h:i A', strtotime($r['time'])) ?></td>
+                                    <td>
+                                        <span class="badge <?= $r['status'] ?>"><?= ucfirst($r['status']) ?></span>
+                                    </td>
+                                    <td style="text-align: right;">
+                                        <button onclick="confirmDelete('id', <?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted);">
+                                            <i class="bi bi-x-lg"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+    </main>
+
+    <script>
+        function exportRange() {
+            Swal.fire({
+                title: 'Export Attendance',
+                html: `
+                    <div style="text-align:left">
+                        <label>Start Date</label>
+                        <input type="date" id="swal-start" class="swal2-input" value="<?= date('Y-m-d') ?>">
+                        <label>End Date</label>
+                        <input type="date" id="swal-end" class="swal2-input" value="<?= date('Y-m-d') ?>">
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Download',
+                preConfirm: () => {
+                    return [
+                        document.getElementById('swal-start').value,
+                        document.getElementById('swal-end').value
+                    ]
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const [start, end] = result.value;
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = 'api/export.php';
+                    form.target = '_blank';
+                    
+                    const startInput = document.createElement('input');
+                    startInput.name = 'start_date';
+                    startInput.value = start;
+                    form.appendChild(startInput);
+
+                    const endInput = document.createElement('input');
+                    endInput.name = 'end_date';
+                    endInput.value = end;
+                    form.appendChild(endInput);
+
+                    document.body.appendChild(form);
+                    form.submit();
+                    document.body.removeChild(form);
+                }
+            })
+        }
+
+        function confirmDelete(type, value) {
+            let title = type === 'date' ? 'Delete All Records?' : 'Delete Record?';
+            let text = type === 'date' ? `This will wipe all attendance data for ${value}` : 'This record will be permanently removed.';
+            
+            Swal.fire({
+                title: title,
+                text: text,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#64748b',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = `api/delete.php?${type}=${value}`;
+                }
+            })
+        }
+    </script>
 </body>
 </html>
