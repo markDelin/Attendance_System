@@ -82,7 +82,14 @@ If you are running the system on an Android device via Termux or a Linux server,
 3.  **Access the System**:
     Open Chrome/Browser and navigate to `http://localhost:8000`.
 
+<<<<<<< HEAD
 > **Tip**: To access student records from your phone's camera, ensure you use `localhost`. If accessing from another device on the same Wi-Fi, you may need to use `https` or configure browser flags to allow camera access on insecure origins.
+=======
+## Troubleshooting
+- **Camera not working**: Ensure browser has camera permissions
+- **Database errors**: Check write permissions on directory
+- **QR codes not scanning**: Ensure good lighting and camera focus
+>>>>>>> 5c2cd2ac737a8a5a0041ab7575efc1272119761a
 
 ## License
 
