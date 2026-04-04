@@ -25,6 +25,8 @@ $irregularUsers = array_filter($allUsers, function($u) {
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         .search-area {
             position: sticky;
@@ -164,6 +166,82 @@ $irregularUsers = array_filter($allUsers, function($u) {
         .type-regular { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
         .type-irregular { background: #fff1f2; color: #991b1b; border: 1px solid #ffe4e6; }
 
+        /* PC Row Layout Styles - "Swiss Academic" Grid Integration */
+        @media (min-width: 769px) {
+            .student-table {
+                display: block; /* Convert table to block for grid rows */
+            }
+            .student-table thead, .student-table tbody {
+                display: block;
+                width: 100%;
+            }
+            .student-table tr {
+                display: grid !important;
+                grid-template-columns: 2fr 1.2fr 0.8fr 0.6fr !important;
+                align-items: center;
+                background: transparent !important;
+                border: none !important;
+                border-bottom: 1px solid var(--border) !important;
+                border-radius: 0 !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                transition: background 0.15s ease;
+            }
+            .student-table tr:hover {
+                background: #f8fafc !important;
+            }
+            .student-table th, .student-table td {
+                display: block !important;
+                width: auto !important;
+                padding: 1.1rem 1.5rem !important;
+                border: none !important;
+                overflow: hidden;
+            }
+            .column-actions {
+                text-align: right;
+            }
+
+            /* Single Row Alignment for Student Identity & Course */
+            .pc-row {
+                display: flex !important;
+                flex-direction: row !important;
+                align-items: center !important;
+                gap: 10px !important;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+            .student-name {
+                flex-shrink: 1;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 0.95rem;
+            }
+            .pc-separator {
+                display: inline-block;
+                color: var(--text-muted);
+                opacity: 0.4;
+                font-size: 0.8rem;
+                flex-shrink: 0;
+            }
+            .student-id {
+                white-space: nowrap;
+                font-size: 0.7rem;
+                letter-spacing: 0.02em;
+            }
+        }
+        
+        /* Default Flex for the cell content */
+        .cell-content {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .pc-separator { display: none; }
+            .pc-row { display: flex; flex-direction: column; }
+        }
+
         .btn-action {
             width: 36px;
             height: 36px;
@@ -214,30 +292,47 @@ $irregularUsers = array_filter($allUsers, function($u) {
             }
 
             .student-table thead {
-                display: none; /* Hide header on mobile cards */
+                display: none; 
             }
 
             .student-table tr {
-                margin-bottom: 1rem;
-                background: white;
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                margin-bottom: 0.5rem;
+                background: var(--bg-card);
                 border: 1px solid var(--border);
                 border-radius: 12px;
-                padding: 1rem;
-                box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+                padding: 0.6rem 0.85rem;
+                box-shadow: var(--glass-shadow);
             }
 
             .student-table td {
                 border: none;
-                padding: 0.5rem 0 !important;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                width: 100% !important;
-                text-align: left !important;
+                padding: 0 !important;
+                display: block;
+                width: auto !important;
+                font-size: 0.85rem;
             }
 
-            .student-table td:not(:last-child) {
-                border-bottom: 1px solid #f8fafc;
+            .student-table td:first-child {
+                flex: 1;
+                min-width: 0;
+            }
+            
+            .student-table td:first-child .student-name {
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                display: block;
+            }
+
+            .student-table .hide-mobile {
+                display: none !important;
+            }
+
+            .student-table td::before {
+                display: none;
             }
 
             .student-table td::before {
@@ -283,27 +378,37 @@ $irregularUsers = array_filter($allUsers, function($u) {
         </div>
     </div>
 
-        <div class="data-table-container animate-fade-up">
-            <div class="table-wrapper">
-                <table class="student-table">
-                <thead>
-                    <tr>
-                        <th style="width: 40%;">Student Identity</th>
-                        <th class="hide-mobile">Course & Section</th>
-                        <th>Type</th>
-                        <th style="text-align:right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="studentBody">
-                    <?php foreach ($allUsers as $idx => $user): 
-                        $typeClass = ($user['student_type'] ?? 'regular') === 'regular' ? 'type-regular' : 'type-irregular';
-                        $stagger = "stagger-" . min($idx + 1, 8);
-                    ?>
-                        <tr class="student-row animate-fade-up <?= $stagger ?>" 
-                            data-name="<?= htmlspecialchars($user['name']) ?>"
-                            data-qr="<?= htmlspecialchars($user['qr_code']) ?>"
-                            id="row-<?= htmlspecialchars($user['qr_code']) ?>"
+    <main class="container">
+        
+        <div class="scroll-list-container">
+            <div class="top-gradient"></div>
+            <div class="bottom-gradient"></div>
+            
+            <div class="scroll-list no-scrollbar" style="max-height: 70vh;">
+                <div class="data-table-container">
+                    <div class="table-wrapper">
+                        <table class="student-table">
+                        <thead>
+                            <tr>
+                                <th class="column-student">Student Identity</th>
+                                <th class="column-course hide-mobile">Course & Section</th>
+                                <th class="column-type">Type</th>
+                                <th class="column-actions">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentBody">
+                            <?php foreach ($allUsers as $idx => $user): 
+                                $typeClass = ($user['student_type'] ?? 'regular') === 'regular' ? 'type-regular' : 'type-irregular';
+                            ?>
+                                <tr class="student-row animated-item" 
+                                    data-name="<?= htmlspecialchars($user['name']) ?>"
+                                    data-qr="<?= htmlspecialchars($user['qr_code']) ?>"
+                                    id="row-<?= htmlspecialchars($user['qr_code']) ?>"
+                                    style="margin-bottom: 0;"
                             <?php 
+                                // Standardize dates for HTML input
+                                $bday = !empty($user['birthday']) ? date('Y-m-d', strtotime($user['birthday'])) : '';
+                                
                                 // Attach datasets for editUser()
                                 echo ' data-firstname="'.htmlspecialchars($user['first_name']??'').'"';
                                 echo ' data-lastname="'.htmlspecialchars($user['last_name']??'').'"';
@@ -311,36 +416,41 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 echo ' data-course="'.htmlspecialchars($user['course']??'').'"';
                                 echo ' data-section="'.htmlspecialchars($user['section']??'').'"';
                                 echo ' data-type="'.htmlspecialchars($user['student_type']??'regular').'"';
-                                echo ' data-birthday="'.htmlspecialchars($user['birthday']??'').'"';
+                                echo ' data-birthday="'.htmlspecialchars($bday).'"';
                                 echo ' data-sex="'.htmlspecialchars($user['sex']??'').'"';
                                 echo ' data-civil="'.htmlspecialchars($user['civil_status']??'').'"';
                                 echo ' data-religion="'.htmlspecialchars($user['religion']??'').'"';
                                 echo ' data-citizenship="'.htmlspecialchars($user['citizenship']??'').'"';
                                 echo ' data-contact="'.htmlspecialchars($user['contact_number']??'').'"';
+                                echo ' data-email="'.htmlspecialchars($user['email']??'').'"';
                                 echo ' data-pob="'.htmlspecialchars($user['place_of_birth']??'').'"';
                                 echo ' data-year="'.htmlspecialchars($user['year_level']??'1st').'"';
+                                echo ' data-qr="'.htmlspecialchars($user['qr_code']??'').'"';
+                                echo ' data-name="'.htmlspecialchars($user['name']??'').'"';
                             ?>
                         >
-                            <td data-label="Student">
-                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                            <td data-label="Student" class="column-student">
+                                <div class="cell-content pc-row">
                                     <a href="profile.php?qr=<?= urlencode($user['qr_code']) ?>" class="student-name">
                                         <?= htmlspecialchars($user['name']) ?>
                                     </a>
-                                    <div style="display: flex; align-items: center; gap: 8px;">
+                                    <span class="pc-separator">·</span>
+                                    <div class="student-id-wrapper">
                                         <span class="student-id"><?= htmlspecialchars($user['qr_code']) ?></span>
                                     </div>
                                 </div>
                             </td>
-                            <td data-label="Course">
-                                <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <td data-label="Course" class="column-course hide-mobile">
+                                <div class="cell-content pc-row">
                                     <span style="font-weight: 500; font-size: 0.85rem;"><?= htmlspecialchars($user['course'] ?? 'No Course') ?></span>
+                                    <span class="pc-separator">·</span>
                                     <span style="font-size: 0.75rem; color: var(--text-muted);"><?= htmlspecialchars($user['section'] ?? 'No Section') ?></span>
                                 </div>
                             </td>
-                            <td data-label="Type">
+                            <td data-label="Type" class="column-type">
                                 <span class="type-badge <?= $typeClass ?>"><?= ($user['student_type'] ?? 'regular') ?></span>
                             </td>
-                            <td data-label="Actions" style="text-align:right;">
+                            <td data-label="Actions" class="column-actions">
                                 <div style="display:flex; gap:8px; justify-content:flex-end;">
                                     <button onclick="editUser(this)" class="btn-action" title="Edit Profile">
                                         <i class="bi bi-pencil-square"></i>
@@ -357,14 +467,138 @@ $irregularUsers = array_filter($allUsers, function($u) {
                             </td>
                         </tr>
                     <?php endforeach; ?>
-                </tbody>
-                </table>
+                        </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
     </main>
     
 
+
+    <!-- Custom Management Modal -->
+    <div id="managementModal" class="modal-overlay" onclick="if(event.target == this) closeManagementModal()">
+        <div class="modal-body">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <h3 id="modalTitle" style="margin: 0; font-weight: 800; letter-spacing: -0.04em;">Student Profile</h3>
+                <button onclick="closeManagementModal()" style="background: none; border: none; font-size: 1.5rem;"><i class="bi bi-x-lg"></i></button>
+            </div>
+            
+            <form id="managementForm" onsubmit="submitManagementForm(event)">
+                <input type="hidden" name="action" id="modalAction" value="add">
+                <input type="hidden" name="qr_original" id="modalQrOriginal">
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Student ID / QR *</label>
+                        <input type="text" name="qr_code" id="m-qr" class="form-control" required placeholder="e.g. 2024-0001">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">First Name *</label>
+                        <input type="text" name="first_name" id="m-fname" class="form-control" required placeholder="John">
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Last Name *</label>
+                        <input type="text" name="last_name" id="m-lname" class="form-control" required placeholder="Doe">
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Middle Initial</label>
+                        <input type="text" name="middle_initial" id="m-middle" class="form-control" maxlength="2" placeholder="e.g. M">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Email Address</label>
+                        <input type="email" name="email" id="m-email" class="form-control" placeholder="john.doe@example.com">
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Mobile Contact</label>
+                        <input type="text" name="contact_number" id="m-contact" class="form-control" placeholder="0917XXXXXXX">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Course / Strand</label>
+                        <input type="text" name="course" id="m-course" class="form-control" placeholder="e.g. BSCS">
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Section / Set</label>
+                        <input type="text" name="section" id="m-section" class="form-control" placeholder="e.g. 2-A">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Student Type</label>
+                        <select name="student_type" id="m-type" class="form-control">
+                            <option value="regular">Regular</option>
+                            <option value="irregular">Irregular / Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Year Level</label>
+                        <select name="year_level" id="m-year" class="form-control">
+                            <option value="1st">1st Year</option>
+                            <option value="2nd">2nd Year</option>
+                            <option value="3rd">3rd Year</option>
+                            <option value="4th">4th Year</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Fields for Edit mode (Hidden in Add mode) -->
+                <div id="extendedFields" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem;">
+                     <h6 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1.5rem;">Additional Details</h6>
+                     <div class="swal-grid-2">
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Birthday</label>
+                            <input type="date" name="birthday" id="m-birthday" class="form-control">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Sex</label>
+                            <select name="sex" id="m-sex" class="form-control">
+                                <option value="">Select...</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="swal-grid-2" style="margin-top: 1rem;">
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Civil Status</label>
+                            <input type="text" name="civil_status" id="m-civil" class="form-control">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Religion</label>
+                            <input type="text" name="religion" id="m-religion" class="form-control">
+                        </div>
+                    </div>
+                    <div class="swal-grid-2" style="margin-top: 1rem;">
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Citizenship</label>
+                            <input type="text" name="citizenship" id="m-citizenship" class="form-control">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Place of Birth</label>
+                            <input type="text" name="place_of_birth" id="m-pob" class="form-control">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; gap: 1rem;">
+                    <button type="button" onclick="closeManagementModal()" class="btn btn-ghost" style="border: 1px solid var(--border); padding: 0.8rem 2rem; border-radius: 12px; font-weight: 600;">Discard</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-weight: 800; border-radius: 12px;">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         // Search
@@ -377,295 +611,79 @@ $irregularUsers = array_filter($allUsers, function($u) {
             });
         });
 
+        const Toast = Swal.mixin({
+            toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, timerProgressBar: true
+        });
+
+        function showModal() { document.getElementById('managementModal').style.display = 'flex'; }
+        function closeManagementModal() { document.getElementById('managementModal').style.display = 'none'; }
+
         function addStudent() {
-            Swal.fire({
-                title: 'Add New Student',
-                width: 'auto',
-                customClass: {
-                    popup: 'responsive-modal'
-                },
-                html: `
-                    <style>
-                        .swal-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:10px; }
-                        .swal2-input, .swal2-select { 
-                            margin: 5px 0 !important; 
-                            width: 100% !important; 
-                            font-size: 0.9rem !important;
-                             height: auto !important;
-                            padding: 0.6rem !important;
-                        }
-                        .swal2-select { padding-right: 2rem !important; }
-                        @media (max-width: 600px) {
-                            .swal-grid-2 { grid-template-columns: 1fr; gap:5px; }
-                        }
-                    </style>
-                    <div style="text-align:left; display:flex; flex-direction:column; gap:10px;">
-                        
-                        <div class="form-floating-custom">
-                             <label><i class="bi bi-qr-code"></i> Student ID / QR Code *</label>
-                             <input type="text" id="swal-id" class="swal2-input" placeholder="e.g. 2024-0001">
-                        </div>
-
-                        <div class="swal-grid-2">
-                            <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">First Name *</label>
-                                <input type="text" id="swal-firstname" class="swal2-input" placeholder="John">
-                            </div>
-                            <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">Last Name *</label>
-                                <input type="text" id="swal-lastname" class="swal2-input" placeholder="Doe">
-                            </div>
-                        </div>
-                        
-                        <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">Course / Strand</label>
-                                <input type="text" id="swal-course" class="swal2-input" placeholder="BSIS">
-                            </div>
-                             <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">Section / Set</label>
-                                <input type="text" id="swal-section" class="swal2-input" placeholder="2-A">
-                            </div>
-                        </div>
-
-                         <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">M.I.</label>
-                                <input type="text" id="swal-middle" class="swal2-input" maxlength="3" placeholder="M.">
-                            </div>
-                             <div>
-                                <label style="font-size:0.85rem; font-weight:600; color:#555;">Student Type</label>
-                                <select id="swal-type" class="swal2-select" style="width:100%;">
-                                    <option value="regular" selected>Regular Student</option>
-                                    <option value="irregular">Irregular / Other</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div style="margin-top:10px; font-size:0.85rem; color:#666; font-style:italic; background:#f8fafc; padding:8px; border-radius:6px;">
-                            <i class="bi bi-info-circle"></i> Basic info only. You can add full details (Birthday, Contact, etc.) later by editing the student profile.
-                        </div>
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: '<i class="bi bi-person-plus"></i> Add Student',
-                confirmButtonColor: 'var(--primary)',
-                preConfirm: () => {
-                   return {
-                       qr_code: document.getElementById('swal-id').value.trim(),
-                       first_name: document.getElementById('swal-firstname').value.trim(),
-                       last_name: document.getElementById('swal-lastname').value.trim(),
-                       middle_initial: document.getElementById('swal-middle').value.trim(),
-                       student_type: document.getElementById('swal-type').value,
-                       course: document.getElementById('swal-course').value.trim(),
-                       section: document.getElementById('swal-section').value.trim()
-                   };
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const data = result.value;
-                    if (!data.qr_code || !data.first_name || !data.last_name) {
-                         Swal.fire('Error', 'ID, First Name, and Last Name are required.', 'error');
-                         return;
-                    }
-
-                    fetch('api/manage_users.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'add', ...data })
-                    })
-                    .then(r => r.json())
-                    .then(res => {
-                        if(res.status === 'success') {
-                             Swal.fire('Added!', 'New student registered successfully.', 'success').then(() => location.reload());
-                        } else {
-                             Swal.fire('Error', res.message, 'error');
-                        }
-                    })
-                    .catch(() => Swal.fire('Error', 'Network Error', 'error'));
-                }
-            });
+            const f = document.getElementById('managementForm');
+            f.reset();
+            document.getElementById('modalTitle').innerText = 'Add New Student';
+            document.getElementById('modalAction').value = 'add';
+            document.getElementById('m-qr').readOnly = false;
+            document.getElementById('extendedFields').style.display = 'none';
+            showModal();
         }
 
         function editUser(btn) {
-           const row = btn.closest('.student-row');
-           const qr_code = row.dataset.qrOriginal || row.dataset.qr; 
-           const d = row.dataset;
-           
-            Swal.fire({
-                title: 'Edit Student',
-                width: 'auto',
-                customClass: {
-                    popup: 'responsive-modal'
-                },
-                html: `
-                    <style>
-                        .swal-grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:10px; }
-                        /* Override SweetAlert2 default input styles to fit grid */
-                        .swal2-input, .swal2-select { 
-                            margin: 5px 0 !important; 
-                            width: 100% !important; 
-                            font-size: 0.9rem !important;
-                            height: auto !important;
-                            padding: 0.6rem !important;
-                        }
-                        .swal2-select { padding-right: 2rem !important; }
-                        
-                        @media (max-width: 600px) {
-                            .swal-grid-2 { grid-template-columns: 1fr; gap:5px; }
-                            .responsive-modal { width: 95% !important; padding: 0.5em !important; }
-                        }
-                    </style>
-                    <div style="text-align:left; max-height:70vh; overflow-y:auto; overflow-x:hidden; padding: 0 5px;">
-                        
-                        <!-- Section: Identity -->
-                        <h6 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px;">Identity</h6>
-                        <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">First Name *</label>
-                                <input type="text" id="edit-firstname" class="swal2-input" value="${d.firstname}">
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Last Name *</label>
-                                <input type="text" id="edit-lastname" class="swal2-input" value="${d.lastname}">
-                            </div>
-                        </div>
-                        <div class="swal-grid-2" style="grid-template-columns: 80px 1fr;">
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">M.I.</label>
-                                <input type="text" id="edit-middle" class="swal2-input" value="${d.middle}" maxlength="3">
-                            </div>
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Student Type</label>
-                                <select id="edit-type" class="swal2-select" style="width:100%;">
-                                    <option value="regular" ${d.type === 'regular' ? 'selected' : ''}>Regular</option>
-                                    <option value="irregular" ${d.type === 'irregular' ? 'selected' : ''}>Irregular / Other</option>
-                                </select>
-                            </div>
-                        </div>
-                        
-                         <!-- Section: Personal Details -->
-                        <h6 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px; margin-top:20px;">Personal Details</h6>
-                        
-                        <div class="swal-grid-2">
-                             <div>
-                                 <label style="font-size:0.8rem; font-weight:bold;">Course / Strand</label>
-                                 <input type="text" id="edit-course" class="swal2-input" value="${d.course}" placeholder="e.g. BSCS">
-                            </div>
-                            <div>
-                                 <label style="font-size:0.8rem; font-weight:bold;">Section / Set</label>
-                                 <input type="text" id="edit-section" class="swal2-input" value="${d.section || ''}" placeholder="e.g. 2-A">
-                            </div>
-                        </div>
+            const d = btn.closest('.student-row').dataset;
+            const f = document.getElementById('managementForm');
+            f.reset();
+            
+            document.getElementById('modalTitle').innerText = 'Edit Student Profile';
+            document.getElementById('modalAction').value = 'update';
+            document.getElementById('modalQrOriginal').value = d.qr;
+            document.getElementById('extendedFields').style.display = 'block';
+            
+            document.getElementById('m-qr').value = d.qr;
+            document.getElementById('m-qr').readOnly = true;
+            document.getElementById('m-fname').value = d.firstname;
+            document.getElementById('m-lname').value = d.lastname;
+            document.getElementById('m-middle').value = d.middle;
+            document.getElementById('m-email').value = d.email;
+            document.getElementById('m-contact').value = d.contact;
+            document.getElementById('m-course').value = d.course;
+            document.getElementById('m-section').value = d.section;
+            document.getElementById('m-birthday').value = d.birthday;
+            document.getElementById('m-sex').value = d.sex;
+            document.getElementById('m-civil').value = d.civil;
+            document.getElementById('m-religion').value = d.religion;
+            document.getElementById('m-pob').value = d.pob;
+            document.getElementById('m-year').value = d.year;
+            document.getElementById('m-type').value = d.type;
+            document.getElementById('m-citizenship').value = d.citizenship;
 
-                         <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Birthday</label>
-                                <input type="date" id="edit-birthday" class="swal2-input" value="${d.birthday}">
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Sex</label>
-                                <select id="edit-sex" class="swal2-select" style="width:100%;">
-                                    <option value="" disabled ${!d.sex ? 'selected' : ''}>Select...</option>
-                                    <option value="Male" ${d.sex === 'Male' ? 'selected' : ''}>Male</option>
-                                    <option value="Female" ${d.sex === 'Female' ? 'selected' : ''}>Female</option>
-                                </select>
-                            </div>
-                        </div>
+            showModal();
+        }
 
-                        <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Civil Status</label>
-                                 <select id="edit-civil" class="swal2-select" style="width:100%;">
-                                    <option value="" disabled ${!d.civil ? 'selected' : ''}>Select...</option>
-                                    <option value="Single" ${d.civil === 'Single' ? 'selected' : ''}>Single</option>
-                                    <option value="Married" ${d.civil === 'Married' ? 'selected' : ''}>Married</option>
-                                    <option value="Widowed" ${d.civil === 'Widowed' ? 'selected' : ''}>Widowed</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Religion</label>
-                                <input type="text" id="edit-religion" class="swal2-input" value="${d.religion}">
-                            </div>
-                        </div>
-                        
-                        <div class="swal-grid-2">
-                             <div>
-                                 <label style="font-size:0.8rem; font-weight:bold;">Place of Birth</label>
-                                 <input type="text" id="edit-pob" class="swal2-input" value="${d.pob}">
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Year Level</label>
-                                <select id="edit-year" class="swal2-select" style="width:100%;">
-                                    <option value="1st" ${d.year === '1st' ? 'selected' : ''}>1st Year</option>
-                                    <option value="2nd" ${d.year === '2nd' ? 'selected' : ''}>2nd Year</option>
-                                    <option value="3rd" ${d.year === '3rd' ? 'selected' : ''}>3rd Year</option>
-                                    <option value="4th" ${d.year === '4th' ? 'selected' : ''}>4th Year</option>
-                                </select>
-                            </div>
-                        </div>
-
-                         <!-- Section: Contact -->
-                        <h6 style="color:var(--primary); border-bottom:1px solid #eee; padding-bottom:5px; margin-bottom:10px; margin-top:20px;">Contact Info</h6>
-
-                         <div class="swal-grid-2">
-                             <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Contact Number</label>
-                                <input type="text" id="edit-contact" class="swal2-input" value="${d.contact}">
-                            </div>
-                            <div>
-                                <label style="font-size:0.8rem; font-weight:bold;">Citizenship</label>
-                                <input type="text" id="edit-citizenship" class="swal2-input" value="${d.citizenship}">
-                            </div>
-                        </div>
-
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Save Changes',
-                confirmButtonColor: 'var(--primary)',
-                preConfirm: () => {
-                   return {
-                       qr_code: qr_code, // Keep original QR
-                       first_name: document.getElementById('edit-firstname').value.trim(),
-                       last_name: document.getElementById('edit-lastname').value.trim(),
-                       middle_initial: document.getElementById('edit-middle').value.trim(),
-                       birthday: document.getElementById('edit-birthday').value,
-                       course: document.getElementById('edit-course').value.trim(),
-                       sex: document.getElementById('edit-sex').value,
-                       civil_status: document.getElementById('edit-civil').value,
-                       religion: document.getElementById('edit-religion').value.trim(),
-                       citizenship: document.getElementById('edit-citizenship').value.trim(),
-                       contact_number: document.getElementById('edit-contact').value.trim(),
-                       place_of_birth: document.getElementById('edit-pob').value.trim(),
-                       student_type: document.getElementById('edit-type').value,
-                       year_level: document.getElementById('edit-year').value,
-                       section: document.getElementById('edit-section').value.trim()
-                   };
+        function submitManagementForm(e) {
+            e.preventDefault();
+            const f = e.target;
+            const formData = new FormData(f);
+            
+            fetch('api/manage_users.php', {
+                method: 'POST',
+                body: new URLSearchParams(formData)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if(res.status === 'success') {
+                    closeManagementModal();
+                    Swal.fire({
+                        title: 'Success!',
+                        text: res.message || 'Student database updated successfully.',
+                        icon: 'success',
+                        confirmButtonColor: 'var(--primary)',
+                        confirmButtonText: 'Great'
+                    }).then(() => location.reload());
+                } else {
+                    Swal.fire('Error', res.message, 'error');
                 }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                     const data = result.value;
-                    if (!data.first_name || !data.last_name) {
-                         Swal.fire('Error', 'First Name and Last Name are required.', 'error');
-                         return;
-                    }
-                     fetch('api/manage_users.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'update', ...data })
-                    })
-                    .then(r => r.json())
-                    .then(res => {
-                        if(res.status === 'success') {
-                             Swal.fire('Updated!', 'Student updated successfully.', 'success').then(() => location.reload());
-                        } else {
-                             Swal.fire('Error', res.message, 'error');
-                        }
-                    })
-                    .catch(() => Swal.fire('Error', 'Network Error', 'error'));
-                }
-            });
+            })
+            .catch(() => Swal.fire('Error', 'Network Error', 'error'));
         }
 
         function deleteUser(btn) {
@@ -691,8 +709,12 @@ $irregularUsers = array_filter($allUsers, function($u) {
                     .then(r => r.json())
                     .then(data => {
                         if(data.status === 'success') {
-                            Swal.fire('Deleted!', 'Student has been removed.', 'success')
-                                .then(() => location.reload());
+                             Swal.fire({
+                                title: 'Deleted!',
+                                text: 'The student and their history have been removed.',
+                                icon: 'success',
+                                confirmButtonColor: 'var(--primary)'
+                            }).then(() => location.reload());
                         } else {
                             Swal.fire('Error', data.message, 'error');
                         }
@@ -794,6 +816,16 @@ $irregularUsers = array_filter($allUsers, function($u) {
             })
             .catch(err => Swal.fire('Error', 'Failed to load subjects', 'error'));
         }
+
+        // Initialize Animated List
+        document.addEventListener('DOMContentLoaded', () => {
+            initAnimatedList('.scroll-list-container', {
+                onItemSelect: (item) => {
+                    const profileLink = item.querySelector('.student-name');
+                    if(profileLink) window.location.href = profileLink.href;
+                }
+            });
+        });
     </script>
 </body>
 </html>

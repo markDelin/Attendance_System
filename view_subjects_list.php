@@ -33,6 +33,8 @@ ksort($grouped); // Sort by SY
     <link href="assets/css/style.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         .item-table {
             width: 100%;
@@ -144,9 +146,13 @@ ksort($grouped); // Sort by SY
             <?php foreach ($grouped as $sy => $semesters): ?>
                 <div class="sy-title animate-fade-up"><?= htmlspecialchars($sy) ?></div>
                 <?php foreach ($semesters as $sem => $subs): ?>
-                    <div class="animate-fade-up">
+                    <div>
                         <div class="sem-title"><?= htmlspecialchars($sem) ?></div>
-                        <table class="item-table mobile-card-table">
+                        <div class="scroll-list-container">
+                            <div class="top-gradient"></div>
+                            <div class="bottom-gradient"></div>
+                            <div class="scroll-list no-scrollbar" style="max-height: 400px; padding: 0.5rem 0;">
+                                <table class="item-table mobile-card-table">
                             <thead>
                                 <tr>
                                     <th>Name</th>
@@ -159,17 +165,19 @@ ksort($grouped); // Sort by SY
                                 <?php foreach ($subs as $s): 
                                     $count = $pdo->query("SELECT COUNT(*) FROM subject_attendance WHERE subject_id = {$s['id']}")->fetchColumn();
                                 ?>
-                                <tr onclick="window.location.href='view_subject_attendance.php?id=<?= $s['id'] ?>'" style="cursor: pointer;">
+                                <tr class="animated-item" onclick="window.location.href='view_subject_attendance.php?id=<?= $s['id'] ?>'" style="cursor: pointer;">
                                     <td data-label="Name" style="font-weight: 600; color: var(--text-main);"><?= htmlspecialchars($s['name']) ?></td>
                                     <td data-label="Code" class="hide-mobile"><span class="code-badge"><?= htmlspecialchars($s['code'] ?? 'CODE') ?></span></td>
                                     <td data-label="Records" style="text-align: center; font-weight: 600;"><?= $count ?></td>
                                     <td data-label="Link" style="text-align: right; color: var(--text-muted);"><i class="bi bi-chevron-right"></i></td>
                                 </tr>
                                 <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                <?php endforeach; ?>
+<?php endforeach; ?>
             <?php endforeach; ?>
         <?php endif; ?>
 
@@ -249,6 +257,11 @@ ksort($grouped); // Sort by SY
         function ucfirst(string) {
             return string.charAt(0).toUpperCase() + string.slice(1);
         }
+
+        // Initialize Animated List
+        document.addEventListener('DOMContentLoaded', () => {
+            initAnimatedList('.scroll-list-container');
+        });
     </script>
 </body>
 </html>

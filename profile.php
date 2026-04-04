@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     try {
         $stmt = $pdo->prepare("UPDATE users SET 
             name = ?, first_name = ?, last_name = ?, middle_initial = ?, 
-            birthday = ?, email = ?, course = ?, sex = ?, 
+            birthday = ?, email = ?, course = ?, section = ?, sex = ?, 
             place_of_birth = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?,
             student_type = ?, year_level = ?
             WHERE qr_code = ?");
@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $name, $first_name, $last_name, $middle_initial, 
             (!empty($_POST['birthday']) ? $_POST['birthday'] : null), 
             (!empty($_POST['email']) ? trim($_POST['email']) : null), 
-            $_POST['course'], $_POST['sex'], 
+            $_POST['course'], $_POST['section'] ?? '', $_POST['sex'], 
             $_POST['place_of_birth'], $_POST['civil_status'], $_POST['religion'], $_POST['citizenship'], $_POST['contact_number'], 
             $_POST['student_type'] ?? 'regular', $_POST['year_level'] ?? '1st',
             $qr
@@ -83,95 +83,79 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
     <style>
         .profile-container {
             display: grid; 
-            grid-template-columns: 350px 1fr; 
-            gap: 3rem; 
-            padding-top: 1rem;
+            grid-template-columns: 320px 1fr; 
+            gap: 4rem; 
+            padding: 2rem 0;
         }
 
-        @media (max-width: 992px) {
-            .profile-container {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
+        /* Unified Monolith Sidebar */
+        .sidebar-monolith {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 2.5rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 2.5rem;
+            position: sticky;
+            top: 2rem;
+            height: fit-content;
         }
 
-        /* Sidebar Info */
-        .profile-sidebar {
-            display: flex; flex-direction: column; gap: 2rem;
-        }
-        .hero-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2.5rem 1.5rem; text-align: center;
-        }
+        .profile-header { text-align: center; }
         .avatar-circle {
-            width: 120px; height: 120px; border-radius: 50%; background: var(--bg-main); margin: 0 auto 1.5rem;
-            display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 300;
-            border: 1px solid var(--border); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.02); color: var(--primary);
+            width: 110px; height: 110px; border-radius: 50%; background: var(--bg-main); margin: 0 auto 1.5rem;
+            display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 300;
+            border: 1px solid var(--border); color: var(--primary); font-family: 'Outfit', sans-serif;
         }
         
-        /* Circular Chart */
-        .analytics-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 2.5rem; text-align: center;
+        .attendance-rank-box {
+            padding-top: 2.5rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
         }
+
         .attendance-chart {
-            width: 160px; height: 160px; border-radius: 50%; margin: 0 auto 1.5rem; position: relative;
-            background: conic-gradient(var(--primary) <?= $presentPercent ?>%, var(--bg-main) 0deg);
+            width: 90px; height: 90px; border-radius: 50%; margin: 0 auto 1.5rem; position: relative;
+            background: var(--bg-main);
             display: flex; align-items: center; justify-content: center;
+            transition: background 0.1s ease;
         }
         .attendance-chart::after {
-            content: '<?= $presentPercent ?>%'; width: 130px; height: 130px; background: var(--bg-card); border-radius: 50%;
+            content: attr(data-display); width: 66px; height: 66px; background: var(--bg-card); border-radius: 50%;
             display: flex; align-items: center; justify-content: center; position: absolute;
-            font-size: 2rem; font-weight: 800; letter-spacing: -0.05em; font-family: 'Outfit', sans-serif;
+            font-size: 1rem; font-weight: 800; letter-spacing: -0.05em; font-family: 'Outfit', sans-serif;
         }
 
-        /* Stats Grid */
-        .stats-mini {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 1rem;
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
         }
-        .mini-item { padding: 16px 4px; border: 1px solid var(--border); border-radius: var(--radius-md); }
-        .mini-item b { display: block; font-size: 1.5rem; font-weight: 800; letter-spacing: -0.05em; }
-        .mini-item span { font-size: 0.65rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: 0.05em; }
+        .stat-blk { text-align: center; padding: 12px 0; border: 1px solid var(--border); border-radius: 12px; }
+        .stat-blk b { display: block; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.04em; }
+        .stat-blk span { font-size: 0.6rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); opacity: 0.6; }
 
-        /* History Feed */
-        .history-feed {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden;
-        }
+        /* Timeline Rows - High Density */
         .history-item {
-            display: flex; justify-content: space-between; align-items: center; padding: 1.5rem 2rem;
-            border-bottom: 1px solid var(--border); transition: all 0.2s;
+            display: flex; align-items: center; justify-content: space-between; padding: 1.15rem 1.5rem;
+            border-bottom: 1px solid var(--border); background: var(--bg-card); transition: all 0.25s ease;
+            border-radius: 16px; margin-bottom: 0.75rem; border: 1px solid var(--border);
+            z-index: 5; position: relative;
         }
-        .history-item:last-child { border-bottom: none; }
-        .history-item:hover { background: var(--bg-main); padding-left: 2.25rem; }
-        .history-info b { font-size: 1.1rem; display: block; color: var(--text-main); margin-bottom: 4px; }
-        .history-info small { color: var(--text-muted); font-size: 0.85rem; font-family: monospace; font-weight: 600; }
+        .history-item:hover { border-color: var(--primary); transform: translateX(4px); background: var(--bg-hover); }
+        .history-label { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
+        .history-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted); }
         
-        .pill-status {
-            padding: 8px 20px; border-radius: 50px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase;
-            letter-spacing: 0.08em; display: inline-flex; align-items: center; gap: 8px;
+        .status-badge {
+            font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
+            padding: 4px 12px; border-radius: 50px; border: 1px solid var(--border);
         }
+        .status-present { color: #10b981; background: rgba(16, 185, 129, 0.05); }
+        .status-late { color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
+        .status-absent { color: #ef4444; background: rgba(239, 68, 68, 0.05); }
 
         @media (max-width: 992px) {
-            .profile-container { grid-template-columns: 1fr; gap: 2rem; padding-top: 1rem; }
-            .profile-sidebar { flex-direction: column-reverse; }
-        }
-
-        @media (max-width: 600px) {
-            .stats-mini {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-            .mini-item {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 12px 20px;
-            }
-            .mini-item b { font-size: 1.25rem; }
-            .history-item {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-                padding: 1.25rem 1.5rem;
-            }
+            .profile-container { grid-template-columns: 1fr; gap: 2rem; }
+            .sidebar-monolith { position: static; }
         }
     </style>
 </head>
@@ -182,44 +166,41 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
     <main class="container">
         <div class="profile-container animate-fade-up">
             
-            <!-- Left Sidebar -->
-            <aside class="profile-sidebar">
-                
-                <div class="hero-card">
+            <!-- Profile Column (Sidebar) -->
+            <aside class="sidebar-monolith">
+                <div class="profile-header">
                     <div class="avatar-circle"><?= strtoupper(substr($user['name'] ?? '?', 0, 1)) ?></div>
-                    <h2 style="font-weight: 800; letter-spacing: -0.04em; margin-bottom: 0.25rem;"><?= htmlspecialchars($user['name']) ?></h2>
-                    <p style="font-family: monospace; color: var(--text-muted); font-size: 0.85rem; letter-spacing: 0.05em; margin-top: 0;"><?= $user['qr_code'] ?></p>
+                    <h2 style="font-weight: 800; letter-spacing: -0.04em; margin: 0 0 0.5rem;"><?= htmlspecialchars($user['name']) ?></h2>
+                    <p style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 0.8rem; letter-spacing: 0.05em; margin: 0 0 1.5rem;"><?= $user['qr_code'] ?></p>
                     
-                    <div style="display: flex; justify-content: center; gap: 8px; margin: 1.5rem 0;">
-                        <span class="badge" style="background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe;"><?= ($user['student_type'] ?? 'Regular') ?: 'Regular' ?></span>
-                        <span class="badge" style="background: #f8fafc; color: var(--text-muted); border: 1px solid var(--border);"><?= ($user['year_level'] ?? '1st') ?: '1st' ?> Year</span>
+                    <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 2rem;">
+                        <span class="badge" style="background: rgba(29, 78, 216, 0.05); color: #1d4ed8; border: 1px solid rgba(29, 78, 216, 0.1);"><?= ($user['student_type'] ?? 'Regular') ?: 'Regular' ?></span>
+                        <span class="badge" style="background: var(--bg-hover); color: var(--text-muted); border: 1px solid var(--border);"><?= ($user['year_level'] ?? '1st') ?: '1st' ?> Year</span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 2rem;">
-                        <button onclick="downloadQR()" class="btn btn-primary" style="justify-content: center; padding: 0.75rem;"><i class="bi bi-qr-code"></i> Save QR</button>
-                        <button onclick="openEditModal()" class="btn btn-ghost" style="justify-content: center; padding: 0.75rem;"><i class="bi bi-pencil"></i> Edit</button>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button onclick="downloadQR()" class="btn btn-primary" style="justify-content: center; padding: 0.6rem; font-size: 0.8rem; border-radius: 50px;">Save QR</button>
+                        <button onclick="openEditModal()" class="btn btn-ghost" style="justify-content: center; padding: 0.6rem; font-size: 0.8rem; border-radius: 50px;">Edit</button>
                     </div>
                 </div>
 
-                <div class="analytics-card">
-                    <h5 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1.5rem;">Overall Attendance Rank</h5>
-                    <div class="attendance-chart"></div>
-                    <div class="stats-mini">
-                        <div class="mini-item">
-                            <b><?= $stats['present'] ?: 0 ?></b>
+                <div class="attendance-rank-box">
+                    <div class="attendance-chart" data-percent="<?= $presentPercent ?>" data-display="0%"></div>
+                    <div class="stats-grid">
+                        <div class="stat-blk">
+                            <b class="profile-counter" data-target="<?= $stats['present'] ?: 0 ?>">0</b>
                             <span>Present</span>
                         </div>
-                        <div class="mini-item">
-                            <b><?= $stats['late'] ?: 0 ?></b>
+                        <div class="stat-blk">
+                            <b class="profile-counter" data-target="<?= $stats['late'] ?: 0 ?>">0</b>
                             <span>Late</span>
                         </div>
-                        <div class="mini-item">
-                            <b><?= $stats['absent'] ?: 0 ?></b>
+                        <div class="stat-blk">
+                            <b class="profile-counter" data-target="<?= $stats['absent'] ?: 0 ?>">0</b>
                             <span>Absent</span>
                         </div>
                     </div>
                 </div>
-
             </aside>
 
             <!-- Right Content -->
@@ -232,74 +213,98 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
                     <a href="student_history.php?qr_code=<?= urlencode($qr) ?>" style="font-size: 0.8rem; font-weight: 800; color: var(--primary); text-decoration: none; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid var(--primary);">View Report</a>
                 </div>
 
-                <div class="history-feed">
-                    <?php if(empty($history)): ?>
-                        <div style="padding: 4rem; text-align: center; color: var(--text-muted);">
-                            <i class="bi bi-clipboard-x" style="font-size: 2rem; opacity: 0.3; display: block; margin-bottom: 1rem;"></i>
-                            No activity detected yet.
-                        </div>
-                    <?php else: ?>
-                        <?php foreach($history as $h): ?>
-                            <div class="history-item">
-                                <div class="history-info">
-                                    <b><?= htmlspecialchars($h['subject_name']) ?></b>
-                                    <small><?= date('M j, Y', strtotime($h['date'])) ?> • <?= date('h:i A', strtotime($h['time'])) ?></small>
-                                </div>
-                                <span class="pill-status pill-<?= $h['status'] ?>">
-                                    <i class="bi bi-<?= $h['status']=='present'?'check-circle':($h['status']=='late'?'clock':'x-circle') ?>"></i>
-                                    <?= $h['status'] ?>
-                                </span>
+                <div class="scroll-list-container" style="background: var(--bg-main); border-radius: 20px; padding: 0.25rem;">
+                    <div class="top-gradient"></div>
+                    <div class="bottom-gradient"></div>
+                    <div class="scroll-list no-scrollbar history-rows" style="max-height: 50vh; overflow-y: auto;">
+                        <?php if(empty($history)): ?>
+                            <div style="padding: 4rem; text-align: center; color: var(--text-muted); background: var(--bg-card); border-radius: 12px; border: 1px solid var(--border);">
+                                No activity detected yet.
                             </div>
-                        <?php endforeach; ?>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <?php foreach($history as $h): ?>
+                                <div class="history-item animated-item">
+                                    <div>
+                                        <div class="history-label"><?= htmlspecialchars($h['subject_name']) ?></div>
+                                        <div class="history-meta"><?= date('M j, Y', strtotime($h['date'] ?? '')) ?> • <?= date('h:i A', strtotime($h['time'] ?? '')) ?></div>
+                                    </div>
+                                    <span class="status-badge status-<?= $h['status'] ?>">
+                                        <?= $h['status'] ?>
+                                    </span>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
                 </div>
 
-                <?php if ($user['email'] || $user['contact_number']): ?>
-                <div style="margin-top: 3rem;">
+                <div style="margin-top: 4rem; position: relative; z-index: 20;">
                     <h5 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1.5rem;">Contact Information</h5>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
-                        <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
-                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 8px;">Institutional Email</small>
-                            <b style="font-size: 0.9rem;"><?= $user['email'] ?: 'Not sets' ?></b>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
+                        <div style="padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card);">
+                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.05em;">Email Address</small>
+                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); word-break: break-all;"><?= $user['email'] ?: '—' ?></div>
                         </div>
-                        <div style="background: var(--bg-main); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border);">
-                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 8px;">Phone Number</small>
-                            <b style="font-size: 0.9rem;"><?= $user['contact_number'] ?: 'Not sets' ?></b>
+                        <div style="padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card);">
+                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.05em;">Mobile Contact</small>
+                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);"><?= $user['contact_number'] ?: '—' ?></div>
                         </div>
                     </div>
                 </div>
-                <?php endif; ?>
 
             </section>
 
         </div>
     </main>
 
-    <!-- Edit Modal (Simplified for the demo) -->
+    <!-- Custom Edit Modal (Synced with Database Section) -->
     <div id="editModal" class="modal-overlay" onclick="if(event.target == this) closeEditModal()">
         <div class="modal-body">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
                 <h3 style="margin: 0; font-weight: 800; letter-spacing: -0.04em;">Edit Student Profile</h3>
                 <button onclick="closeEditModal()" style="background: none; border: none; font-size: 1.5rem;"><i class="bi bi-x-lg"></i></button>
             </div>
+            
             <form method="POST">
                 <input type="hidden" name="action" value="update_profile">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+
+                <div class="swal-grid-2">
                     <div>
-                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">First Name</label>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">First Name *</label>
                         <input type="text" name="first_name" class="form-control" value="<?= htmlspecialchars($user['first_name'] ?? '') ?>" required>
                     </div>
                     <div>
-                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Last Name</label>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Last Name *</label>
                         <input type="text" name="last_name" class="form-control" value="<?= htmlspecialchars($user['last_name'] ?? '') ?>" required>
                     </div>
-                </div>
-                <div style="margin-bottom: 1.5rem;">
-                    <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Course / Program</label>
-                    <input type="text" name="course" class="form-control" value="<?= htmlspecialchars($user['course'] ?? '') ?>">
+                    <div style="grid-column: span 2;">
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Middle Initial</label>
+                        <input type="text" name="middle_initial" class="form-control" value="<?= htmlspecialchars($user['middle_initial'] ?? '') ?>" maxlength="2">
+                    </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Email Address</label>
+                        <input type="email" name="email" class="form-control" value="<?= htmlspecialchars($user['email'] ?? '') ?>">
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Mobile Contact</label>
+                        <input type="text" name="contact_number" class="form-control" value="<?= htmlspecialchars($user['contact_number'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Course / Strand</label>
+                        <input type="text" name="course" class="form-control" value="<?= htmlspecialchars($user['course'] ?? '') ?>">
+                    </div>
+                    <div>
+                        <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Section / Set</label>
+                        <input type="text" name="section" class="form-control" value="<?= htmlspecialchars($user['section'] ?? '') ?>">
+                    </div>
+                </div>
+
+                <div class="swal-grid-2">
                     <div>
                         <label class="section-title" style="margin: 0 0 10px; border: none; padding: 0;">Student Type</label>
                         <select name="student_type" class="form-control">
@@ -317,9 +322,49 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
                         </select>
                     </div>
                 </div>
-                <div style="text-align: right; margin-top: 3rem;">
-                    <button type="button" onclick="closeEditModal()" class="btn btn-ghost" style="margin-right: 1rem; border: none;">Discard</button>
-                    <button type="submit" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-weight: 800;">Update Profile</button>
+
+                <div id="extendedFieldsProfile" style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem;">
+                     <h6 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1.5rem;">Additional Details</h6>
+                     <div class="swal-grid-2">
+                        <?php $p_bday = !empty($user['birthday']) ? date('Y-m-d', strtotime($user['birthday'])) : ''; ?>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Birthday</label>
+                            <input type="date" name="birthday" class="form-control" value="<?= htmlspecialchars($p_bday) ?>">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Sex</label>
+                            <select name="sex" class="form-control">
+                                <option value="" disabled <?= empty($user['sex']) ? 'selected' : '' ?>>Select...</option>
+                                <option value="Male" <?= (trim($user['sex'] ?? '') === 'Male') ? 'selected' : '' ?>>Male</option>
+                                <option value="Female" <?= (trim($user['sex'] ?? '') === 'Female') ? 'selected' : '' ?>>Female</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="swal-grid-2" style="margin-top: 1rem;">
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Civil Status</label>
+                            <input type="text" name="civil_status" class="form-control" value="<?= htmlspecialchars($user['civil_status'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Religion</label>
+                            <input type="text" name="religion" class="form-control" value="<?= htmlspecialchars($user['religion'] ?? '') ?>">
+                        </div>
+                    </div>
+                    <div class="swal-grid-2" style="margin-top: 1rem;">
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Citizenship</label>
+                            <input type="text" name="citizenship" class="form-control" value="<?= htmlspecialchars($user['citizenship'] ?? '') ?>">
+                        </div>
+                        <div>
+                            <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Place of Birth</label>
+                            <input type="text" name="place_of_birth" class="form-control" value="<?= htmlspecialchars($user['place_of_birth'] ?? '') ?>">
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; gap: 1rem;">
+                    <button type="button" onclick="closeEditModal()" class="btn btn-ghost" style="border: 1px solid var(--border); padding: 0.8rem 2rem; border-radius: 12px; font-weight: 600;">Discard</button>
+                    <button type="submit" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-weight: 800; border-radius: 12px;">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -330,8 +375,60 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
             toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000, timerProgressBar: true
         });
 
+        // Check for success message
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('msg') === 'saved') {
+            Swal.fire({
+                title: 'Profile Updated!',
+                text: 'Student information has been successfully saved.',
+                icon: 'success',
+                confirmButtonColor: 'var(--primary)',
+                confirmButtonText: 'Perfect'
+            }).then(() => {
+                // Clean URL
+                window.history.replaceState({}, document.title, window.location.pathname + "?qr=<?= urlencode($qr) ?>");
+            });
+        }
+
         function openEditModal() { document.getElementById('editModal').style.display = 'flex'; }
         function closeEditModal() { document.getElementById('editModal').style.display = 'none'; }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const duration = 2000;
+            const counters = document.querySelectorAll('.profile-counter');
+            const charts = document.querySelectorAll('.attendance-chart');
+
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    counter.innerText = Math.floor(progress * target);
+                    if (progress < 1) window.requestAnimationFrame(step);
+                };
+                window.requestAnimationFrame(step);
+            });
+
+            charts.forEach(chart => {
+                const targetPercent = +chart.getAttribute('data-percent');
+                let startTimestamp = null;
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    const currentPercent = progress * targetPercent;
+                    chart.style.background = `conic-gradient(var(--primary) ${currentPercent}%, var(--bg-main) 0deg)`;
+                    chart.setAttribute('data-display', Math.floor(currentPercent) + '%');
+                    if (progress < 1) window.requestAnimationFrame(step);
+                    else chart.setAttribute('data-display', targetPercent + '%');
+                };
+                window.requestAnimationFrame(step);
+            });
+
+            if (typeof initAnimatedList === 'function') {
+                initAnimatedList('.history-rows');
+            }
+        });
 
         function downloadQR() {
             const qrStr = '<?= $user['qr_code'] ?>';
@@ -347,6 +444,12 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
             Toast.fire({ icon: 'success', title: 'Profile Updated Successfully' });
             window.history.replaceState({}, '', 'profile.php?qr=<?= $qr ?>');
         <?php endif; ?>
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof initAnimatedList === 'function') {
+                initAnimatedList('.history-rows');
+            }
+        });
     </script>
 </body>
 </html>

@@ -51,11 +51,11 @@ try {
         $religion = $_POST['religion'] ?? '';
         $citizenship = $_POST['citizenship'] ?? '';
         $contact_number = $_POST['contact_number'] ?? '';
+        $email = $_POST['email'] ?? '';
         $birthday = $_POST['birthday'] ?? '';
 
-
-        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, birthday) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $birthday]);
+        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, email, birthday) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday]);
         
         echo json_encode(["status" => "success", "message" => "Student added successfully"]);
 
@@ -82,11 +82,12 @@ try {
         $religion = $_POST['religion'] ?? '';
         $citizenship = $_POST['citizenship'] ?? '';
         $contact_number = $_POST['contact_number'] ?? '';
+        $email = $_POST['email'] ?? '';
         $birthday = $_POST['birthday'] ?? '';
         $year_level = $_POST['year_level'] ?? '1st';
 
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, birthday = ?, year_level = ? WHERE qr_code = ?");
-        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $birthday, $year_level, $qr_code]);
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, email = ?, birthday = ?, year_level = ? WHERE qr_code = ?");
+        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $year_level, $qr_code]);
         
         echo json_encode(["status" => "success", "message" => "User updated successfully"]);
 

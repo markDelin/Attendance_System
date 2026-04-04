@@ -29,6 +29,8 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         .page-header-card {
             background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; 
@@ -111,7 +113,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
         <?php else: ?>
             <?php foreach ($dates as $index => $row): ?>
-                <div class="date-section animate-fade-up delay-<?= min($index + 1, 3) ?>">
+                <div class="date-section">
                     <div class="date-header">
                         <div style="display: flex; align-items: center; gap: 12px;">
                             <h3 class="date-title"><?= date('F j, Y', strtotime($row['date'])) ?></h3>
@@ -141,21 +143,25 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
 
-                    <div class="attendance-list">
-                        <?php
-                        $sql = "SELECT sa.id, sa.status, sa.time, sa.qr_code, u.name 
-                                FROM subject_attendance sa 
-                                JOIN users u ON sa.qr_code = u.qr_code 
-                                WHERE sa.subject_id = ? AND sa.date = ? 
-                                ORDER BY sa.id DESC";
-                        $stmtRec = $pdo->prepare($sql);
-                        $stmtRec->execute([$subjectId, $row['date']]);
-                        $records = $stmtRec->fetchAll(PDO::FETCH_ASSOC);
+                    <div class="scroll-list-container">
+                        <div class="top-gradient"></div>
+                        <div class="bottom-gradient"></div>
+                        <div class="scroll-list no-scrollbar" style="max-height: 400px; padding: 0.5rem 0;">
+                            <div class="attendance-list">
+<?php
+                                $sql = "SELECT sa.id, sa.status, sa.time, sa.qr_code, u.name 
+                                        FROM subject_attendance sa 
+                                        JOIN users u ON sa.qr_code = u.qr_code 
+                                        WHERE sa.subject_id = ? AND sa.date = ? 
+                                        ORDER BY sa.id DESC";
+                                $stmtRec = $pdo->prepare($sql);
+                                $stmtRec->execute([$subjectId, $row['date']]);
+                                $records = $stmtRec->fetchAll(PDO::FETCH_ASSOC);
 
-                        foreach ($records as $r): 
-                            $timeStr = $r['time'] ? date('h:i A', strtotime($r['time'])) : '--:--';
-                        ?>
-                        <div class="attendance-row <?= strtolower($r['status']) ?>" id="rec-<?= $r['id'] ?>">
+                                foreach ($records as $r): 
+                                    $timeStr = $r['time'] ? date('h:i A', strtotime($r['time'])) : '--:--';
+                                ?>
+                                <div class="attendance-row <?= strtolower($r['status']) ?> animated-item" id="rec-<?= $r['id'] ?>">
                             <div>
                                 <a href="profile.php?qr=<?= urlencode($r['qr_code']) ?>" class="student-link"><?= htmlspecialchars($r['name']) ?></a>
                                 <div class="row-meta">
@@ -173,10 +179,12 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 </button>
                             </div>
                         </div>
-                        <?php endforeach; ?>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            <?php endforeach; ?>
+<?php endforeach; ?>
         <?php endif; ?>
     </main>
 
@@ -345,9 +353,14 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     Swal.fire('Notification Sent', result.value.message, 'success').then(() => {
                         location.reload();
                     });
-                }
+                 }
             })
         }
+
+        // Initialize Animated List
+        document.addEventListener('DOMContentLoaded', () => {
+            initAnimatedList('.scroll-list-container');
+        });
     </script>
 </body>
 </html>

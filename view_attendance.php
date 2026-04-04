@@ -58,6 +58,8 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         .table-wrapper {
             background: var(--bg-card);
@@ -139,17 +141,15 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         </div>
 
         <?php if (empty($dates)): ?>
-            <div class="animate-fade-up" style="padding: 4rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-lg);">
+            <div style="padding: 4rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-lg);">
                 <i class="bi bi-calendar-x" style="font-size: 2rem; color: var(--text-muted); display: block; margin-bottom: 1rem;"></i>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">No attendance records found.</p>
                 <a href="scan.php" class="btn btn-primary" style="font-size: 0.9rem;">Start Scanning</a>
             </div>
         <?php else: ?>
 
-            <?php foreach ($dates as $idx => $row): 
-                $stagger = "stagger-" . min($idx + 1, 8);
-            ?>
-                <div class="animate-fade-up <?= $stagger ?>" style="margin-bottom: 2rem;">
+            <?php foreach ($dates as $idx => $row): ?>
+                <div style="margin-bottom: 2rem;">
                     
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
                         <div>
@@ -183,55 +183,60 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                     </div>
 
-                    <div class="table-wrapper">
-                        <table class="mobile-card-table">
-                            <thead>
-                                <tr>
-                                    <th style="width: 40%;">Name</th>
-                                    <th style="width: 25%;">Time</th>
-                                    <th style="width: 25%;">Status</th>
-                                    <th style="width: 10%; text-align: right;"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php
-                                 $records = $pdo->prepare("SELECT a.id, a.time, a.status, u.name 
-                                                      FROM attendance a 
-                                                      JOIN users u ON a.qr_code = u.qr_code 
-                                                      WHERE a.date = ? AND (a.school_year = ? OR a.school_year IS NULL)
-                                                      ORDER BY a.time DESC");
-                                 $records->execute([$row['date'], $active_sy]);
-                                 $records = $records->fetchAll(PDO::FETCH_ASSOC);
+                    <div class="scroll-list-container">
+                        <div class="top-gradient"></div>
+                        <div class="bottom-gradient"></div>
+                        <div class="scroll-list no-scrollbar" style="max-height: 400px; padding: 0.5rem 0;">
+                            <div class="table-wrapper">
+                                <table class="mobile-card-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 40%;">Name</th>
+                                            <th style="width: 25%;">Time</th>
+                                            <th style="width: 25%;">Status</th>
+                                            <th style="width: 10%; text-align: right;"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php
+                                         $records = $pdo->prepare("SELECT a.id, a.time, a.status, u.name 
+                                                              FROM attendance a 
+                                                              JOIN users u ON a.qr_code = u.qr_code 
+                                                              WHERE a.date = ? AND (a.school_year = ? OR a.school_year IS NULL)
+                                                              ORDER BY a.time DESC");
+                                         $records->execute([$row['date'], $active_sy]);
+                                         $records = $records->fetchAll(PDO::FETCH_ASSOC);
 
-                                foreach ($records as $r): 
-                                ?>
-                                <tr class="hover-lift">
-                                    <td data-label="Name" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($r['name']) ?></td>
-                                    <td data-label="Time" style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
-                                        <?= $r['status'] == 'absent' ? '--' : date('h:i A', strtotime($r['time'])) ?>
-                                    </td>
-                                    <td data-label="Status">
-                                        <button onclick="toggleStatus(<?= $r['id'] ?>, 'global', this)" class="badge <?= $r['status'] ?>" style="border:1px solid var(--border); font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; min-width: 80px; font-weight: 800; text-transform: uppercase;">
-                                            <?= $r['status'] ?>
-                                        </button>
-                                    </td>
-                                    <td data-label="Action" style="text-align: right;">
-                                        <button onclick="confirmDelete('id', <?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0.5rem; transition: color 0.2s;">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                                        foreach ($records as $r): 
+                                        ?>
+                                        <tr class="hover-lift animated-item">
+                                            <td data-label="Name" style="font-weight: 700; color: var(--text-main);"><?= htmlspecialchars($r['name']) ?></td>
+                                            <td data-label="Time" style="color: var(--text-muted); font-family: 'JetBrains Mono', monospace; font-size: 0.85rem;">
+                                                <?= $r['status'] == 'absent' ? '--' : date('h:i A', strtotime($r['time'] ?? '')) ?>
+                                            </td>
+                                            <td data-label="Status">
+                                                <button onclick="toggleStatus(<?= $r['id'] ?>, 'global', this)" class="badge <?= $r['status'] ?>" style="border:1px solid var(--border); font-size: 0.75rem; padding: 0.4rem 0.8rem; border-radius: 8px; cursor: pointer; min-width: 80px; font-weight: 800; text-transform: uppercase;">
+                                                    <?= $r['status'] ?>
+                                                </button>
+                                            </td>
+                                            <td data-label="Action" style="text-align: right;">
+                                                <button onclick="confirmDelete('id', <?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0.5rem; transition: color 0.2s;">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        <?php endforeach; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-
                 </div>
             <?php endforeach; ?>
 
             <!-- Pagination Navigation -->
             <?php if ($totalPages > 1): ?>
-                <div class="pagination animate-fade-up">
+                <div class="pagination">
                     <button onclick="window.location.href='?page=<?= $page - 1 ?>'" 
                             class="pagination-btn" <?= $page <= 1 ? 'disabled' : '' ?>>
                         <i class="bi bi-chevron-left"></i> Prev
@@ -452,6 +457,11 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     Swal.fire('Error', err.message, 'error');
                 });
         }
+
+        // Initialize Animated List
+        document.addEventListener('DOMContentLoaded', () => {
+            initAnimatedList('.scroll-list-container');
+        });
     </script>
 </body>
 </html>

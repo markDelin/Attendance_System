@@ -252,15 +252,17 @@ require_once 'includes/db.php';
                             Academic Year: <b style="color: var(--text-main);"><?= htmlspecialchars($activeSY) ?></b>
                         </span>
                         <span style="font-size: 0.85rem; font-weight: 800; color: var(--primary); letter-spacing: -0.02em;">
-                            <?= $daysRemaining ?>
+                            <span class="stat-counter" data-target="<?= (int)$rem ?>"><?= (int)$rem ?></span> Days Remaining
                         </span>
                     </div>
                     <div class="progress-bar-container" style="height: 8px; background: var(--bg-main); border-radius: 50px; overflow: hidden;">
-                        <div class="progress-bar-fill" style="width: <?= $progressPercent ?>%; height: 100%; background: var(--primary); border-radius: 50px;"></div>
+                        <div class="progress-bar-fill" data-progress="<?= $progressPercent ?>%" style="width: 0%; height: 100%; background: var(--primary); border-radius: 50px; transition: width 2s cubic-bezier(0.4, 0, 0.2, 1);"></div>
                     </div>
                 </div>
                 <div style="text-align: right; min-width: 60px;">
-                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.05em;"><?= $progressPercent ?>%</span>
+                    <span style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.05em;">
+                        <span class="stat-counter" data-target="<?= $progressPercent ?>"><?= $progressPercent ?></span>%
+                    </span>
                     <small style="display: block; font-size: 0.6rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Progress</small>
                 </div>
             </div>
@@ -398,8 +400,39 @@ require_once 'includes/db.php';
         setInterval(updateCountdowns, 1000);
         updateCountdowns();
 
+        function animateCounters() {
+            const counters = document.querySelectorAll('.stat-counter');
+            counters.forEach(counter => {
+                const target = +counter.getAttribute('data-target');
+                const duration = 2000; // 2 seconds
+                let startTimestamp = null;
+
+                const step = (timestamp) => {
+                    if (!startTimestamp) startTimestamp = timestamp;
+                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                    const current = Math.floor(progress * target);
+                    counter.innerText = current;
+                    if (progress < 1) {
+                        window.requestAnimationFrame(step);
+                    } else {
+                        counter.innerText = target;
+                    }
+                };
+                window.requestAnimationFrame(step);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
              console.log('Dashboard loaded');
+             animateCounters();
+             
+             // Animate Progress Bar
+             setTimeout(() => {
+                 const progressBar = document.querySelector('.progress-bar-fill');
+                 if (progressBar) {
+                     progressBar.style.width = progressBar.getAttribute('data-progress');
+                 }
+             }, 100);
         });
     </script>
 </body>

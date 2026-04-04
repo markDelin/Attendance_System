@@ -353,11 +353,12 @@ def birthday_check_worker(bot):
             
             # Use STRFTIME to find matching month/day
             today_md = datetime.now().strftime("%m-%d")
+            today_full = datetime.now().strftime("%B %d, %Y")
             current_year = datetime.now().strftime("%Y")
             
             # Find students with birthday today who haven't been greeted yet this year
             cursor.execute("""
-                SELECT u.qr_code, u.name 
+                SELECT u.first_name, u.last_name 
                 FROM users u 
                 LEFT JOIN birthday_greetings bg ON u.qr_code = bg.qr_code AND bg.year = ?
                 WHERE strftime('%m-%d', u.birthday) = ? 
@@ -367,15 +368,41 @@ def birthday_check_worker(bot):
             
             birthdays = cursor.fetchall()
             
-            for qr_code, name in birthdays:
-                msg = f"<b>SYSTEM NOTICE</b>\nBirthday — {name}"
-                
+            for f_name, l_name in birthdays:
                 try:
+                    # Animated Progress Sweep
+                    sweep_msg = bot.send_message(chat_id, "🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                    
+                    for i in range(1, 6):
+                        time.sleep(0.4)
+                        filled = i * 2
+                        bar = "█" * filled + "░" * (10 - filled)
+                        bot.edit_message_text(
+                            f"🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
+                            chat_id,
+                            sweep_msg.message_id,
+                            parse_mode='HTML'
+                        )
+                    
+                    time.sleep(0.3)
+                    bot.delete_message(chat_id, sweep_msg.message_id)
+
+                    # Ultra-Minimalist 'Pure Data' UI (No Labels, Full Date)
+                    msg = (
+                        "<b>[ SYSTΞM :: BIRTHDΛY NOTICΞ ]</b>\n"
+                        "<b>───────────────────</b>\n\n"
+                        f"<b>{f_name} {l_name}</b>\n"
+                        f"<code>{today_full}</code>\n\n"
+                        "<i>Wishing you a great day!</i>\n\n"
+                        "<b>───────────────────</b>\n"
+                        "<i>Automated Message by System Admin</i>"
+                    )
                     bot.send_message(chat_id, msg, parse_mode='HTML')
+                    
                     # Mark as sent
                     cursor.execute("INSERT INTO birthday_greetings (qr_code, year) VALUES (?, ?)", (qr_code, current_year))
                     conn.commit()
-                    print(f"Sent birthday greeting to {name}")
+                    print(f"Sent birthday greeting to {f_name} {l_name}")
                 except Exception as e:
                     print(f"Failed to send birthday message: {e}")
             
@@ -419,6 +446,7 @@ while True:
             "Welcome. Available commands:\n"
             "• <code>/search [Name/ID]</code>\n"
             "• <code>/pdf [ID]</code> (Export PDF)\n"
+            "• <code>/birthdays</code> (Upcoming)\n"
         )
         
         if is_admin:
@@ -489,6 +517,66 @@ while True:
                 bot.reply_to(message, "❌ Failed to generate PDF. Ensure ID is correct.")
         except Exception as e:
             bot.reply_to(message, f"❌ Error: {e}")
+            
+    # --- NEW: Upcoming Birthdays Command ---
+    @bot.message_handler(commands=['birthdays'])
+    def show_upcoming_birthdays(message):
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT first_name, last_name, birthday FROM users WHERE birthday IS NOT NULL AND deleted_at IS NULL")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            if not rows:
+                bot.reply_to(message, "<i>No student records found.</i>", parse_mode='HTML')
+                return
+                
+            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            upcoming = []
+            
+            for f_name, l_name, b_day_str in rows:
+                try:
+                    # Parse birthday (assumes YYYY-MM-DD)
+                    bday_dt = datetime.strptime(b_day_str, '%Y-%m-%d')
+                    # Find next occurrence
+                    this_year_bday = bday_dt.replace(year=today.year)
+                    if this_year_bday < today:
+                        next_bday = this_year_bday.replace(year=today.year + 1)
+                    else:
+                        next_bday = this_year_bday
+                        
+                    days_left = (next_bday - today).days
+                    upcoming.append({
+                        'name': f"{f_name} {l_name}",
+                        'date': next_bday.strftime("%B %d"),
+                        'days': days_left
+                    })
+                except: continue # Skip invalid dates
+                
+            # Sort by nearest
+            upcoming.sort(key=lambda x: x['days'])
+            top_5 = upcoming[:5]
+            
+            if not top_5:
+                bot.reply_to(message, "<i>No upcoming birthdays detected.</i>", parse_mode='HTML')
+                return
+                
+            msg_body = "<b>[ UPCOMING BIRTHDΛYS ]</b>\n"
+            msg_body += "<b>───────────────────</b>\n\n"
+            
+            for i, stu in enumerate(top_5, 1):
+                msg_body += f"<b>{i}. {stu['name']}</b>\n"
+                msg_body += f"<code>{stu['date']} · {stu['days']} Days Left</code>\n\n"
+                
+            msg_body += "<b>───────────────────</b>\n"
+            msg_body += "<i>Automated Message by System Admin</i>"
+            
+            bot.send_message(message.chat.id, msg_body, parse_mode='HTML')
+            
+        except Exception as e:
+            print(f"Birthdays Error: {e}")
+            bot.reply_to(message, "<i>System error retrieving records.</i>", parse_mode='HTML')
 
 
     @bot.message_handler(commands=['search'])

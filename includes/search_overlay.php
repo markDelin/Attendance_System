@@ -4,8 +4,8 @@
         <div class="search-box-container">
             <i class="bi bi-search"></i>
             <input type="text" id="globalSearchInput" class="search-box-input" placeholder="Search students by name or QR..." autocomplete="off">
-            <div class="search-hint">Press <kbd>Esc</kbd> to close</div>
         </div>
+        <div class="search-hint">Press <kbd>Esc</kbd> to close</div>
         <div id="globalSearchResults" class="search-results-list"></div>
     </div>
 </div>

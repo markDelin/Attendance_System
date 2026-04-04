@@ -85,6 +85,8 @@ usort($other, $sortByTime);
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- Ensure Swal is here -->
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         /* Refined Controls */
         .controls {
@@ -501,9 +503,12 @@ usort($other, $sortByTime);
         </div>
 
         <div id="schedule-capture" class="theme-classic"> 
-            <div class="template-preview schedule-container">
-                
-                <div class="header-title">
+            <div class="scroll-list-container">
+                <div class="top-gradient"></div>
+                <div class="bottom-gradient"></div>
+                <div class="scroll-list no-scrollbar" style="max-height: 85vh; padding: 2rem;">
+                    <div class="template-preview schedule-container">
+                        <div class="header-title">
                      <?php if(true): ?>
                     <i class="bi bi-cpu-fill" style=" font-size: 2rem;"></i>
                     <span>Subject Schedule</span>
@@ -525,7 +530,7 @@ usort($other, $sortByTime);
                     <tbody>
                         <!-- MonTue -->
                         <?php $first=true; $rows=count($monTue); foreach($monTue as $i => $row): ?>
-                        <tr class="row-container" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
+                        <tr class="row-container animated-item" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
                             <?php if($first): ?>
                                 <td rowspan="<?= $rows ?>" style="vertical-align: middle;">
                                     <div class="vertical-text">Monday & Tuesday</div>
@@ -546,7 +551,7 @@ usort($other, $sortByTime);
 
                         <!-- Saturday -->
                         <?php $first=true; $rows=count($sat); foreach($sat as $i => $row): ?>
-                        <tr class="row-container" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
+                        <tr class="row-container animated-item" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
                             <?php if($first): ?>
                                 <td rowspan="<?= $rows ?>" style="vertical-align: middle;">
                                     <div class="vertical-text">Saturday</div>
@@ -567,7 +572,7 @@ usort($other, $sortByTime);
                         
                         <!-- Others -->
                         <?php $first=true; $rows=count($other); foreach($other as $i => $row): ?>
-                        <tr class="row-container" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
+                        <tr class="row-container animated-item" ondblclick="editRow(<?= htmlspecialchars(json_encode($row)) ?>)">
                             <?php if($first): ?>
                                 <td rowspan="<?= $rows ?>" style="vertical-align: middle;">
                                     <div class="vertical-text"><?= $row['dayStr'] ?></div>
@@ -606,9 +611,9 @@ usort($other, $sortByTime);
                    <div style="margin-top: 15px;">
                        <?= $sectionCourse ?><br>
                        <span style="font-size: 2rem;"><?= $sectionName ?></span>
-                   </div>
+                        </div>
+                    </div>
                 </div>
-
             </div>
         </div>
 
@@ -792,48 +797,48 @@ usort($other, $sortByTime);
         }
 
         function downloadImage() {
-            const element = document.getElementById('schedule-capture');
-            html2canvas(element, { 
+             const element = document.getElementById('schedule-capture');
+             // Temporarily disable scroll list for capture
+             const scrollList = element.querySelector('.scroll-list');
+             const originalMaxHeight = scrollList.style.maxHeight;
+             scrollList.style.maxHeight = 'none';
+
+             html2canvas(element, { 
                 scale: 2, 
                 backgroundColor: null,
                 onclone: (clonedDoc) => {
                     // Fix vertical text alignment for export
-                    // We use position: absolute so the long text doesn't force the column width open
                     const verticalTexts = clonedDoc.querySelectorAll('.vertical-text');
                     
-                    // Remove header width override so it inherits from table (60px)
-                    // const thDays = clonedDoc.querySelector('th:first-child');
-                    // if(thDays) thDays.style.width = '40px';
-
                     verticalTexts.forEach(el => {
-                        // Reset styles that might interfere
                         el.style.writingMode = 'horizontal-tb';
                         el.style.webkitWritingMode = 'horizontal-tb';
                         el.style.whiteSpace = 'nowrap';
                         
-                        // Use absolute positioning to detach from layout flow (width)
                         el.style.position = 'absolute';
                         el.style.top = '50%';
                         el.style.left = '50%';
-                        // Rotate and center
                         el.style.transform = 'translate(-50%, -50%) rotate(-90deg)';
                         
-                        // Ensure parent TD handles specific sizing
                         if(el.parentElement && el.parentElement.tagName === 'TD') {
-                            el.parentElement.style.position = 'relative'; // Anchor for absolute
-                            // el.parentElement.style.width = '40px';        // REMOVED strictly forcing width
-                            // el.parentElement.style.padding = '0';         // REMOVED removal of padding
-                            el.parentElement.style.height = 'auto';       // Let other cols define height
+                            el.parentElement.style.position = 'relative';
+                            el.parentElement.style.height = 'auto';
                         }
                     });
                 }
             }).then(canvas => {
-                const link = document.createElement('a');
+                 scrollList.style.maxHeight = originalMaxHeight;
+                 const link = document.createElement('a');
                 link.download = 'schedule.png';
                 link.href = canvas.toDataURL();
                 link.click();
-            });
+             });
         }
+
+        // Initialize Animated List
+        document.addEventListener('DOMContentLoaded', () => {
+            initAnimatedList('.scroll-list-container');
+        });
     </script>
 </body>
 </html>

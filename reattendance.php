@@ -37,6 +37,8 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
+    <link rel="stylesheet" href="assets/css/AnimatedList.css">
+    <script src="assets/js/AnimatedList.js"></script>
     <style>
         .page-header {
             background: var(--bg-card);
@@ -252,9 +254,12 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     </div>
 
     <main class="container" style="max-width: 800px;">
-        <div id="studentList" class="student-list animate-fade-up">
-            <?php foreach ($users as $user): ?>
-                <div class="student-row" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
+        <div class="scroll-list-container">
+            <div class="top-gradient"></div>
+            <div class="bottom-gradient"></div>
+            <div id="studentList" class="scroll-list student-list no-scrollbar" style="max-height: 60vh;">
+                <?php foreach ($users as $user): ?>
+                    <div class="student-row animated-item" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
                     
                     <div style="display: flex; flex-direction: column; gap: 4px;">
                         <h5 class="student-name"><?= htmlspecialchars($user['name']) ?></h5>
@@ -273,7 +278,8 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     </div>
 
                 </div>
-            <?php endforeach; ?>
+                <?php endforeach; ?>
+            </div>
         </div>
     </main>
 
@@ -529,6 +535,9 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
              loadSubjects();
              // Initial Fetch
              setTimeout(fetchStatusUpdates, 500);
+
+             // Initialize Animated List
+             initAnimatedList('.scroll-list-container');
         });
 
     </script>

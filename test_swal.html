@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swal Test</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        :root {
+            --bg-main: #f8f9fa;
+            --bg-card: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #666666;
+            --border: #e0e0e0;
+            --primary: #000000;
+            --success: #059669;
+            --danger: #dc2626;
+            --warning: #d97706;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --transition-fast: 0.2s;
+        }
+        body { background: var(--bg-main); font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; }
+    </style>
+</head>
+<body>
+    <button onclick="showSuccess()">Show Success</button>
+    <button onclick="showEdit()">Show Edit (No Icon)</button>
+
+    <script>
+        function showSuccess() {
+            Swal.fire({
+                title: 'Success!',
+                text: 'The checkmark should be visible and animated.',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            });
+        }
+
+        function showEdit() {
+            Swal.fire({
+                title: 'Edit Modal',
+                html: '<input type="text" value="Should have no icon">',
+                confirmButtonText: 'Save'
+            });
+        }
+    </script>
+</body>
+</html>
