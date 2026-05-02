@@ -33,41 +33,102 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <script src="assets/js/AnimatedList.js"></script>
     <style>
         .page-header-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; 
-            padding: 2rem; margin-bottom: 2.5rem; position: relative; overflow: hidden;
+            background: var(--bg-card); 
+            border: none; 
+            border-radius: var(--radius-lg); 
+            padding: 2.5rem; 
+            margin-bottom: 3rem; 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: var(--shadow-neu-out);
         }
         .page-header-card::after {
-            content: ''; position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: var(--primary);
+            content: ''; position: absolute; left: 0; top: 0; width: 6px; height: 100%; background: var(--primary); opacity: 0.1;
         }
 
-        .date-section { margin-bottom: 3rem; }
+        .date-section { margin-bottom: 4rem; }
         .date-header {
             display: flex; justify-content: space-between; align-items: center;
-            padding-bottom: 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem;
+            padding-bottom: 1.25rem; margin-bottom: 1.5rem;
+            border-bottom: 2px solid var(--bg-main);
         }
-        .date-title { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; color: var(--text-main); }
+        .date-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.03em; margin: 0; color: var(--text-main); }
         
-        /* High-Density Row */
+        /* Neumorphic Row Card */
         .attendance-row {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 1rem 1.5rem; border: 1px solid var(--border); border-radius: 12px;
-            margin-bottom: 0.75rem; background: var(--bg-card); transition: all 0.2s;
-            border-left: 4px solid transparent;
+            padding: 1.25rem 1.5rem; 
+            border: none; 
+            border-radius: var(--radius-md);
+            margin-bottom: 1rem; 
+            background: var(--bg-card); 
+            transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            box-shadow: var(--shadow-neu-out-sm);
         }
-        .attendance-row:hover { border-color: var(--primary); transform: translateX(4px); background: var(--bg-hover); }
+        .attendance-row:hover { 
+            box-shadow: var(--shadow-neu-in-sm);
+            transform: scale(0.99); 
+        }
         
-        .student-link { text-decoration: none; color: var(--text-main); font-weight: 700; font-size: 1rem; }
+        .student-link { text-decoration: none; color: var(--text-main); font-weight: 700; font-size: 1.05rem; transition: color 0.2s; }
         .student-link:hover { color: var(--primary); }
         
         .row-meta { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-        .row-time { font-family: monospace; font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+        .row-time { font-family: monospace; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; }
         
         .status-badge-btn {
-            border: 1px solid var(--border); background: var(--bg-main); padding: 6px 16px; 
-            border-radius: 50px; font-size: 0.75rem; font-weight: 800; cursor: pointer;
-            text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s;
-            min-width: 100px; text-align: center;
+            border: none; 
+            background: var(--bg-card); 
+            padding: 0.6rem 1.25rem; 
+            border-radius: 50px; 
+            font-size: 0.75rem; 
+            font-weight: 800; 
+            cursor: pointer;
+            text-transform: uppercase; 
+            letter-spacing: 0.05em; 
+            transition: all 0.2s;
+            min-width: 110px; 
+            text-align: center;
+            box-shadow: var(--shadow-neu-out-sm);
         }
+        .status-badge-btn:hover {
+            box-shadow: var(--shadow-neu-in-sm);
+            transform: scale(0.95);
+        }
+
+        /* Status Coloring with subtle glow */
+        .attendance-row.present { border-left: 4px solid #10b981; }
+        .attendance-row.present .status-badge-btn { color: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.1), var(--shadow-neu-out-sm); }
+        
+        .attendance-row.late { border-left: 4px solid #f59e0b; }
+        .attendance-row.late .status-badge-btn { color: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.1), var(--shadow-neu-out-sm); }
+        
+        .attendance-row.absent { border-left: 4px solid #ef4444; }
+        .attendance-row.absent .status-badge-btn { color: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.1), var(--shadow-neu-out-sm); }
+
+        .attendance-row.no-class { border-left: 4px solid #64748b; }
+        .attendance-row.no-class .status-badge-btn { color: #64748b; box-shadow: var(--shadow-neu-out-sm); }
+
+        .btn-toolbar { display: flex; gap: 10px; }
+        .btn-tool {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-neu-out-sm);
+            border: none;
+            color: var(--text-muted);
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .btn-tool:hover {
+            box-shadow: var(--shadow-neu-in-sm);
+            color: var(--primary);
+        }
+        .btn-tool.danger:hover { color: var(--danger); }
 
         /* Status States */
         .attendance-row.present { border-left-color: #10b981; }
@@ -79,6 +140,9 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .attendance-row.absent { border-left-color: #ef4444; }
         .attendance-row.absent .status-badge-btn { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
 
+        .attendance-row.no-class { border-left-color: #64748b; }
+        .attendance-row.no-class .status-badge-btn { background: rgba(100, 116, 139, 0.1); color: #64748b; border-color: rgba(100, 116, 139, 0.2); }
+
         .btn-toolbar { display: flex; gap: 8px; }
     </style>
 </head>
@@ -89,13 +153,16 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <button onclick="exportSubjectRange()" class="btn btn-ghost btn-sm" style="border-radius: 50px;">
             <i class="bi bi-file-earmark-spreadsheet"></i> <span class="hide-mobile">Matrix Export</span>
         </button>
+        <button onclick="window.open(\'api/export_all_subjects.php?format=xls\', \'_blank\')" class="btn btn-ghost btn-sm" style="border-radius: 50px;">
+            <i class="bi bi-collection"></i> <span class="hide-mobile">Bulk Export</span>
+        </button>
     ';
     include 'includes/navbar.php'; 
     ?>
 
     <main class="container animate-fade-up" style="max-width: 850px; padding-top: 2rem;">
         
-        <div class="page-header-card">
+        <div class="page-header-card animate-fade-up hover-lift">
             <h1 style="margin: 0; font-size: 2rem;"><?= htmlspecialchars($subject['name'] ?? 'Untitled Subject') ?></h1>
             <div class="mobile-force-stack" style="display: flex; gap: 15px; margin-top: 0.75rem; color: var(--text-muted); font-weight: 600; font-size: 0.9rem;">
                 <span><i class="bi bi-mortarboard" style="margin-right: 4px;"></i> <?= htmlspecialchars($subject['school_year'] ?? '') ?></span>
@@ -131,13 +198,13 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                              $nCheckSub->execute([$subjectId, $row['date']]);
                              $isNotified = (bool)$nCheckSub->fetch();
                              ?>
-                             <button onclick="markAndNotifyAbsentees('<?= $row['date'] ?>')" class="btn <?= $isNotified ? 'btn-ghost' : 'btn-primary' ?> btn-sm" style="border-radius: 50px; font-size: 0.75rem; <?= $isNotified ? 'opacity: 0.6;' : '' ?>" <?= $isNotified ? 'disabled' : '' ?>>
+                             <button onclick="markAndNotifyAbsentees('<?= $row['date'] ?>')" class="btn-tool hover-press" style="width: auto; padding: 0 1rem; border-radius: 50px; font-size: 0.7rem; gap: 6px; <?= $isNotified ? 'opacity: 0.6;' : '' ?>" <?= $isNotified ? 'disabled' : '' ?>>
                                 <i class="bi bi-<?= $isNotified ? 'check-all' : 'bell' ?>"></i> <?= $isNotified ? 'Notified' : 'Notify' ?>
                              </button>
-                             <button onclick="exportSubjectDay('<?= $row['date'] ?>')" class="btn btn-ghost btn-sm" style="border-radius: 50px; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;" title="Export Day">
+                             <button onclick="exportSubjectDay('<?= $row['date'] ?>')" class="btn-tool hover-press" title="Export Day">
                                 <i class="bi bi-download"></i>
                              </button>
-                             <button onclick="deleteDay('<?= $row['date'] ?>')" class="btn btn-ghost btn-sm" style="border-radius: 50px; width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center; color: var(--danger);" title="Clear Day">
+                             <button onclick="deleteDay('<?= $row['date'] ?>')" class="btn-tool danger hover-press" title="Clear Day">
                                 <i class="bi bi-trash"></i>
                              </button>
                         </div>
@@ -161,7 +228,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 foreach ($records as $r): 
                                     $timeStr = $r['time'] ? date('h:i A', strtotime($r['time'])) : '--:--';
                                 ?>
-                                <div class="attendance-row <?= strtolower($r['status']) ?> animated-item" id="rec-<?= $r['id'] ?>">
+                                <div class="attendance-row <?= strtolower($r['status']) ?> animated-item hover-lift" id="rec-<?= $r['id'] ?>">
                             <div>
                                 <a href="profile.php?qr=<?= urlencode($r['qr_code']) ?>" class="student-link"><?= htmlspecialchars($r['name']) ?></a>
                                 <div class="row-meta">
@@ -171,10 +238,10 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             </div>
                             
                             <div style="display: flex; align-items: center; gap: 12px;">
-                                <button onclick="toggleStatus(<?= $r['id'] ?>, 'subject', this)" class="status-badge-btn">
-                                    <?= ucfirst($r['status']) ?>
+                                <button onclick="toggleStatus(<?= $r['id'] ?>, 'subject', this)" class="status-badge-btn hover-press">
+                                    <?= str_replace('-', ' ', strtoupper($r['status'])) ?>
                                 </button>
-                                <button onclick="deleteRecord(<?= $r['id'] ?>)" style="background: none; border: none; cursor: pointer; color: var(--text-muted); opacity: 0.3; padding: 4px;">
+                                <button onclick="deleteRecord(<?= $r['id'] ?>)" class="hover-press" style="background: none; border: none; cursor: pointer; color: var(--text-muted); opacity: 0.3; padding: 4px;">
                                     <i class="bi bi-x-lg"></i>
                                 </button>
                             </div>
@@ -187,6 +254,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 <?php endforeach; ?>
         <?php endif; ?>
     </main>
+    <?php include 'includes/footer.php'; ?>
 
     <script>
         const Toast = Swal.mixin({
@@ -212,14 +280,18 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         </div>
                         
                         <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:8px;">Export Format</label>
-                        <div style="display:flex; gap:20px;">
+                        <div style="display:flex; gap:15px; flex-wrap:wrap;">
                             <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
                                 <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px; accent-color:var(--primary);"> 
                                 Excel (.xls)
                             </label>
                             <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px; accent-color:var(--primary);"> 
+                                Raw CSV
+                            </label>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
                                 <input type="radio" name="swal-format" value="html" style="margin-right:8px; accent-color:var(--primary);"> 
-                                Google Sheets
+                                Web View
                             </label>
                         </div>
                     </div>
@@ -311,9 +383,9 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 .then(r => r.json())
                 .then(d => {
                     if (d.status === 'success') {
-                        btnElement.innerText = d.new_status.charAt(0).toUpperCase() + d.new_status.slice(1);
+                        btnElement.innerText = d.new_status.replace('-', ' ').toUpperCase();
                         const row = document.getElementById('rec-' + id);
-                        row.classList.remove('present', 'late', 'absent');
+                        row.classList.remove('present', 'late', 'absent', 'no-class');
                         row.classList.add(d.new_status);
                         Toast.fire({ icon: 'success', title: 'Status: ' + d.new_status.toUpperCase() });
                     } else {

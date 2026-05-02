@@ -27,7 +27,10 @@ $defaultSettings = [
     'admin_telegram_id' => '',
     'active_school_year' => 'SY 2024-2025',
     'sy_start_date' => '',
-    'sy_end_date' => ''
+    'sy_end_date' => '',
+    'store_name' => 'OFFICIAL STORE',
+    'maintenance_mode' => 0,
+    'birthday_image' => ''
 ];
 
 try {
@@ -59,12 +62,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'admin_telegram_id' => $_POST['admin_telegram_id'] ?? '',
         'active_school_year' => $_POST['active_school_year'] ?? 'SY 2024-2025',
         'sy_start_date' => $_POST['sy_start_date'] ?? '',
-        'sy_end_date' => $_POST['sy_end_date'] ?? ''
+        'sy_end_date' => $_POST['sy_end_date'] ?? '',
+        'store_name' => $_POST['store_name'] ?? 'OFFICIAL STORE',
+        'maintenance_mode' => isset($_POST['maintenance_mode']) ? 1 : 0,
+        'birthday_image' => $_POST['birthday_image'] ?? ''
     ];
 
     // 3. Update
     $pdo->exec("DELETE FROM settings");
-    $stmt = $pdo->prepare("INSERT INTO settings (call_time, grace_period, absent_after, time_in_out_enabled, registration_lock, billing_quota, billing_mode, telegram_bot_token, telegram_group_id, admin_telegram_id, active_school_year, sy_start_date, sy_end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $pdo->prepare("INSERT INTO settings (call_time, grace_period, absent_after, time_in_out_enabled, registration_lock, billing_quota, billing_mode, telegram_bot_token, telegram_group_id, admin_telegram_id, active_school_year, sy_start_date, sy_end_date, store_name, maintenance_mode, birthday_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     $stmt->execute([ 
         $newSettings['call_time'], 
         $newSettings['grace_period'], 
@@ -78,7 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newSettings['admin_telegram_id'],
         $newSettings['active_school_year'],
         $newSettings['sy_start_date'],
-        $newSettings['sy_end_date']
+        $newSettings['sy_end_date'],
+        $newSettings['store_name'],
+        $newSettings['maintenance_mode'],
+        $newSettings['birthday_image']
     ]);
     
     $stmt = $pdo->query("SELECT * FROM settings LIMIT 1");
@@ -199,6 +208,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <div class="card" style="padding: 3rem; border-radius: 20px;">
                 <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">System Core Configuration</h4>
 
+                <!-- Maintenance Mode -->
+                <div class="setting-group" style="padding-top: 0;">
+                   <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--danger); background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 16px;">
+                        <div style="max-width: 80%;">
+                            <label style="color: var(--danger);">Maintenance Mode</label>
+                            <small>When enabled, the Scanner and Manual entry pages will be locked. Use this for data migration or system updates.</small>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" name="maintenance_mode" <?= $settings['maintenance_mode'] ? 'checked' : '' ?>>
+                            <span class="slider" style="background-color: #ef4444;"></span>
+                        </label>
+                   </div>
+                </div>
+
                 <!-- Call Time -->
                 <div class="setting-group">
                     <div class="mobile-force-stack" style="display:flex; justify-content: space-between; align-items: center;">
@@ -263,9 +286,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
             
-            <!-- School Year Management -->
+            <!-- School Year Management & Promotion -->
             <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">School Year Management</h4>
+                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">Academic Period & Promotion</h4>
                 
                 <div class="setting-group" style="padding-top: 0;">
                     <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
@@ -277,7 +300,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
-                <div class="setting-group" style="border: none;">
+                <div class="setting-group">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                         <div>
                             <label>SY Start Date</label>
@@ -291,11 +314,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         </div>
                     </div>
                 </div>
+
+                <!-- Danger Zone: Promotion -->
+                <div class="setting-group" style="border-top: 1px dashed var(--border); margin-top: 1rem; padding-top: 2rem; border-bottom: none;">
+                    <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px dashed rgba(239, 68, 68, 0.2);">
+                        <div style="max-width: 70%;">
+                            <label style="color: var(--danger);"><i class="bi bi-rocket-takeoff"></i> Advanced Promotion Hub</label>
+                            <small>This will increment the year level of all <b>Regular Students</b> (1st→2nd, 2nd→3rd, 3rd→4th). 4th Year students will be marked as <b>Graduated</b>.</small>
+                        </div>
+                        <button type="button" onclick="promoteStudents()" class="btn hover-lift" style="background: var(--danger); color: white; border-radius: 12px; padding: 0.75rem 1.5rem; font-size: 0.8rem; border: none;">
+                            PROMOTE ALL
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <!-- Telegram Integration Section -->
+            <!-- Store Branding & Integration Section -->
             <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem; border-color: #f1f5f9; background: #fafafa;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em;">Bot & Cloud Integration</h4>
+                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em;">Store & Integration Settings</h4>
+
+                <div class="setting-group" style="padding-top: 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem;">
+                    <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="max-width: 60%;">
+                            <label>Official Store Name</label>
+                            <small>This branding appears on the Telegram bot and Web Store front.</small>
+                        </div>
+                        <input type="text" name="store_name" class="form-control" style="width: auto; font-weight: 800; border-radius: 12px;" value="<?= htmlspecialchars($settings['store_name'] ?? 'OFFICIAL STORE') ?>" placeholder="e.g. TECH SUPPLY HUB">
+                    </div>
+                </div>
 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                     <div>
@@ -314,6 +360,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     <label style="font-size: 0.75rem; text-transform: uppercase;">Admin Account ID</label>
                     <input type="text" name="admin_telegram_id" class="form-control" style="border-radius: 12px; margin-top: 5px; max-width: 300px;" value="<?= htmlspecialchars($settings['admin_telegram_id'] ?? '') ?>" placeholder="Your numeric ID">
                     <small style="margin-top: 8px;">Enables remote data synchronization via Telegram.</small>
+                </div>
+
+                <div style="margin-top: 2rem; border-top: 1px solid var(--border); padding-top: 2rem;">
+                    <label style="font-size: 0.75rem; text-transform: uppercase;">Global Birthday Thumbnail</label>
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-top: 10px;">
+                        <?php if(!empty($settings['birthday_image'])): ?>
+                            <img src="<?= htmlspecialchars($settings['birthday_image']) ?>" style="width: 60px; height: 60px; object-fit: cover; border-radius: 12px; border: 2px solid var(--border);" id="bdayPreview">
+                        <?php else: ?>
+                            <div style="width: 60px; height: 60px; background: var(--bg-main); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.5rem;" id="bdayPreview">
+                                <i class="bi bi-image"></i>
+                            </div>
+                        <?php endif; ?>
+                        <div style="flex: 1;">
+                            <input type="text" name="birthday_image" id="birthday_image_input" class="form-control" style="border-radius: 12px; margin-bottom: 8px;" value="<?= htmlspecialchars($settings['birthday_image'] ?? '') ?>" placeholder="Image URL or upload below">
+                            <input type="file" id="bdayUpload" class="form-control" style="font-size: 0.8rem; border-radius: 12px;" accept="image/*">
+                        </div>
+                    </div>
+                    <small style="margin-top: 8px;">A global image sent by the bot for all birthday greetings. If student-specific image is set, it will override this.</small>
+                </div>
+            </div>
+
+            <!-- System Backup & Integrity -->
+            <?php
+            $backupFiles = glob('backups/*.{db,zip}', GLOB_BRACE);
+            usort($backupFiles, function($a, $b) { return filemtime($b) - filemtime($a); });
+            $lastBackup = !empty($backupFiles) ? date("M j, Y - h:i A", filemtime($backupFiles[0])) : "No backups found";
+            ?>
+            <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem; border: 1px dashed var(--border);">
+                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em;">System Integrity</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <label>Database Integrity</label>
+                        <small>Last Backup: <b style="color: var(--primary);"><?= $lastBackup ?></b></small>
+                    </div>
+                    <div>
+                        <?php if(!empty($backupFiles)): ?>
+                            <a href="backups/<?= basename($backupFiles[0]) ?>" class="btn btn-ghost btn-sm" style="font-weight: 800;"><i class="bi bi-download"></i> Latest File</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
 
@@ -334,6 +419,103 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 confirmButtonColor: '#000', border: 'none'
             });
         <?php endif; ?>
+
+        async function promoteStudents() {
+            const { value: confirmText } = await Swal.fire({
+                title: 'Confirm Global Promotion',
+                text: "This will advance ALL Regular students by one year. This action is bulk and irreversible. Type 'PROMOTE' to confirm.",
+                input: 'text',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Execute Promotion',
+                confirmButtonColor: 'var(--danger)',
+                background: 'var(--bg-card)',
+                color: 'var(--text-main)',
+                inputValidator: (value) => {
+                    if (value !== 'PROMOTE') {
+                        return 'You must type PROMOTE to proceed!'
+                    }
+                }
+            });
+
+            if (confirmText === 'PROMOTE') {
+                Swal.fire({
+                    title: 'Promoting Students...',
+                    allowOutsideClick: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                try {
+                    const response = await fetch('api/promote_students.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'promote_all' })
+                    });
+                    const res = await response.json();
+                    
+                    if (res.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Promotion Complete!',
+                            text: res.message,
+                            confirmButtonColor: 'var(--primary)'
+                        });
+                    } else {
+                        throw new Error(res.error);
+                    }
+                } catch (e) {
+                    Swal.fire('Error', e.message, 'error');
+                }
+            }
+        }
+
+        // Handle Birthday Image Upload
+        document.getElementById('bdayUpload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                Swal.fire({ title: 'Uploading...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const response = await fetch('api/upload_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
+                Swal.close();
+
+                if (res.success) {
+                    // ... success logic ...
+                    document.getElementById('birthday_image_input').value = res.path;
+                    const preview = document.getElementById('bdayPreview');
+                    if (preview.tagName === 'IMG') {
+                        preview.src = res.path;
+                    } else {
+                        const newImg = document.createElement('img');
+                        newImg.src = res.path;
+                        newImg.id = 'bdayPreview';
+                        newImg.style = preview.style.cssText;
+                        preview.replaceWith(newImg);
+                    }
+                    Toast.fire({ icon: 'success', title: 'Image uploaded successfully' });
+                } else {
+                    let errorMsg = res.error;
+                    if (res.details) {
+                        errorMsg += "\nDetails: " + JSON.stringify(res.details, null, 2);
+                    }
+                    throw new Error(errorMsg);
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    html: '<pre style="text-align: left; font-size: 0.75rem;">' + e.message + '</pre>',
+                    confirmButtonText: 'OK'
+                });
+            }
+        });
     </script>
 
 </body>

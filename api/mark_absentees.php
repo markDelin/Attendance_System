@@ -111,7 +111,8 @@ try {
 
     // BATCH NOTIFICATION (Minimalist)
     if ($finalCount > 0) {
-        $msg = "$context\n";
+        $msg = "<b>$context</b>\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━┳═─\n\n";
         $msg .= "Date: " . date("M j, Y", strtotime($date)) . "\n";
         $msg .= "$visualBar\n\n";
         $msg .= "<b>ABSENTEES (" . $finalCount . "):</b>\n";

@@ -128,8 +128,11 @@ ksort($grouped); // Sort by SY
                         Select a <?= $category === 'event' ? 'event' : 'subject' ?> to view attendance logs.
                     </p>
                 </div>
-                <div style="flex-shrink: 0;">
-                     <button onclick="openAddDialog()" class="btn btn-primary btn-sm" style="padding: 0.75rem 1.5rem; font-weight: 800; border-radius: 12px; width: 100%;">
+                <div style="flex-shrink: 0; display: flex; gap: 10px;">
+                     <button onclick="exportAll()" class="btn btn-ghost btn-sm" style="padding: 0.75rem 1.25rem; font-weight: 800; border-radius: 12px; border: 1px solid var(--border);">
+                        <i class="bi bi-collection"></i> Bulk Export
+                     </button>
+                     <button onclick="openAddDialog()" class="btn btn-primary btn-sm" style="padding: 0.75rem 1.5rem; font-weight: 800; border-radius: 12px;">
                         <i class="bi bi-plus-lg"></i> New <?= ucfirst($category) ?>
                      </button>
                 </div>
@@ -190,6 +193,41 @@ ksort($grouped); // Sort by SY
             toast: true, position: 'bottom-end', showConfirmButton: false,
             timer: 2000, timerProgressBar: true
         });
+
+        function exportAll() {
+            Swal.fire({
+                title: 'Bulk Export All',
+                html: `
+                    <div style="text-align:left; padding: 0.5rem;">
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Generate a matrix report for all active subjects.</p>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Start Date</label>
+                                <input type="date" id="bulk-start" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">End Date</label>
+                                <input type="date" id="bulk-end" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Export Now',
+                confirmButtonColor: 'var(--primary)',
+                preConfirm: () => {
+                    return [
+                        document.getElementById('bulk-start').value,
+                        document.getElementById('bulk-end').value
+                    ]
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const [start, end] = result.value;
+                    window.open(`api/export_all_subjects.php?start=${start}&end=${end}&format=xls`, '_blank');
+                }
+            });
+        }
 
         function openAddDialog() {
             Swal.fire({

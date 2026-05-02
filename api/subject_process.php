@@ -235,6 +235,67 @@ try {
         
         echo json_encode(['status' => 'success', 'message' => 'Attendance reset for today.']);
 
+    // 13. Cancel Class
+    } elseif ($action === 'cancel_class') {
+        $subject_id = $_POST['subject_id'] ?? 0;
+        $date = $_POST['date'] ?? date('Y-m-d');
+        
+        if (!$subject_id) {
+            echo json_encode(['status' => 'error', 'message' => 'Subject ID required']);
+            exit;
+        }
+
+        // Fetch subject details
+        $stmt = $pdo->prepare("SELECT name, category FROM subjects WHERE id = ?");
+        $stmt->execute([$subject_id]);
+        $subject = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$subject) {
+            echo json_encode(['status' => 'error', 'message' => 'Subject not found']);
+            exit;
+        }
+
+        $label = ($subject['category'] === 'event') ? 'Event' : 'Subject';
+        $formattedDate = date('M j, Y', strtotime($date));
+        $subjectName = strtoupper($subject['name']);
+        
+        $msg = "<b>$label:</b> $subjectName\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━┳═─\n\n";
+        $msg .= "Date: $formattedDate\n\n";
+        $msg .= "<b>STATUS: NO CLASS</b>\n\n";
+        $msg .= "<i>Automated Message by System Admin</i>";
+
+        send_telegram_notification($msg);
+
+        // 1. Fetch Eligible Students (Regular + Enrolled Irregular)
+        $q = "SELECT u.qr_code FROM users u 
+              LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
+              WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
+                 OR (u.student_type = 'irregular' AND ss.subject_id = ?)";
+        
+        $stmtUsers = $pdo->prepare($q);
+        $stmtUsers->execute([$subject_id]);
+        $eligibleUsers = $stmtUsers->fetchAll(PDO::FETCH_COLUMN);
+
+        if (!empty($eligibleUsers)) {
+             // 2. Clear existing records for this subject/date to avoid duplicates
+             $pdo->prepare("DELETE FROM subject_attendance WHERE subject_id = ? AND date = ?")->execute([$subject_id, $date]);
+             
+             // 3. Mark everyone as "no-class"
+             $sql = "INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES ";
+             $vals = [];
+             foreach ($eligibleUsers as $qr) {
+                 $vals[] = "($subject_id, '$qr', '$date', 'no-class')";
+             }
+             $sql .= implode(", ", $vals);
+             $pdo->exec($sql);
+        }
+
+        // 4. Lock the context to prevent further attendance recording for this cancelled class
+        $pdo->prepare("INSERT OR IGNORE INTO notified_contexts (subject_id, date) VALUES (?, ?)")->execute([$subject_id, $date]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Cancellation broadcast sent and records updated to NO CLASS.']);
+
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Invalid Action']);
     }

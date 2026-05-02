@@ -7,6 +7,14 @@ require_once 'includes/db.php';
 $stmt = $pdo->query("SELECT * FROM settings LIMIT 1");
 $settings = $stmt->fetch(PDO::FETCH_ASSOC);
 $callTime = $settings['call_time'] ?? '08:00';
+$isMaintenance = ($settings['maintenance_mode'] ?? 0) == 1;
+
+if ($isMaintenance) {
+    echo "<!DOCTYPE html><html><head><title>System Maintenance</title><link href='assets/css/style.css' rel='stylesheet'><script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script></head><body style='background:var(--bg-main); display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;'>";
+    echo "<script>Swal.fire({icon:'info', title:'System Maintenance', text:'The scanner is currently locked for maintenance. Please try again later.', showConfirmButton:false, allowOutsideClick:false, footer:'<a href=\"index.php\">Back to Dashboard</a>'});</script>";
+    echo "</body></html>";
+    exit;
+}
 
 // Fetch Today's Attendance for List
 $todayParams = date('Y-m-d');
@@ -171,6 +179,12 @@ foreach ($subjects as $s) {
             
             <div style="position: relative;">
                 <div id="reader" style="width: 100%; border-radius: var(--radius-md); overflow: hidden;"></div>
+                
+                <!-- Scan Result Overlay -->
+                <div id="scanFeedback" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); border-radius:var(--radius-md); flex-direction:column; align-items:center; justify-content:center; z-index:10; transition: all 0.3s ease;">
+                    <div id="feedbackIcon" style="font-size: 4rem; margin-bottom: 10px;"></div>
+                    <div id="feedbackText" style="color:white; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; text-align:center; padding: 0 1rem;"></div>
+                </div>
             </div>
 
             <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
@@ -196,17 +210,29 @@ foreach ($subjects as $s) {
         let lastScanned = "";
         let isProcessing = false;
         
-        const sounds = {
-            success: document.getElementById('successSound'),
-            warning: document.getElementById('warningSound'),
-            error: document.getElementById('errorSound')
-        };
-
         function playSound(type) {
-            try { sounds[type].currentTime = 0; sounds[type].play(); } catch(e) {}
+            const el = document.getElementById(type + 'Sound');
+            if (!el) return;
+            
+            // Pulse the element to ensure it's loaded
+            el.currentTime = 0;
+            let playPromise = el.play();
+            
+            if (playPromise !== undefined) {
+                playPromise.catch(error => {
+                    console.warn("Autoplay prevented or audio error:", error);
+                    // Often browsers require a user interaction to start audio context
+                });
+            }
         }
 
         async function toggleScanner() {
+            // "Unlock" sounds on first user interaction
+            ['success', 'warning', 'error'].forEach(t => {
+                const s = document.getElementById(t + 'Sound');
+                if(s) { s.muted = true; s.play().then(() => { s.pause(); s.muted = false; }).catch(() => {}); }
+            });
+
             const modal = document.getElementById('scannerModal');
             
             if (modal.style.display === 'flex') {
@@ -322,6 +348,7 @@ foreach ($subjects as $s) {
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'new') {
+                    showScanFeedback('question', 'New Student', '#3b82f6');
                     // New Registration
                     Swal.fire({
                         title: 'New Student',
@@ -356,32 +383,54 @@ foreach ($subjects as $s) {
                         }
                     });
                 } else if (data.status === 'duplicate') {
+                    showScanFeedback('info', `${data.user_name}<br>ALREADY SCANNED`, '#f59e0b');
                     playSound('warning');
                     shortToast('info', `${data.user_name} already scanned.`);
-                    // resumeScanning(); // Let finally handle delay
                 } else if (data.status === 'success') {
+                    const statusColor = data.attendance_status === 'late' ? '#f59e0b' : '#10b981';
+                    showScanFeedback('check', `${data.attendance_status.toUpperCase()}<br>${data.user_name}`, statusColor);
                     playSound('success');
                     shortToast('success', `Marked ${data.attendance_status.toUpperCase()}: ${data.user_name}`);
                     fetchRecentList(); // Update List Immediately
-                    // resumeScanning(); // Let finally handle delay
                 } else {
+                    showScanFeedback('x', data.message || 'Error', '#ef4444');
                     playSound('error');
                     shortToast('error', data.message);
-                    // resumeScanning(); // Let finally handle delay
                 }
             })
             .catch((err) => {
                 console.error(err);
+                showScanFeedback('x', 'DATABASE ERROR', '#ef4444');
                 shortToast('error', 'Database Error');
-                // resumeScanning(); // Let finally handle delay
             })
             .finally(() => {
                 // Reset scan lock after delay
                 setTimeout(() => { 
                     lastScanned = ""; 
                     isProcessing = false; 
-                }, 3000);
+                }, 2000);
             });
+        }
+
+        function showScanFeedback(type, text, color) {
+            const overlay = document.getElementById('scanFeedback');
+            const icon = document.getElementById('feedbackIcon');
+            const label = document.getElementById('feedbackText');
+            
+            icon.innerHTML = type === 'check' ? '<i class="bi bi-check-circle-fill"></i>' : 
+                             type === 'info' ? '<i class="bi bi-info-circle-fill"></i>' :
+                             type === 'x' ? '<i class="bi bi-x-circle-fill"></i>' :
+                             '<i class="bi bi-question-circle-fill"></i>';
+            
+            icon.style.color = color;
+            label.innerHTML = text;
+            overlay.style.display = 'flex';
+            overlay.style.background = `rgba(0,0,0,0.85)`;
+            overlay.style.border = `4px solid ${color}`;
+
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 1800);
         }
 
         function resumeScanning() {

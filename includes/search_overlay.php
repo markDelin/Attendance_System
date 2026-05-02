@@ -71,7 +71,7 @@
                 <div class="avatar">${s.name.charAt(0).toUpperCase()}</div>
                 <div class="info">
                     <b>${s.name}</b>
-                    <small>${s.qr_code}</small>
+                    <small class="spoiler" onclick="this.classList.toggle('revealed'); event.preventDefault(); event.stopPropagation();">${s.qr_code}</small>
                 </div>
             </a>
         `).join('');

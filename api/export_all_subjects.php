@@ -30,40 +30,46 @@ echo '<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <style>
-        body { font-family: \'Segoe UI\', Tahoma, Arial, sans-serif; font-size: 10pt; background: #fff; }
+        body { font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif; font-size: 10pt; color: #334155; background: #fff; }
+        .container { padding: 20px; }
         
-        table { border-collapse: collapse; table-layout: fixed; width: auto; margin-bottom: 40px; border: 1px solid #94a3b8; page-break-inside: avoid; }
-        th, td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: middle; text-align: center; height: 30px; }
-        
-        /* Headers */
-        .sem-header { background-color: #2e1065; color: #fff; text-align: left; padding: 10px; font-weight:bold; font-size: 16pt; border: none; }
-        .header-title { background-color: #4338ca; color: #ffffff; font-weight: bold; font-size: 14pt; height: 45px; text-transform: uppercase; }
-        .header-meta { background-color: #e0e7ff; color: #3730a3; font-weight: bold; height: 35px; }
-        .col-header { background-color: #f1f5f9; color: #334155; font-weight: bold; font-size: 9pt; }
-        
-        /* Columns */
-        .num-col { width: 30px; font-size: 8pt; color: #64748b; background-color: #f8fafc; }
-        .name-col { width: 350px; text-align: left; padding-left: 10px; font-weight: bold; color: #0f172a; white-space: nowrap; }
-        .date-col { width: 100px; }
-        .summary-col { width: 60px; font-weight: bold; }
+        /* Sem Header */
+        .sem-title { font-family: \'Segoe UI\', sans-serif; color: #1e293b; border-bottom: 3px solid #1e293b; padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; text-transform: uppercase; font-size: 18pt; }
 
-        /* Status */
-        .status-header-p { background-color: #dcfce7; color: #166534; }
-        .status-header-l { background-color: #ffedd5; color: #9a3412; }
-        .status-header-a { background-color: #fee2e2; color: #991b1b; }
+        /* Main Table */
+        table.matrix-table { border-collapse: collapse; table-layout: fixed; width: auto; margin-bottom: 50px; border: 1px solid #cbd5e1; page-break-inside: avoid; }
+        table.matrix-table th, table.matrix-table td { border: 1px solid #cbd5e1; padding: 8px; vertical-align: middle; text-align: center; }
+        
+        .header-main { background-color: #4338ca; color: #ffffff; font-weight: bold; font-size: 14pt; height: 50px; text-transform: uppercase; text-align: left !important; padding-left: 20px !important; }
+        .header-sub { background-color: #3730a3; color: #f1f5f9; font-weight: bold; height: 35px; text-align: left !important; padding-left: 20px !important; }
+        .col-header { background-color: #f1f5f9; color: #475569; font-weight: 800; font-size: 8pt; text-transform: uppercase; }
+        
+        .num-col { width: 40px; color: #94a3b8; font-size: 8pt; background: #f8fafc; }
+        .id-col { width: 100px; color: #64748b; font-family: monospace; font-size: 9pt; }
+        .name-col { width: 300px; text-align: left !important; padding-left: 15px !important; font-weight: 700; color: #1e293b; }
+        .meta-col { width: 100px; font-size: 9pt; color: #64748b; }
+        .date-col { width: 80px; }
+        .summary-col { width: 50px; font-weight: 800; }
 
-        .p-cell { background-color: #dcfce7; color: #166534; font-weight: bold; }
-        .l-cell { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
-        .a-cell { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+        /* Cells */
+        .p-cell { background-color: #dcfce7; color: #166534; font-weight: 800; }
+        .l-cell { background-color: #fef3c7; color: #92400e; font-weight: 800; }
+        .a-cell { background-color: #fee2e2; color: #991b1b; font-weight: 800; }
         .empty-cell { color: #cbd5e1; }
+        
+        .summary-p { background-color: #ecfdf5; color: #059669; }
+        .summary-l { background-color: #fffbeb; color: #d97706; }
+        .summary-a { background-color: #fef2f2; color: #dc2626; }
+        .summary-rate { background-color: #f1f5f9; color: #1e293b; width: 70px; }
 
-        /* Stats */
-        .stat-p { background-color: #d1fae5; color: #065f46; font-weight: bold; }
-        .stat-l { background-color: #ffedd5; color: #9a3412; font-weight: bold; }
-        .stat-a { background-color: #fee2e2; color: #991b1b; font-weight: bold; }
+        /* Legend */
+        .legend { margin-top: 10px; font-size: 8pt; color: #64748b; }
+        .legend-item { display: inline-block; margin-right: 15px; }
+        .legend-box { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
     </style>
 </head>
-<body>';
+<body>
+<div class="container">';
 
 try {
     // 1. Get Subjects
@@ -86,21 +92,21 @@ try {
         $grouped[$s['semester']][] = $s;
     }
 
-    // $users = $pdo->query("SELECT qr_code, name FROM users ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC); // REMOVED GLOBAL FETCH
-
     foreach ($grouped as $semester => $subjects) {
-        echo "<h2 style='font-family:Segoe UI, sans-serif; color:#2e1065; border-bottom:2px solid #2e1065; padding-bottom:10px; margin-top:30px;'>SEMESTER: " . htmlspecialchars($semester) . "</h2>";
+        echo "<div class='sem-title'>Semester: " . htmlspecialchars($semester) . "</div>";
 
         foreach ($subjects as $subject) {
             $subjectId = $subject['id'];
 
-            // FETCH ELIGIBLE USERS: Regular (All) + Irregular (Enrolled)
+            // FETCH ELIGIBLE USERS
             $stmtU = $pdo->prepare("
-                SELECT u.qr_code, u.name 
+                SELECT u.qr_code, u.name, u.course, u.section 
                 FROM users u 
                 LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
-                WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
-                   OR (u.student_type = 'irregular' AND ss.subject_id = ?)
+                WHERE (u.deleted_at IS NULL) AND (
+                    (u.student_type IS NULL OR u.student_type = 'regular') 
+                    OR (u.student_type = 'irregular' AND ss.subject_id = ?)
+                )
                 GROUP BY u.qr_code
                 ORDER BY u.name ASC
             ");
@@ -114,52 +120,37 @@ try {
             if (empty($dates)) $dates = []; 
 
             // Get Logs
-            $stmt = $pdo->prepare("SELECT qr_code, date, time, status, recorded_at FROM subject_attendance WHERE subject_id = ? AND date BETWEEN ? AND ?");
+            $stmt = $pdo->prepare("SELECT qr_code, date, status FROM subject_attendance WHERE subject_id = ? AND date BETWEEN ? AND ?");
             $stmt->execute([$subjectId, $startDate, $endDate]);
             $logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             $map = [];
             foreach($logs as $l) {
-                // simple mapping
                 $map[$l['qr_code']][$l['date']] = strtolower($l['status']);
             }
 
             // Render Table
             ?>
-            <table>
-                <colgroup>
-                    <col width="30" style="width:30px">
-                    <col width="350" style="width:350px">
-                    <?php if (empty($dates)): ?>
-                        <col width="200" style="width:200px">
-                    <?php else: ?>
-                        <?php foreach ($dates as $d): ?><col width="100" style="width:100px"><?php endforeach; ?>
-                        <col width="60" style="width:60px">
-                        <col width="60" style="width:60px">
-                        <col width="60" style="width:60px">
-                    <?php endif; ?>
-                </colgroup>
-                
-                <tr><td colspan="<?= count($dates) + 5 ?>" class="header-title">SUBJECT: <?= htmlspecialchars($subject['name']) ?></td></tr>
-                <tr><td colspan="<?= count($dates) + 5 ?>" class="header-meta">Period: <?= $startDate ?> to <?= $endDate ?></td></tr>
-                <tr><td colspan="<?= count($dates) + 5 ?>" style="border:none; height:10px;"></td></tr>
+            <table class="matrix-table">
+                <tr><td colspan="<?= count($dates) + 8 ?>" class="header-main">Subject: <?= htmlspecialchars($subject['name']) ?></td></tr>
+                <tr><td colspan="<?= count($dates) + 8 ?>" class="header-sub">Period: <?= $startDate ?> to <?= $endDate ?></td></tr>
 
                 <tr>
-                    <th class="col-header" style="width:30px">#</th>
-                    <th class="col-header" style="width:350px; text-align:left;">STUDENT NAME</th>
+                    <th class="col-header num-col">#</th>
+                    <th class="col-header id-col">ID</th>
+                    <th class="col-header name-col">Student Name</th>
+                    <th class="col-header meta-col">Section</th>
                     
                     <?php if (empty($dates)): ?>
                         <th class="col-header">No Records Found</th>
                     <?php else: ?>
                         <?php foreach ($dates as $d): ?>
-                            <th class="col-header" style="width:100px">
-                                <?= date('M j', strtotime($d)) ?><br>
-                                <span style="font-weight:normal; font-size:8pt;"><?= date('D', strtotime($d)) ?></span>
-                            </th>
+                            <th class="col-header date-col"><?= date('M j', strtotime($d)) ?></th>
                         <?php endforeach; ?>
-                        <th class="summary-col status-header-p">PRES</th>
-                        <th class="summary-col status-header-l">LATE</th>
-                        <th class="summary-col status-header-a">ABS</th>
+                        <th class="col-header summary-col summary-p">P</th>
+                        <th class="col-header summary-col summary-l">L</th>
+                        <th class="col-header summary-col summary-a">A</th>
+                        <th class="col-header summary-rate">%</th>
                     <?php endif; ?>
                 </tr>
 
@@ -169,7 +160,9 @@ try {
                 ?>
                 <tr>
                     <td class="num-col"><?= $i + 1 ?></td>
+                    <td class="id-col"><?= $qr ?></td>
                     <td class="name-col"><?= htmlspecialchars($u['name']) ?></td>
+                    <td class="meta-col"><?= htmlspecialchars($u['section'] ?? '-') ?></td>
                     
                     <?php if (empty($dates)): ?>
                         <td class="empty-cell">-</td>
@@ -177,7 +170,6 @@ try {
                         <?php foreach ($dates as $d): 
                             $st = $map[$qr][$d] ?? '-';
                             $cls = 'empty-cell'; $txt = '-';
-                            
                             if ($st !== '-') {
                                 if ($st == 'present') { $p++; $cls='p-cell'; $txt='P'; }
                                 elseif ($st == 'late') { $l++; $cls='l-cell'; $txt='L'; }
@@ -187,14 +179,27 @@ try {
                             <td class="<?= $cls ?>"><?= $txt ?></td>
                         <?php endforeach; ?>
                         
-                        <td class="stat-p"><?= $p ?></td>
-                        <td class="stat-l"><?= $l ?></td>
-                        <td class="stat-a"><?= $a ?></td>
+                        <?php 
+                            $totalRow = $p + $l + $a;
+                            $rate = ($totalRow > 0) ? round((($p + $l) / $totalRow) * 100, 1) : 0;
+                        ?>
+                        <td class="summary-p"><?= $p ?></td>
+                        <td class="summary-l"><?= $l ?></td>
+                        <td class="summary-a"><?= $a ?></td>
+                        <td class="summary-rate"><?= $rate ?>%</td>
                     <?php endif; ?>
                 </tr>
                 <?php endforeach; ?>
+                <tr>
+                    <td colspan="<?= count($dates) + 8 ?>" style="border:none; text-align:left; padding:10px 0;">
+                        <div class="legend">
+                            <div class="legend-item"><span class="legend-box p-cell"></span> P=Present</div>
+                            <div class="legend-item"><span class="legend-box l-cell"></span> L=Late</div>
+                            <div class="legend-item"><span class="legend-box a-cell"></span> A=Absent</div>
+                        </div>
+                    </td>
+                </tr>
             </table>
-            <br>
             <?php
         }
     }
@@ -203,5 +208,5 @@ try {
     echo "<b>Error:</b> " . $e->getMessage();
 }
 
-echo '</body></html>';
+echo '</div></body></html>';
 ?>

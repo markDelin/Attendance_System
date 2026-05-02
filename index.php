@@ -26,11 +26,11 @@ require_once 'includes/db.php';
             display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;
         }
         .stat-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1.75rem;
+            background: var(--bg-card); border: none; border-radius: 12px; padding: 1.75rem;
             display: flex; flex-direction: column; position: relative; overflow: hidden;
-            transition: transform 0.2s;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.4s var(--ease-out-expo);
         }
-        .stat-card:hover { transform: translateY(-2px); }
         .stat-card::after {
             content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); opacity: 0.1;
         }
@@ -79,12 +79,12 @@ require_once 'includes/db.php';
             display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;
         }
         .action-btn {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px;
+            background: var(--bg-card); border: none; border-radius: 12px;
             padding: 1.5rem; text-decoration: none; color: var(--text-main);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; 
+            transition: all 0.3s var(--ease-out-expo); display: flex; flex-direction: column; 
             align-items: center; justify-content: center; min-height: 110px; text-align: center;
+            box-shadow: var(--shadow-neu-out-sm);
         }
-        .action-btn:hover { border-color: var(--primary); background: var(--bg-hover); }
         .action-btn i { font-size: 1.75rem; margin-bottom: 0.75rem; color: var(--primary); }
         .action-btn span { font-weight: 700; font-size: 0.8rem; letter-spacing: 0.02em; }
 
@@ -96,6 +96,7 @@ require_once 'includes/db.php';
             .activity-dot { margin-left: -0.1rem; }
         }
         /* Birthday Grid Layout Refined */
+        /* Birthday Section - Neumorphic Style */
         .birthday-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -103,37 +104,90 @@ require_once 'includes/db.php';
             margin-bottom: 2rem;
         }
 
+        .birthday-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.4s var(--ease-out-expo);
+            border: none !important;
+        }
+
+        .birthday-card.today {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.2), var(--shadow-neu-out-sm);
+        }
+
+        .birthday-card .student-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            text-transform: uppercase;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .birthday-card .date-badge {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .countdown-container {
+            background: var(--bg-main);
+            box-shadow: var(--shadow-neu-in-sm);
+            border-radius: var(--radius-sm);
+            padding: 0.75rem 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            border: none !important;
+        }
+
+        .countdown-part {
+            display: flex;
+            align-items: baseline;
+            gap: 2px;
+        }
+
+        .countdown-part .val {
+            font-size: 0.9rem;
+            font-weight: 800;
+            font-family: monospace;
+            color: var(--text-dark);
+        }
+
+        .countdown-part .unit {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .countdown-part .val.seconds {
+            color: var(--accent);
+        }
+
         @media (max-width: 768px) {
             .birthday-grid {
                 grid-template-columns: repeat(2, 1fr) !important;
-                gap: 0.5rem !important;
+                gap: 0.75rem !important;
             }
             .birthday-card.featured {
                 grid-column: span 2 !important;
             }
-            .birthday-card.small {
-                padding: 0.75rem !important;
+            .birthday-card {
+                padding: 1rem !important;
             }
-            .birthday-card.small .student-name {
-                font-size: 0.85rem !important;
+            .birthday-card .student-name {
+                font-size: 0.8rem !important;
             }
-            .birthday-card.small .countdown-container {
-                padding: 8px !important;
-                border-radius: 8px !important;
+            .countdown-container {
+                padding: 0.5rem !important;
             }
-            .birthday-card.small .countdown-part span:first-child {
-                font-size: 0.9rem !important;
-            }
-            .birthday-card.small .countdown-part span:last-child {
-                font-size: 0.5rem !important;
-            }
-            .birthday-card.small .birthday-icon {
-                width: 32px !important;
-                height: 32px !important;
-                border-radius: 8px !important;
-            }
-            .birthday-card.small .birthday-icon i {
-                font-size: 0.9rem !important;
+            .countdown-part .val {
+                font-size: 0.8rem !important;
             }
         }
     </style>
@@ -181,6 +235,10 @@ require_once 'includes/db.php';
 
     // Take top 5
     $upcomingBirthdays = array_slice($upcomingBirthdays, 0, 5);
+
+    // Fetch Recent System Notices
+    $stmt = $pdo->query("SELECT * FROM system_notices ORDER BY created_at DESC LIMIT 5");
+    $systemNotices = $stmt->fetchAll(PDO::FETCH_ASSOC);
     ?>
 
     <main class="container">
@@ -221,6 +279,7 @@ require_once 'includes/db.php';
 
         $daysRemaining = null;
         $progressPercent = 0;
+        $rem = 0;
         
         if ($syStart && $syEnd) {
             $startDate = new DateTime($syStart);
@@ -270,6 +329,7 @@ require_once 'includes/db.php';
         <?php endif; ?>
 
 
+
         <section class="animate-fade-up">
             <div class="section-title">Navigation Hub</div>
             <div class="action-grid">
@@ -289,6 +349,10 @@ require_once 'includes/db.php';
                     <i class="bi bi-people-fill"></i>
                     <span>Student Database</span>
                 </a>
+                <a href="orders.php" class="action-btn animate-fade-up stagger-5 hover-lift">
+                    <i class="bi bi-cart-fill"></i>
+                    <span>Ordered Records</span>
+                </a>
                 <a href="view_attendance.php" class="action-btn animate-fade-up stagger-6 hover-lift">
                     <i class="bi bi-clipboard-data-fill"></i>
                     <span>Attendance Records</span>
@@ -305,41 +369,60 @@ require_once 'includes/db.php';
                     $stagger = "stagger-" . min($idx + 1, 8);
                     $isToday = $bday['days_until'] === 0;
                     $isFeatured = $idx === 0; 
-                    $accentColor = $isToday ? 'var(--accent)' : 'var(--text-muted)';
-                    $bgLight = $isToday ? 'rgba(59, 130, 246, 0.1)' : 'var(--bg-main)';
-                    $cardClass = $isFeatured ? 'featured' : 'small';
+                    $cardClass = ($isFeatured ? 'featured ' : '') . ($isToday ? 'today' : '');
                 ?>
-                    <div class="stat-card birthday-card <?= $cardClass ?> animate-fade-up <?= $stagger ?>" style="padding: 1.25rem; position: relative; border: 1px solid var(--border);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
-                            <div style="display: flex; flex-direction: column; gap: 2px;">
-                                <span class="student-name" style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); text-transform: uppercase;"><?= htmlspecialchars($bday['name']) ?></span>
-                                <span style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;">
-                                    <?= date('M d', strtotime($bday['birthday'])) ?>
-                                    <?php if($isToday): ?>
-                                        <span style="color: var(--accent); margin-left: 8px; font-weight: 800;">[ TODAY ]</span>
-                                    <?php endif; ?>
-                                </span>
-                            </div>
+                    <div class="birthday-card <?= $cardClass ?> animate-fade-up <?= $stagger ?> hover-lift">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span class="student-name"><?= htmlspecialchars($bday['name']) ?></span>
+                            <span class="date-badge">
+                                <?= date('M d', strtotime($bday['birthday'])) ?>
+                                <?php if($isToday): ?>
+                                    <span style="color: var(--accent); margin-left: 8px; font-weight: 800;">[ TODAY ]</span>
+                                <?php endif; ?>
+                            </span>
                         </div>
 
-                        <div class="countdown-container" 
-                             data-target="<?= $bday['next_occurrence'] ?>" 
-                             style="background: transparent; border-radius: 0; padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border);">
-                            <div class="countdown-part" style="display: flex; align-items: baseline; gap: 4px;">
-                                <span class="days" style="font-size: 0.85rem; font-weight: 800; font-family: monospace;">--</span>
-                                <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">d</span>
+                        <div class="countdown-container" data-target="<?= $bday['next_occurrence'] ?>">
+                            <div class="countdown-part">
+                                <span class="days val">--</span>
+                                <span class="unit">d</span>
                             </div>
-                            <div class="countdown-part" style="display: flex; align-items: baseline; gap: 4px;">
-                                <span class="hours" style="font-size: 0.85rem; font-weight: 800; font-family: monospace;">--</span>
-                                <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">h</span>
+                            <div class="countdown-part">
+                                <span class="hours val">--</span>
+                                <span class="unit">h</span>
                             </div>
-                            <div class="countdown-part" style="display: flex; align-items: baseline; gap: 4px;">
-                                <span class="minutes" style="font-size: 0.85rem; font-weight: 800; font-family: monospace;">--</span>
-                                <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">m</span>
+                            <div class="countdown-part">
+                                <span class="minutes val">--</span>
+                                <span class="unit">m</span>
                             </div>
-                            <div class="countdown-part" style="display: flex; align-items: baseline; gap: 4px;">
-                                <span class="seconds" style="font-size: 0.85rem; font-weight: 800; font-family: monospace; color: var(--accent);">--</span>
-                                <span style="font-size: 0.5rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">s</span>
+                            <div class="countdown-part">
+                                <span class="seconds val">--</span>
+                                <span class="unit">s</span>
+                            </div>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($systemNotices)): ?>
+            <div class="section-title" style="color: var(--danger); opacity: 0.8; margin-top: 3rem;">
+                SYSTEM NOTICE: RECENT RECORDS
+            </div>
+            <div style="margin-bottom: 2rem;">
+                <?php foreach ($systemNotices as $idx => $notice): 
+                    $stagger = "stagger-" . min($idx + 1, 8);
+                ?>
+                    <div class="card animate-fade-up <?= $stagger ?> hover-lift" style="padding: 1.25rem; margin-bottom: 1rem; border-left: 4px solid var(--danger); background: var(--bg-card); display: flex; align-items: center; gap: 1rem;">
+                        <div class="flex-center" style="width: 40px; height: 40px; border-radius: 12px; background: rgba(239, 68, 68, 0.1); color: var(--danger); flex-shrink: 0;">
+                            <i class="bi bi-shield-exclamation" style="font-size: 1.2rem;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 0.85rem; font-weight: 500; color: var(--text-main); line-height: 1.4;">
+                                <?= $notice['content'] ?>
+                            </div>
+                            <div style="font-size: 0.65rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; margin-top: 4px; letter-spacing: 0.05em;">
+                                <?= date('M d, Y · h:i A', strtotime($notice['created_at'])) ?> · SECURITY AUDIT
                             </div>
                         </div>
                     </div>
@@ -361,7 +444,11 @@ require_once 'includes/db.php';
                     <i class="bi bi-calendar3" style="font-size: 1.4rem;"></i>
                     <span style="font-size: 0.75rem;">Event Calendar</span>
                 </a>
-                <a href="settings.php" class="action-btn animate-fade-up stagger-7 hover-lift">
+                <a href="announcements.php" class="action-btn animate-fade-up stagger-7 hover-lift">
+                    <i class="bi bi-megaphone" style="font-size: 1.4rem;"></i>
+                    <span style="font-size: 0.75rem;">Announcements</span>
+                </a>
+                <a href="settings.php" class="action-btn animate-fade-up stagger-8 hover-lift">
                     <i class="bi bi-gear-wide-connected" style="font-size: 1.4rem;"></i>
                     <span style="font-size: 0.75rem;">System Settings</span>
                 </a>
@@ -370,6 +457,7 @@ require_once 'includes/db.php';
 
         </div>
     </main>
+    <?php include 'includes/footer.php'; ?>
 
     <script>
         // Real-time Countdown Logic
@@ -397,41 +485,22 @@ require_once 'includes/db.php';
             });
         }
 
-        setInterval(updateCountdowns, 1000);
-        updateCountdowns();
 
-        function animateCounters() {
-            const counters = document.querySelectorAll('.stat-counter');
-            counters.forEach(counter => {
-                const target = +counter.getAttribute('data-target');
-                const duration = 2000; // 2 seconds
-                let startTimestamp = null;
 
-                const step = (timestamp) => {
-                    if (!startTimestamp) startTimestamp = timestamp;
-                    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                    const current = Math.floor(progress * target);
-                    counter.innerText = current;
-                    if (progress < 1) {
-                        window.requestAnimationFrame(step);
-                    } else {
-                        counter.innerText = target;
-                    }
-                };
-                window.requestAnimationFrame(step);
-            });
-        }
 
         document.addEventListener('DOMContentLoaded', () => {
-             console.log('Dashboard loaded');
-             animateCounters();
+             console.log('Dashboard ready');
              
-             // Animate Progress Bar
+             // Start Countdowns
+             updateCountdowns();
+             setInterval(updateCountdowns, 1000);
+             
+             // Initial animations
              setTimeout(() => {
-                 const progressBar = document.querySelector('.progress-bar-fill');
-                 if (progressBar) {
-                     progressBar.style.width = progressBar.getAttribute('data-progress');
-                 }
+                 document.querySelectorAll('.progress-bar-fill').forEach(bar => {
+                     const target = bar.getAttribute('data-progress');
+                     if(target) bar.style.width = target;
+                 });
              }, 100);
         });
     </script>

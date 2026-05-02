@@ -3,6 +3,16 @@
 date_default_timezone_set('Asia/Manila');
 require_once 'includes/db.php';
 
+$settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$isMaintenance = ($settings['maintenance_mode'] ?? 0) == 1;
+
+if ($isMaintenance) {
+    echo "<!DOCTYPE html><html><head><title>System Maintenance</title><link href='assets/css/style.css' rel='stylesheet'><script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script></head><body style='background:var(--bg-main); display:flex; align-items:center; justify-content:center; height:100vh; font-family:sans-serif;'>";
+    echo "<script>Swal.fire({icon:'info', title:'System Maintenance', text:'Manual entry is currently locked for maintenance. Please check back later.', showConfirmButton:false, allowOutsideClick:false, footer:'<a href=\"index.php\">Back to Dashboard</a>'});</script>";
+    echo "</body></html>";
+    exit;
+}
+
 // Fetch users
 $subjectId = isset($_GET['subject_id']) && $_GET['subject_id'] !== "" ? intval($_GET['subject_id']) : 0;
 $currentDate = $_GET['date'] ?? date('Y-m-d');
@@ -154,10 +164,11 @@ if ($subjectId > 0) {
                     </div>
                 </div>
 
-                <div id="subjectQuickTools" style="display:none; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border); justify-content:space-between; align-items:center;">
+                <div id="subjectQuickTools" style="display:none; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; gap:8px;">
                         <button onclick="markAllPresent()" class="btn btn-ghost btn-sm"><i class="bi bi-check-all"></i> Mark All</button>
                         <button onclick="resetSubjectAttendance()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                        <button onclick="cancelSubject()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-slash-circle"></i> Cancel Class</button>
                     </div>
                     <button onclick="exportSubject()" class="btn btn-ghost btn-sm"><i class="bi bi-download"></i> Export</button>
                 </div>
@@ -207,20 +218,20 @@ if ($subjectId > 0) {
         <div id="studentList" class="student-list">
             <?php foreach ($users as $user): ?>
                 <div class="student-row" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <h5 class="student-name" onclick="window.location.href='profile.php?qr=<?= urlencode($user['qr_code']) ?>'" style="cursor:pointer;"><?= htmlspecialchars($user['name']) ?></h5>
+                    <div style="flex: 1; min-width: 0;">
+                        <h5 class="student-name" onclick="window.location.href='profile.php?qr=<?= urlencode($user['qr_code']) ?>'" style="cursor:pointer; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= htmlspecialchars($user['name']) ?></h5>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="student-id"><?= $user['qr_code'] ?></span>
-                            <div class="time-stamp" style="display: none;">
-                                <i class="bi bi-check-circle-fill"></i> <span class="time-val"></span>
+                            <span class="student-id" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;"><?= $user['qr_code'] ?></span>
+                            <div class="time-stamp" style="display: none; font-size: 0.7rem; color: var(--primary); font-weight: 800;">
+                                <i class="bi bi-clock-fill"></i> <span class="time-val"></span>
                             </div>
                         </div>
                     </div>
 
-                    <div class="action-group">
-                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'present')" class="btn-status btn-present" title="Mark Present">P</button>
-                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'late')" class="btn-status btn-late" title="Mark Late">L</button>
-                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'absent')" class="btn-status btn-absent" title="Mark Absent">A</button>
+                    <div class="compact-actions">
+                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'present')" class="btn-stat-entry p" title="Present">P</button>
+                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'late')" class="btn-stat-entry l" title="Late">L</button>
+                        <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'absent')" class="btn-stat-entry a" title="Absent">A</button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -330,7 +341,7 @@ if ($subjectId > 0) {
                     document.querySelectorAll('.student-row').forEach(row => {
                         const qr = row.id.replace('row-', '');
                         const item = data[qr];
-                        row.classList.remove('present', 'late', 'absent');
+                        row.classList.remove('present', 'late', 'absent', 'no-class');
                         const timeEl = row.querySelector('.time-stamp');
                         const timeVal = row.querySelector('.time-val');
                         
@@ -375,11 +386,12 @@ if ($subjectId > 0) {
         }
 
         function updateStatsCounts() {
-            let p = 0, l = 0, a = 0, n = 0;
+            let p = 0, l = 0, a = 0, n = 0, nc = 0;
             document.querySelectorAll('.student-row').forEach(row => {
                 if (row.classList.contains('present')) p++;
                 else if (row.classList.contains('late')) l++;
                 else if (row.classList.contains('absent')) a++;
+                else if (row.classList.contains('no-class')) nc++;
                 else n++;
             });
             document.getElementById('count-present').innerText = p;
@@ -391,9 +403,11 @@ if ($subjectId > 0) {
         function setStatus(qr, name, status) {
             const date = document.getElementById('attendanceDate').value;
             const row = document.getElementById('row-' + qr);
-            row.classList.remove('present', 'late', 'absent');
-            row.classList.add(status);
+            
+            // Immediate UI feedback
             row.style.opacity = '0.7';
+            row.classList.remove('present', 'late', 'absent', 'no-class');
+            row.classList.add(status);
 
             let api = 'api/process.php';
             let params = { qr_code: qr, force_status: status, custom_date: date, manual_entry: true };
@@ -412,14 +426,27 @@ if ($subjectId > 0) {
             .then(d => {
                 row.style.opacity = '1';
                 if (d.status === 'success' || d.status === 'duplicate') {
+                    const ts = row.querySelector('.time-stamp');
+                    const tv = row.querySelector('.time-val');
+                    const sid = row.querySelector('.student-id');
+                    
+                    if (d.time) {
+                        ts.style.display = 'block';
+                        tv.innerText = d.time;
+                        sid.style.display = 'none';
+                    }
+
                     Toast.fire({ icon: 'success', title: `${name}: ${status.toUpperCase()}` });
                     updateStatsCounts();
                 } else {
                     Toast.fire({ icon: 'error', title: d.message });
-                    fetchStatusUpdates(); 
+                    row.classList.remove(status);
                 }
             })
-            .catch(() => { row.style.opacity = '1'; fetchStatusUpdates(); });
+            .catch(() => { 
+                row.style.opacity = '1'; 
+                row.classList.remove(status);
+            });
         }
 
         // --- Toolbar Actions ---
@@ -505,6 +532,36 @@ if ($subjectId > 0) {
                     }).then(() => fetchStatusUpdates());
                  }
              });
+        }
+
+        function cancelSubject() {
+            if(!currentSubjectId) return;
+            const date = document.getElementById('attendanceDate').value;
+            Swal.fire({
+                title: 'Cancel this Class?',
+                text: "This will send a broadcast to Telegram and lock attendance for today.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Yes, Cancel & Notify'
+            }).then((res) => {
+                if(res.isConfirmed) {
+                    Swal.fire({ title: 'Sending...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                    fetch('api/subject_process.php', {
+                        method: 'POST', 
+                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                        body: new URLSearchParams({ action: 'cancel_class', subject_id: currentSubjectId, date: date })
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if(res.status === 'success') {
+                            Swal.fire('Broadcasted!', res.message, 'success').then(() => fetchStatusUpdates());
+                        } else {
+                            Swal.fire('Error', res.message, 'error');
+                        }
+                    });
+                }
+            });
         }
 
         function goToScan() { if(currentSubjectId) window.location.href = `scan.php?subject_id=${currentSubjectId}`; }

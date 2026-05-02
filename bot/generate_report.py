@@ -11,7 +11,7 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 # Configuration
-DB_PATH = os.path.join(os.path.dirname(__file__), 'database', 'attendance.db')
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'database', 'attendance.db')
 
 class PDF(FPDF, HTMLMixin):
     def header(self):
@@ -38,24 +38,48 @@ def get_student_data(qr_code):
         return None
     name, course, stype, year = user
     
-    # 2. General Stats
-    cursor.execute("SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') FROM attendance WHERE qr_code=?", (qr_code,))
+    # 2. General Stats (Aggregated from Subjects/Events)
+    cursor.execute("""
+        SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
+        FROM subject_attendance WHERE qr_code=?
+    """, (qr_code,))
     stats = cursor.fetchone()
     p, l, a = (stats[0] or 0, stats[1] or 0, stats[2] or 0)
     
+    # 2b. Check for Specific Events in Daily Attendance (those with a session title)
+    cursor.execute("""
+        SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
+        FROM attendance WHERE qr_code=? AND (session IS NOT NULL AND session != '')
+    """, (qr_code,))
+    daily_event_stats = cursor.fetchone()
+    if daily_event_stats and any(daily_event_stats):
+        p += (daily_event_stats[0] or 0)
+        l += (daily_event_stats[1] or 0)
+        a += (daily_event_stats[2] or 0)
+
     # 3. Subject Stats
     cursor.execute("""
-        SELECT s.name, SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent')
+        SELECT s.name, SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent'), s.category
         FROM subject_attendance sa JOIN subjects s ON sa.subject_id = s.id
         WHERE sa.qr_code = ? GROUP BY s.id
     """, (qr_code,))
-    subjects = cursor.fetchall()
+    subjects_raw = cursor.fetchall()
+    
+    # 3b. Daily Events (from attendance table with session)
+    cursor.execute("""
+        SELECT session, SUM(status='present'), SUM(status='late'), SUM(status='absent'), 'event'
+        FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
+        GROUP BY session
+    """, (qr_code,))
+    daily_events = cursor.fetchall()
+    
+    subjects = subjects_raw + daily_events
     
     conn.close()
     
     # Build HTML with Premium Formatting
     html = f"<h1 style='font-family: helvetica; color: #0f172a;'>{name}</h1>"
-    html += f"<p><b>ID:</b> <code>{qr_code}</code> &nbsp; | &nbsp; <b>Course:</b> {course or 'N/A'}<br>"
+    html += f"<p><b>Course:</b> {course or 'N/A'}<br>"
     html += f"<b>Type:</b> {stype or 'Regular'} &nbsp; | &nbsp; <b>Year:</b> {year or 'N/A'}</p>"
     
     html += "<h2 style='border-bottom: 0.5px solid #cbd5e1; padding-bottom: 5px;'>Attendance Summary</h2>"

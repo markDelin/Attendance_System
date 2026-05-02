@@ -53,9 +53,10 @@ try {
         $contact_number = $_POST['contact_number'] ?? '';
         $email = $_POST['email'] ?? '';
         $birthday = $_POST['birthday'] ?? '';
+        $birthday_image = $_POST['birthday_image'] ?? '';
 
-        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, email, birthday) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday]);
+        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, email, birthday, birthday_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $birthday_image]);
         
         echo json_encode(["status" => "success", "message" => "Student added successfully"]);
 
@@ -85,13 +86,22 @@ try {
         $email = $_POST['email'] ?? '';
         $birthday = $_POST['birthday'] ?? '';
         $year_level = $_POST['year_level'] ?? '1st';
+        $birthday_image = $_POST['birthday_image'] ?? '';
 
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, email = ?, birthday = ?, year_level = ? WHERE qr_code = ?");
-        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $year_level, $qr_code]);
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, email = ?, birthday = ?, year_level = ?, birthday_image = ? WHERE qr_code = ?");
+        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $year_level, $birthday_image, $qr_code]);
         
         echo json_encode(["status" => "success", "message" => "User updated successfully"]);
 
     } elseif ($action === 'delete') {
+        $reason = trim($_POST['reason'] ?? 'Unknown');
+        
+        // Fetch student name before deleting or updating
+        $stmt = $pdo->prepare("SELECT name FROM users WHERE qr_code = ?");
+        $stmt->execute([$qr_code]);
+        $userData = $stmt->fetch(PDO::FETCH_ASSOC);
+        $studentName = $userData ? $userData['name'] : 'Unknown Student';
+
         // Cascade delete handled by DB Foreign Keys if enabled, but let's be explicit
         $pdo->beginTransaction();
         
@@ -111,6 +121,21 @@ try {
         $pdo->prepare("UPDATE attendance SET deleted_at = CURRENT_TIMESTAMP WHERE qr_code = ?")->execute([$qr_code]);
 
         $pdo->commit();
+
+        // --- System Notice & Telegram Notification ---
+        require_once "../includes/telegram.php";
+        
+        $noticeContent = "<b>$studentName</b> has been removed from the records (Status: $reason).";
+        $pdo->prepare("INSERT INTO system_notices (type, content) VALUES ('removal', ?)")->execute([$noticeContent]);
+
+        $telegramMsg = "<b>🗑️ SYSTEM NOTICE: RECORD REMOVAL</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\n" .
+                      "<i>A student has been removed from the logs.</i>\n\n" .
+                      "Student: <b>$studentName</b>\n" .
+                      "Status: <b>$reason</b>\n\n" .
+                      "<i>Data Protocol :: System Audit</i>";
+        
+        send_telegram_notification($telegramMsg);
+
         echo json_encode(["status" => "success", "message" => "User moved to Recycle Bin"]);
     
     } elseif ($action === 'restore') {

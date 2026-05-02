@@ -10,6 +10,11 @@ echo Press Ctrl+C to stop the server.
 
 cd /d "%~dp0..\.."
 
+echo [NOTE]: If you see a 'Database Error: could not find driver' when opening the site,
+echo it means your PHP extensions version in C:\php\ext does not match your PHP binary version.
+echo Please look at the implementation plan for manual fix instructions.
+echo.
+
 if exist "C:\php\php.exe" (
     "C:\php\php.exe" -S 0.0.0.0:8000 -c config\php.ini
 ) else (

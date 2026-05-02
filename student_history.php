@@ -22,20 +22,33 @@ $sy_stmt->execute([$qr_code]);
 $sy_list = $sy_stmt->fetchAll(PDO::FETCH_COLUMN);
 $active_sy = $_GET['sy'] ?? $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
 
-// Fetch Attendance Logs (Filtered by SY)
-$logs = $pdo->prepare("SELECT * FROM attendance WHERE qr_code = ? AND (school_year = ? OR school_year IS NULL) ORDER BY date DESC, time DESC");
+// Fetch Attendance Logs (Filtered by SY - but only for Specific Events)
+$logs = $pdo->prepare("SELECT * FROM attendance WHERE qr_code = ? AND (school_year = ? OR school_year IS NULL) AND (session IS NOT NULL AND session != '') ORDER BY date DESC, time DESC");
 $logs->execute([$qr_code, $active_sy]);
-$attendance = $logs->fetchAll(PDO::FETCH_ASSOC);
+$attendance_events = $logs->fetchAll(PDO::FETCH_ASSOC);
 
-// Calculate Stats
-$total = count($attendance);
+// Fetch Subject Attendance Records
+$stmtSubStats = $pdo->prepare("
+    SELECT status FROM subject_attendance 
+    WHERE qr_code = ? 
+    ORDER BY date DESC, time DESC
+");
+$stmtSubStats->execute([$qr_code]);
+$subject_marks = $stmtSubStats->fetchAll(PDO::FETCH_ASSOC);
+
+// Calculate Combined Stats (Subjects + Daily Events)
+$all_marks = array_merge($attendance_events, $subject_marks);
+$total = count($all_marks);
 $present = 0; $late = 0; $absent = 0;
 
-foreach ($attendance as $a) {
-    if ($a['status'] == 'present') $present++;
-    elseif ($a['status'] == 'late') $late++;
-    elseif ($a['status'] == 'absent') $absent++;
+foreach ($all_marks as $m) {
+    if ($m['status'] == 'present') $present++;
+    elseif ($m['status'] == 'late') $late++;
+    elseif ($m['status'] == 'absent') $absent++;
 }
+
+// Rename for the display loop below
+$attendance = $attendance_events; 
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -120,16 +133,17 @@ foreach ($attendance as $a) {
             </div>
         </div>
 
-        <!-- Records Table -->
+        <!-- Daily Event Records Table -->
         <div class="card animate-fade-up" style="border-radius: 20px;">
             <div class="card-header">
-                <h4>General Attendance</h4>
-                <span class="badge" style="background:#f1f5f9; color:var(--text-muted);">DAILY REVIEWS</span>
+                <h4>Event Logs (Daily)</h4>
+                <span class="badge" style="background:#f1f5f9; color:var(--text-muted);">SPECIAL EVENTS</span>
             </div>
             <div class="table-wrapper" style="overflow-x: auto;">
                 <table>
                     <thead>
                         <tr>
+                            <th>Event Name</th>
                             <th>Date</th>
                             <th>Time</th>
                             <th>Status</th>
@@ -137,13 +151,14 @@ foreach ($attendance as $a) {
                     </thead>
                     <tbody>
                         <?php if (empty($attendance)): ?>
-                            <tr><td colspan="3" style="padding: 4rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No daily records found.</td></tr>
+                            <tr><td colspan="4" style="padding: 4rem; text-align: center; color: var(--text-muted); font-size: 0.9rem;">No daily event records found.</td></tr>
                         <?php else: ?>
                             <?php foreach ($attendance as $row): ?>
                             <tr>
-                                <td style="font-weight: 700; color: var(--text-main);"><?= date('F j, Y', strtotime($row['date'])) ?></td>
+                                <td style="font-weight: 700; color: var(--primary);"><?= htmlspecialchars($row['session']) ?></td>
+                                <td style="color: var(--text-main);"><?= date('F j, Y', strtotime($row['date'])) ?></td>
                                 <td style="color: var(--text-muted); font-family: monospace;"><?= date('h:i:s A', strtotime($row['time'])) ?></td>
-                                <td><span class="badge <?= $row['status'] ?>"><?= ucfirst($row['status']) ?></span></td>
+                                <td><span class="badge <?= $row['status'] ?>"><?= str_replace('-', ' ', ucfirst($row['status'])) ?></span></td>
                             </tr>
                             <?php endforeach; ?>
                         <?php endif; ?>

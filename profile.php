@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             name = ?, first_name = ?, last_name = ?, middle_initial = ?, 
             birthday = ?, email = ?, course = ?, section = ?, sex = ?, 
             place_of_birth = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?,
-            student_type = ?, year_level = ?
+            student_type = ?, year_level = ?, birthday_image = ?
             WHERE qr_code = ?");
         $stmt->execute([
             $name, $first_name, $last_name, $middle_initial, 
@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $_POST['course'], $_POST['section'] ?? '', $_POST['sex'], 
             $_POST['place_of_birth'], $_POST['civil_status'], $_POST['religion'], $_POST['citizenship'], $_POST['contact_number'], 
             $_POST['student_type'] ?? 'regular', $_POST['year_level'] ?? '1st',
+            $_POST['birthday_image'] ?? '',
             $qr
         ]);
         header("Location: profile.php?qr=$qr&msg=saved");
@@ -42,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
 // Recent Activity
 $stmtActivity = $pdo->prepare("
-    SELECT 'Daily' as subject_name, status, date, time FROM attendance WHERE qr_code = ?
+    SELECT session as subject_name, status, date, time FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
     UNION ALL
     SELECT s.name as subject_name, sa.status, sa.date, sa.time FROM subject_attendance sa JOIN subjects s ON sa.subject_id = s.id WHERE sa.qr_code = ?
     ORDER BY date DESC, time DESC LIMIT 10
@@ -50,7 +51,7 @@ $stmtActivity = $pdo->prepare("
 $stmtActivity->execute([$qr, $qr]);
 $history = $stmtActivity->fetchAll(PDO::FETCH_ASSOC);
 
-// Detailed Analytics
+// Detailed Analytics (Subject-centric + Daily Event logs)
 $stmtStats = $pdo->prepare("
     SELECT 
         SUM(CASE WHEN status='present' THEN 1 ELSE 0 END) as present,
@@ -58,7 +59,7 @@ $stmtStats = $pdo->prepare("
         SUM(CASE WHEN status='absent' THEN 1 ELSE 0 END) as absent,
         COUNT(*) as total
     FROM (
-        SELECT status FROM attendance WHERE qr_code = ?
+        SELECT status FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
         UNION ALL
         SELECT status FROM subject_attendance WHERE qr_code = ?
     ) as combined
@@ -360,6 +361,24 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
                             <input type="text" name="place_of_birth" class="form-control" value="<?= htmlspecialchars($user['place_of_birth'] ?? '') ?>">
                         </div>
                     </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Birthday Thumbnail</label>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <div id="p-bday-preview" style="width: 50px; height: 50px; background: var(--bg-main); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); overflow: hidden; border: 1px solid var(--border);">
+                                <?php if(!empty($user['birthday_image'])): ?>
+                                    <img src="<?= htmlspecialchars($user['birthday_image']) ?>" style="width:100%; height:100%; object-fit:cover;">
+                                <?php else: ?>
+                                    <i class="bi bi-image"></i>
+                                <?php endif; ?>
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="text" name="birthday_image" id="p-bday-img" class="form-control" style="margin-bottom: 5px;" value="<?= htmlspecialchars($user['birthday_image'] ?? '') ?>" placeholder="Image URL or upload...">
+                                <input type="file" id="p-bday-upload" class="form-control" style="font-size: 0.75rem;" accept="image/*">
+                            </div>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.7rem;">Optional image for automatic birthday greetings.</small>
+                    </div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; gap: 1rem;">
@@ -448,6 +467,44 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof initAnimatedList === 'function') {
                 initAnimatedList('.history-rows');
+            }
+        });
+
+        // Birthday Image Upload Handler for Profile
+        document.getElementById('p-bday-upload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                Swal.fire({ title: 'Uploading...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const response = await fetch('api/upload_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
+                Swal.close();
+
+                if (res.success) {
+                    document.getElementById('p-bday-img').value = res.path;
+                    document.getElementById('p-bday-preview').innerHTML = `<img src="${res.path}" style="width:100%; height:100%; object-fit:cover;">`;
+                    Toast.fire({ icon: 'success', title: 'Thumbnail uploaded' });
+                } else {
+                    let errorMsg = res.error;
+                    if (res.details) {
+                        errorMsg += "\nDetails: " + JSON.stringify(res.details, null, 2);
+                    }
+                    throw new Error(errorMsg);
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    html: '<pre style="text-align: left; font-size: 0.75rem;">' + e.message + '</pre>',
+                    confirmButtonText: 'OK'
+                });
             }
         });
     </script>

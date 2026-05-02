@@ -191,6 +191,13 @@ try {
             year TEXT NOT NULL,
             sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(qr_code, year)
+        )",
+
+        "system_notices" => "CREATE TABLE IF NOT EXISTS system_notices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )"
     ];
 
@@ -241,6 +248,7 @@ try {
     if (!in_array('citizenship', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN citizenship TEXT"); } catch (Exception $e) {} }
     if (!in_array('contact_number', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN contact_number TEXT"); } catch (Exception $e) {} }
     if (!in_array('year_level', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN year_level TEXT DEFAULT '1st'"); } catch (Exception $e) {} }
+    if (!in_array('birthday_image', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN birthday_image TEXT DEFAULT NULL"); } catch (Exception $e) {} }
 
     if (!in_array('registration_lock', $cols)) {
         $pdo->exec("ALTER TABLE settings ADD COLUMN registration_lock INTEGER NOT NULL DEFAULT 0");
@@ -250,6 +258,9 @@ try {
     }
     if (!in_array('billing_mode', $cols)) {
         $pdo->exec("ALTER TABLE settings ADD COLUMN billing_mode TEXT NOT NULL DEFAULT 'fixed'"); // 'fixed' or 'quota'
+    }
+    if (!in_array('maintenance_mode', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN maintenance_mode INTEGER DEFAULT 0"); } catch (Exception $e) {}
     }
 
     if (!in_array('telegram_bot_token', $cols)) {
@@ -271,6 +282,9 @@ try {
     }
     if (!in_array('sy_end_date', $cols)) {
         try { $pdo->exec("ALTER TABLE settings ADD COLUMN sy_end_date TEXT"); } catch (Exception $e) {}
+    }
+    if (!in_array('birthday_image', $cols)) {
+        try { $pdo->exec("ALTER TABLE settings ADD COLUMN birthday_image TEXT DEFAULT NULL"); } catch (Exception $e) {}
     }
 
     // Attendance & Billing SY Migration

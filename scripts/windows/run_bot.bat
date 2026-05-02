@@ -3,8 +3,8 @@ echo ==============================================
 echo    Attendance System - Telegram Bot Service
 echo ==============================================
 echo.
-echo Installing requirements...
-pip install pyTelegramBotAPI markdown2 fpdf2 > nul 2>&1
+echo Installing requirements (this may take a moment)...
+pip install pyTelegramBotAPI markdown2 fpdf2 psutil
 echo.
 cd /d "%~dp0..\.."
 

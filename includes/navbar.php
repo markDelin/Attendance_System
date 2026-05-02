@@ -81,6 +81,9 @@ if (!$foundHistoryBack) {
                 $backUrl = 'view_attendance.php'; break;
             case 'admin_restore.php': 
                 $backUrl = 'recycle_bin.php'; break;
+            case 'orders.php':
+            case 'manage_products.php':
+                $backUrl = 'index.php'; break;
             default:
                 $backUrl = 'index.php';
         }
@@ -104,6 +107,9 @@ switch($currentPage) {
     case 'profile.php': $title = 'Student Profile'; break;
     case 'student_history.php': $title = 'Attendance History'; break;
     case 'recycle_bin.php': $title = 'Recycle Bin'; break;
+    case 'orders.php': $title = 'Order Log'; break;
+    case 'manage_products.php': $title = 'Inventory Control'; break;
+    case 'announcements.php': $title = 'Announcements'; break;
 }
 
 // Logic for Smart Active State (Bottom Nav)
@@ -146,6 +152,9 @@ $explicitBackUrl = $backUrl . (strpos($backUrl, '?') !== false ? '&' : '?') . 'n
             <?php if (isset($navbar_actions)): ?>
                 <?= $navbar_actions ?>
             <?php endif; ?>
+            <a href="announcements.php" class="btn btn-ghost d-none-mobile" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: rgba(0,0,0,0.03);">
+                <i class="bi bi-megaphone" style="font-size: 1rem; color: var(--text-muted);"></i>
+            </a>
             <button onclick="openGlobalSearch()" class="btn btn-ghost d-none-mobile" style="width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none; background: rgba(0,0,0,0.03);">
                 <i class="bi bi-search" style="font-size: 1rem; color: var(--text-muted);"></i>
             </button>

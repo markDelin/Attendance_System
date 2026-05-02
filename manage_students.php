@@ -31,328 +31,195 @@ $irregularUsers = array_filter($allUsers, function($u) {
         .search-area {
             position: sticky;
             top: 0;
-            z-index: 90;
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 1.25rem 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
-            margin-top: -1px;
+            z-index: 100;
+            background: var(--bg-main);
+            padding: 1.5rem 0;
+            margin-bottom: 1rem;
         }
 
         .search-container {
             position: relative;
-            max-width: 600px;
+            max-width: 650px;
             margin: 0 auto;
         }
 
         .search-input {
             width: 100%;
-            padding: 0.875rem 1rem 0.875rem 3rem;
-            border-radius: 12px;
-            border: 1px solid var(--border);
+            padding: 1.1rem 1.25rem 1.1rem 3.5rem;
+            border-radius: var(--radius-md);
+            border: none;
             background: var(--bg-main);
             color: var(--text-main);
-            font-size: 0.95rem;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            font-size: 1rem;
+            box-shadow: var(--shadow-neu-in-sm);
+            transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
+            font-weight: 500;
         }
 
         .search-input:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(23, 23, 23, 0.05);
-            transform: translateY(-1px);
+            box-shadow: var(--shadow-neu-in);
+            transform: scale(0.995);
         }
 
         .search-icon {
             position: absolute;
-            left: 1.25rem;
+            left: 1.5rem;
             top: 50%;
             transform: translateY(-50%);
             color: var(--text-muted);
-            font-size: 1.1rem;
+            font-size: 1.25rem;
+            pointer-events: none;
         }
 
         .section-title {
-            margin: 2rem 0 1.5rem;
-            font-size: 0.85rem;
+            margin: 3rem 0 1.5rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            font-weight: 700;
+            letter-spacing: 0.15em;
+            font-weight: 800;
             color: var(--text-muted);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 2px solid var(--bg-main);
             padding-bottom: 0.75rem;
         }
 
-        /* High-Density Data Table */
+        /* Neumorphic Table Container */
         .data-table-container {
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
+            background: var(--bg-card);
+            border: none;
+            border-radius: var(--radius-lg);
             overflow: hidden;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.01);
+            box-shadow: var(--shadow-neu-out);
+            margin-bottom: 3rem;
         }
 
         .student-table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 0.9rem;
         }
 
         .student-table th {
             text-align: left;
-            padding: 1rem 1.5rem;
-            background: #fafafa;
+            padding: 1.25rem 1.5rem;
+            background: var(--bg-card);
             color: var(--text-muted);
-            font-weight: 600;
-            font-size: 0.75rem;
+            font-weight: 800;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 1px solid var(--border);
+            letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--bg-main);
         }
 
         .student-table td {
             padding: 1.25rem 1.5rem;
-            border-bottom: 1px solid var(--border);
+            border-bottom: 1px solid var(--bg-main);
             vertical-align: middle;
             color: var(--text-main);
         }
 
-        .student-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        .student-table tr {
-            transition: background 0.2s;
-        }
-
         .student-table tr:hover {
-            background: #fdfdfd;
+            background: var(--bg-hover);
         }
 
         .student-name {
-            font-weight: 600;
+            font-weight: 700;
             font-family: 'Outfit', sans-serif;
             font-size: 1rem;
             color: var(--text-main);
             text-decoration: none;
+            transition: color 0.2s;
         }
+        .student-name:hover { color: var(--primary); }
 
         .student-id {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             color: var(--text-muted);
-            background: #f1f5f9;
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: var(--bg-main);
+            padding: 3px 8px;
+            border-radius: 6px;
+            box-shadow: var(--shadow-neu-in-sm);
         }
 
         .type-badge {
             display: inline-flex;
             align-items: center;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 700;
+            padding: 0.4rem 1rem;
+            border-radius: 30px;
+            font-size: 0.65rem;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.02em;
+            letter-spacing: 0.05em;
+            box-shadow: var(--shadow-neu-out-sm);
         }
 
-        .type-regular { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
-        .type-irregular { background: #fff1f2; color: #991b1b; border: 1px solid #ffe4e6; }
-
-        /* PC Row Layout Styles - "Swiss Academic" Grid Integration */
-        @media (min-width: 769px) {
-            .student-table {
-                display: block; /* Convert table to block for grid rows */
-            }
-            .student-table thead, .student-table tbody {
-                display: block;
-                width: 100%;
-            }
-            .student-table tr {
-                display: grid !important;
-                grid-template-columns: 2fr 1.2fr 0.8fr 0.6fr !important;
-                align-items: center;
-                background: transparent !important;
-                border: none !important;
-                border-bottom: 1px solid var(--border) !important;
-                border-radius: 0 !important;
-                box-shadow: none !important;
-                margin: 0 !important;
-                transition: background 0.15s ease;
-            }
-            .student-table tr:hover {
-                background: #f8fafc !important;
-            }
-            .student-table th, .student-table td {
-                display: block !important;
-                width: auto !important;
-                padding: 1.1rem 1.5rem !important;
-                border: none !important;
-                overflow: hidden;
-            }
-            .column-actions {
-                text-align: right;
-            }
-
-            /* Single Row Alignment for Student Identity & Course */
-            .pc-row {
-                display: flex !important;
-                flex-direction: row !important;
-                align-items: center !important;
-                gap: 10px !important;
-                white-space: nowrap;
-                overflow: hidden;
-            }
-            .student-name {
-                flex-shrink: 1;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                font-size: 0.95rem;
-            }
-            .pc-separator {
-                display: inline-block;
-                color: var(--text-muted);
-                opacity: 0.4;
-                font-size: 0.8rem;
-                flex-shrink: 0;
-            }
-            .student-id {
-                white-space: nowrap;
-                font-size: 0.7rem;
-                letter-spacing: 0.02em;
-            }
-        }
-        
-        /* Default Flex for the cell content */
-        .cell-content {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        @media (max-width: 768px) {
-            .pc-separator { display: none; }
-            .pc-row { display: flex; flex-direction: column; }
-        }
+        .type-regular { background: #f0fdf4; color: #166534; }
+        .type-irregular { background: #fff1f2; color: #991b1b; }
 
         .btn-action {
-            width: 36px;
-            height: 36px;
+            width: 40px;
+            height: 40px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: white;
+            border-radius: 12px;
+            border: none;
+            background: var(--bg-card);
             color: var(--text-muted);
-            transition: all 0.2s;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.2s var(--ease-out-expo);
             cursor: pointer;
         }
 
         .btn-action:hover {
-            background: #f8fafc;
+            box-shadow: var(--shadow-neu-in-sm);
             color: var(--primary);
-            border-color: var(--primary);
-            transform: translateY(-1px);
+            transform: scale(0.95);
         }
 
         .btn-delete:hover {
-            background: #fef2f2;
             color: var(--danger);
-            border-color: var(--danger);
         }
 
-        /* Responsive Overhaul */
+        @media (min-width: 769px) {
+            .student-table { display: block; }
+            .student-table thead, .student-table tbody { display: block; width: 100%; }
+            .student-table tr {
+                display: grid !important;
+                grid-template-columns: 2fr 1fr 0.8fr 0.8fr !important;
+                align-items: center;
+                border: none !important;
+                border-bottom: 1px solid var(--bg-main) !important;
+                padding: 0.25rem 0;
+            }
+            .student-table th, .student-table td {
+                padding: 1.25rem 1.5rem !important;
+                border: none !important;
+            }
+            .column-actions { text-align: right; }
+        }
+
         @media (max-width: 768px) {
-            .hide-mobile { display: none; }
-            .student-table td { padding: 1rem; }
-            .student-name { font-size: 0.95rem; }
-            .search-area { padding: 0.75rem 0; }
-
-            .table-wrapper {
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-            }
-
-            .data-table-container {
-                border: none;
-                background: transparent;
-                box-shadow: none;
-            }
-
-            .student-table, .student-table thead, .student-table tbody, .student-table th, .student-table td, .student-table tr {
-                display: block;
-            }
-
-            .student-table thead {
-                display: none; 
-            }
-
+            .search-area { padding: 1rem 0; }
+            .data-table-container { background: transparent; box-shadow: none; overflow: visible; }
+            .student-table thead { display: none; }
             .student-table tr {
                 display: flex;
                 align-items: center;
-                gap: 0.5rem;
-                margin-bottom: 0.5rem;
+                gap: 1rem;
+                margin-bottom: 1.25rem;
                 background: var(--bg-card);
-                border: 1px solid var(--border);
-                border-radius: 12px;
-                padding: 0.6rem 0.85rem;
-                box-shadow: var(--glass-shadow);
+                border-radius: var(--radius-md);
+                padding: 1.25rem;
+                box-shadow: var(--shadow-neu-out-sm);
             }
-
-            .student-table td {
-                border: none;
-                padding: 0 !important;
-                display: block;
-                width: auto !important;
-                font-size: 0.85rem;
-            }
-
-            .student-table td:first-child {
-                flex: 1;
-                min-width: 0;
-            }
-            
-            .student-table td:first-child .student-name {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                display: block;
-            }
-
-            .student-table .hide-mobile {
-                display: none !important;
-            }
-
-            .student-table td::before {
-                display: none;
-            }
-
-            .student-table td::before {
-                content: attr(data-label);
-                font-size: 0.7rem;
-                font-weight: 700;
-                text-transform: uppercase;
-                color: var(--text-muted);
-                letter-spacing: 0.05em;
-            }
-
-            .btn-action {
-                width: 44px; /* Proper touch target size */
-                height: 44px;
-                font-size: 1.1rem;
-            }
-            
-            .student-id {
-                font-size: 0.7rem;
-            }
+            .student-table td { border: none; padding: 0 !important; }
+            .student-table td:first-child { flex: 1; }
+            .column-actions { width: auto; }
+            .btn-action { width: 44px; height: 44px; }
         }
     </style>
 </head>
@@ -400,7 +267,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
                             <?php foreach ($allUsers as $idx => $user): 
                                 $typeClass = ($user['student_type'] ?? 'regular') === 'regular' ? 'type-regular' : 'type-irregular';
                             ?>
-                                <tr class="student-row animated-item" 
+                                <tr class="student-row animated-item hover-lift" 
                                     data-name="<?= htmlspecialchars($user['name']) ?>"
                                     data-qr="<?= htmlspecialchars($user['qr_code']) ?>"
                                     id="row-<?= htmlspecialchars($user['qr_code']) ?>"
@@ -427,6 +294,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 echo ' data-year="'.htmlspecialchars($user['year_level']??'1st').'"';
                                 echo ' data-qr="'.htmlspecialchars($user['qr_code']??'').'"';
                                 echo ' data-name="'.htmlspecialchars($user['name']??'').'"';
+                                echo ' data-bday-img="'.htmlspecialchars($user['birthday_image']??'').'"';
                             ?>
                         >
                             <td data-label="Student" class="column-student">
@@ -452,15 +320,15 @@ $irregularUsers = array_filter($allUsers, function($u) {
                             </td>
                             <td data-label="Actions" class="column-actions">
                                 <div style="display:flex; gap:8px; justify-content:flex-end;">
-                                    <button onclick="editUser(this)" class="btn-action" title="Edit Profile">
+                                    <button onclick="editUser(this)" class="btn-action hover-press" title="Edit Profile">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     <?php if(($user['student_type'] ?? 'regular') === 'irregular'): ?>
-                                        <button onclick="manageSubjects(this)" class="btn-action" style="color:var(--warning)" title="Manage Subjects">
+                                        <button onclick="manageSubjects(this)" class="btn-action hover-press" style="color:var(--warning)" title="Manage Subjects">
                                             <i class="bi bi-journal-text"></i>
                                         </button>
                                     <?php endif; ?>
-                                    <button onclick="deleteUser(this)" class="btn-action btn-delete" title="Move to Trash">
+                                    <button onclick="deleteUser(this)" class="btn-action btn-delete hover-press" title="Move to Trash">
                                         <i class="bi bi-trash3"></i>
                                     </button>
                                 </div>
@@ -475,6 +343,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
         </div>
 
     </main>
+    <?php include 'includes/footer.php'; ?>
     
 
 
@@ -590,6 +459,20 @@ $irregularUsers = array_filter($allUsers, function($u) {
                             <input type="text" name="place_of_birth" id="m-pob" class="form-control">
                         </div>
                     </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <label class="section-title" style="margin: 0 0 8px; border: none; padding: 0;">Birthday Thumbnail</label>
+                        <div style="display: flex; gap: 1rem; align-items: center;">
+                            <div id="m-bday-preview" style="width: 50px; height: 50px; background: var(--bg-main); border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--text-muted); overflow: hidden; border: 1px solid var(--border);">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            <div style="flex: 1;">
+                                <input type="text" name="birthday_image" id="m-bday-img" class="form-control" style="margin-bottom: 5px;" placeholder="Image URL or upload...">
+                                <input type="file" id="m-bday-upload" class="form-control" style="font-size: 0.75rem;" accept="image/*">
+                            </div>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.7rem;">Optional image for automatic birthday greetings.</small>
+                    </div>
                 </div>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 3rem; gap: 1rem;">
@@ -655,6 +538,15 @@ $irregularUsers = array_filter($allUsers, function($u) {
             document.getElementById('m-year').value = d.year;
             document.getElementById('m-type').value = d.type;
             document.getElementById('m-citizenship').value = d.citizenship;
+            
+            const bdayImg = d.bdayImg || '';
+            document.getElementById('m-bday-img').value = bdayImg;
+            const preview = document.getElementById('m-bday-preview');
+            if (bdayImg) {
+                preview.innerHTML = `<img src="${bdayImg}" style="width:100%; height:100%; object-fit:cover;">`;
+            } else {
+                preview.innerHTML = '<i class="bi bi-image"></i>';
+            }
 
             showModal();
         }
@@ -686,41 +578,56 @@ $irregularUsers = array_filter($allUsers, function($u) {
             .catch(() => Swal.fire('Error', 'Network Error', 'error'));
         }
 
-        function deleteUser(btn) {
+        async function deleteUser(btn) {
             const row = btn.closest('.student-row');
             const id = row.dataset.qrOriginal || row.dataset.qr;
             const name = row.dataset.nameDisplay || row.dataset.name;
 
-            Swal.fire({
-                title: 'Delete Student?',
-                text: `This will delete ${name} and ALL their attendance history.`,
+            const { value: reason } = await Swal.fire({
+                title: 'Record Removal',
+                text: `Removing ${name} from active records. Please select a reason:`,
                 icon: 'warning',
+                input: 'select',
+                inputOptions: {
+                    'Unknown': 'Unknown / General Removal',
+                    'Dropped Out': 'Dropped Out',
+                    'Transferred': 'Transferred to Other School',
+                    'Graduated': 'Graduated',
+                    'Duplicate Record': 'Duplicate Record',
+                    'Disciplinary': 'Disciplinary Action'
+                },
+                inputPlaceholder: 'Select a reason',
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#64748b',
-                confirmButtonText: 'Yes, delete!'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('api/manage_users.php', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({ action: 'delete', qr_code: id })
-                    })
-                    .then(r => r.json())
-                    .then(data => {
-                        if(data.status === 'success') {
-                             Swal.fire({
-                                title: 'Deleted!',
-                                text: 'The student and their history have been removed.',
-                                icon: 'success',
-                                confirmButtonColor: 'var(--primary)'
-                            }).then(() => location.reload());
-                        } else {
-                            Swal.fire('Error', data.message, 'error');
-                        }
+                confirmButtonText: 'Confirm Removal',
+                inputValidator: (value) => {
+                    return new Promise((resolve) => {
+                        resolve(); // Reason is optional, defaults to Unknown if somehow skipped
                     });
                 }
             });
+
+            if (reason) {
+                fetch('api/manage_users.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({ action: 'delete', qr_code: id, reason: reason })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.status === 'success') {
+                         Swal.fire({
+                            title: 'Removed!',
+                            text: 'The record has been updated and moved to archives.',
+                            icon: 'success',
+                            confirmButtonColor: 'var(--primary)'
+                        }).then(() => location.reload());
+                    } else {
+                        Swal.fire('Error', data.message, 'error');
+                    }
+                });
+            }
         }
 
         function manageSubjects(btn) {
@@ -825,6 +732,44 @@ $irregularUsers = array_filter($allUsers, function($u) {
                     if(profileLink) window.location.href = profileLink.href;
                 }
             });
+        });
+
+        // Birthday Image Upload Handler for Modal
+        document.getElementById('m-bday-upload').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                Swal.fire({ title: 'Uploading...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+                const response = await fetch('api/upload_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const res = await response.json();
+                Swal.close();
+
+                if (res.success) {
+                    document.getElementById('m-bday-img').value = res.path;
+                    document.getElementById('m-bday-preview').innerHTML = `<img src="${res.path}" style="width:100%; height:100%; object-fit:cover;">`;
+                    Toast.fire({ icon: 'success', title: 'Thumbnail uploaded' });
+                } else {
+                    let errorMsg = res.error;
+                    if (res.details) {
+                        errorMsg += "\nDetails: " + JSON.stringify(res.details, null, 2);
+                    }
+                    throw new Error(errorMsg);
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Upload Failed',
+                    html: '<pre style="text-align: left; font-size: 0.75rem;">' + e.message + '</pre>',
+                    confirmButtonText: 'OK'
+                });
+            }
         });
     </script>
 </body>

@@ -15,9 +15,8 @@ try {
     $todayMorning->execute([$today]);
     $morningStats = $todayMorning->fetchAll(PDO::FETCH_KEY_PAIR);
     
-    // 3. Today's Active Subjects
     $dayOfWeek = date('l');
-    $activeSubjects = $pdo->prepare("SELECT COUNT(DISTINCT subject_id) FROM subject_schedules WHERE day_of_week = ?");
+    $activeSubjects = $pdo->prepare("SELECT COUNT(DISTINCT subject_id) FROM schedules WHERE day_of_week = ?");
     $activeSubjects->execute([$dayOfWeek]);
     $subjectCount = $activeSubjects->fetchColumn();
 

@@ -9,7 +9,7 @@ if (empty($qr)) die("Error: No student ID provided.");
 $python = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
 
 // Path to the generator script
-$generator = realpath(__DIR__ . '/../generate_report.py');
+$generator = realpath(__DIR__ . '/../bot/generate_report.py');
 $workingDir = dirname($generator);
 
 // Execute the Python script

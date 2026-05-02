@@ -63,34 +63,95 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <style>
         .table-wrapper {
             background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-md); /* Sharper Swiss Look */
+            border: none;
+            border-radius: var(--radius-md);
             overflow: hidden;
+            box-shadow: var(--shadow-neu-out-sm);
         }
         table { width: 100%; border-collapse: collapse; }
         th { 
-            text-align: left; padding: 0.75rem 1rem; /* Tighter padding */
+            text-align: left; padding: 1.25rem 1rem;
             background: var(--bg-card); color: var(--text-muted); 
-            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--border);
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+            border-bottom: 1px solid var(--bg-main);
             font-weight: 800;
         }
-        td { padding: 0.75rem 1rem; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        td { padding: 1rem; border-bottom: 1px solid var(--bg-main); font-size: 0.9rem; }
         tr:last-child td { border-bottom: none; }
         
+        .date-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-lg);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-neu-out);
+        }
+
         /* Pagination Styles */
         .pagination {
             display: flex; justify-content: center; align-items: center; gap: 1rem;
             margin-top: 3rem; margin-bottom: 4rem;
         }
         .pagination-btn {
-            padding: 0.6rem 1.25rem; border-radius: 50px; border: 1px solid var(--border);
-            color: var(--text-main); font-weight: 700; font-size: 0.8rem; text-transform: uppercase;
-            transition: all 0.2s; background: var(--bg-card);
+            padding: 0.75rem 1.5rem; 
+            border-radius: 50px; 
+            border: none;
+            color: var(--text-main); 
+            font-weight: 800; 
+            font-size: 0.75rem; 
+            text-transform: uppercase;
+            transition: all 0.2s; 
+            background: var(--bg-card);
+            box-shadow: var(--shadow-neu-out-sm);
         }
-        .pagination-btn:hover:not(:disabled) { border-color: var(--primary); background: var(--bg-hover); }
-        .pagination-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .pagination-btn:hover:not(:disabled) { 
+            box-shadow: var(--shadow-neu-in-sm);
+            color: var(--primary); 
+            transform: scale(0.98);
+        }
+        .pagination-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
         .page-info { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2.5rem;
+            overflow-x: auto;
+            padding: 5px;
+        }
+
+        .nav-link {
+            padding: 0.75rem 1.25rem;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .nav-link.active {
+            box-shadow: var(--shadow-neu-in-sm);
+            color: var(--primary);
+        }
+
+        .filter-select {
+            font-weight: 800; 
+            border-radius: 12px; 
+            font-size: 0.85rem; 
+            padding: 0.6rem 1.25rem; 
+            cursor: pointer; 
+            background: var(--bg-card);
+            border: none;
+            box-shadow: var(--shadow-neu-out-sm);
+        }
+        .filter-select:focus {
+            box-shadow: var(--shadow-neu-in-sm);
+            outline: none;
+        }
     </style>
 </head>
 <body>
@@ -103,6 +164,9 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <button onclick="exportRange()" class="btn btn-ghost">
             <i class="bi bi-calendar-range"></i> <span class="d-none-mobile">Export Range</span>
         </button>
+        <button onclick="exportAllSubjects()" class="btn btn-ghost" title="Bulk Export All Subjects">
+            <i class="bi bi-collection"></i> <span class="d-none-mobile">Bulk Export</span>
+        </button>
     ';
     include 'includes/navbar.php'; 
     ?>
@@ -111,10 +175,10 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- View Toggle -->
         <div class="animate-fade-up">
             <div class="nav-tabs">
-                <a href="view_subjects_list.php" class="nav-link">Subject Records</a>
-                <a href="view_attendance.php" class="nav-link active">Daily Records</a>
-                <a href="groups.php" class="nav-link">Groups</a>
-                <a href="calendar.php" class="nav-link">Calendar</a>
+                <a href="view_subjects_list.php" class="nav-link hover-press">Subject Records</a>
+                <a href="view_attendance.php" class="nav-link active hover-press">Daily Records</a>
+                <a href="groups.php" class="nav-link hover-press">Groups</a>
+                <a href="calendar.php" class="nav-link hover-press">Calendar</a>
             </div>
             
             <div class="mobile-force-stack" style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
@@ -127,7 +191,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <div style="flex-shrink: 0; display: flex; gap: 1rem; align-items: flex-end;">
                      <div style="text-align: right;">
                         <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: block;">Academic Year</label>
-                        <select onchange="window.location.href='?sy='+this.value" class="form-control" style="font-weight: 800; border-radius: 12px; font-size: 0.85rem; padding: 0.5rem 1rem; cursor: pointer; background: var(--bg-card);">
+                        <select onchange="window.location.href='?sy='+this.value" class="filter-select">
                             <?php foreach ($sy_list as $sy): ?>
                                 <option value="<?= htmlspecialchars($sy) ?>" <?= $active_sy == $sy ? 'selected' : '' ?>><?= htmlspecialchars($sy) ?></option>
                             <?php endforeach; ?>
@@ -149,14 +213,14 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <?php else: ?>
 
             <?php foreach ($dates as $idx => $row): ?>
-                <div style="margin-bottom: 2rem;">
+                <div class="date-card animate-fade-up hover-lift" style="animation-delay: <?= $idx * 0.1 ?>s">
                     
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border);">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
                         <div>
-                            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--text-main); letter-spacing: -0.01em;">
+                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;">
                                 <?= date('F j, Y', strtotime($row['date'])) ?>
                             </h3>
-                            <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; margin-top: 2px; display: block;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; margin-top: 4px; display: block;">
                                 <?= $row['record_count'] ?> Entries
                             </span>
                         </div>
@@ -236,57 +300,62 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             <!-- Pagination Navigation -->
             <?php if ($totalPages > 1): ?>
-                <div class="pagination">
-                    <button onclick="window.location.href='?page=<?= $page - 1 ?>'" 
-                            class="pagination-btn" <?= $page <= 1 ? 'disabled' : '' ?>>
-                        <i class="bi bi-chevron-left"></i> Prev
-                    </button>
-                    
-                    <span class="page-info">
-                        Page <?= $page ?> of <?= $totalPages ?>
-                    </span>
-                    
-                    <button onclick="window.location.href='?page=<?= $page + 1 ?>'" 
-                            class="pagination-btn" <?= $page >= $totalPages ? 'disabled' : '' ?>>
-                        Next <i class="bi bi-chevron-right"></i>
-                    </button>
-                </div>
+                <div class="pagination animate-fade-up">
+            <button onclick="window.location.href='?page=<?= $page - 1 ?>&sy=<?= $active_sy ?>'" 
+                    class="pagination-btn hover-press" <?= $page <= 1 ? 'disabled' : '' ?>>
+                <i class="bi bi-chevron-left"></i> Prev
+            </button>
+            <div class="page-info">Page <?= $page ?> of <?= $totalPages ?></div>
+            <button onclick="window.location.href='?page=<?= $page + 1 ?>&sy=<?= $active_sy ?>'" 
+                    class="pagination-btn hover-press" <?= $page >= $totalPages ? 'disabled' : '' ?>>
+                Next <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+        </div>
             <?php endif; ?>
 
         <?php endif; ?>
     </main>
+    <?php include 'includes/footer.php'; ?>
 
     <script>
         function exportRange() {
             Swal.fire({
                 title: 'Export Attendance',
                 html: `
-                    <div style="text-align:left">
-                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Date Range</label>
-                        <div style="display:flex; gap:10px; margin-bottom:15px;">
-                            <input type="date" id="swal-start" class="swal2-input" value="<?= date('Y-m-d') ?>" style="margin:0; flex:1">
-                            <input type="date" id="swal-end" class="swal2-input" value="<?= date('Y-m-d') ?>" style="margin:0; flex:1">
+                    <div style="text-align:left; padding: 0.5rem;">
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Select date range for aggregated matrix export.</p>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Start Date</label>
+                                <input type="date" id="swal-start" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">End Date</label>
+                                <input type="date" id="swal-end" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
                         </div>
                         
-                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Format</label>
+                        <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:8px;">Format</label>
                         <div style="display:flex; gap:15px; flex-wrap:wrap;">
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px;"> 
-                                <span>Excel (.xls)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px; accent-color:var(--primary);"> 
+                                Excel (.xls)
                             </label>
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px;"> 
-                                <span>Raw CSV (.csv)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px; accent-color:var(--primary);"> 
+                                Raw CSV (.csv)
                             </label>
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="html" style="margin-right:8px;"> 
-                                <span>Google Sheets (.html)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="html" style="margin-right:8px; accent-color:var(--primary);"> 
+                                Google Sheets
                             </label>
                         </div>
                     </div>
                 `,
                 showCancelButton: true,
                 confirmButtonText: 'Download',
+                confirmButtonColor: 'var(--primary)',
                 preConfirm: () => {
                     return [
                         document.getElementById('swal-start').value,
@@ -328,27 +397,28 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             Swal.fire({
                 title: 'Export Day',
                 html: `
-                    <div style="text-align:left">
+                    <div style="text-align:left; padding: 0.5rem;">
                         <p style="margin-bottom:15px">Exporting records for <b>${date}</b></p>
-                        <label style="display:block; margin-bottom:5px; font-weight:600; color:var(--text-main)">Format</label>
+                        <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; display:block; margin-bottom:8px;">Format</label>
                         <div style="display:flex; gap:15px; flex-wrap:wrap;">
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px;"> 
-                                <span>Excel (.xls)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="xls" checked style="margin-right:8px; accent-color:var(--primary);"> 
+                                Excel (.xls)
                             </label>
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px;"> 
-                                <span>Raw CSV (.csv)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="csv" style="margin-right:8px; accent-color:var(--primary);"> 
+                                Raw CSV
                             </label>
-                            <label style="display:flex; align-items:center; cursor:pointer;">
-                                <input type="radio" name="swal-format" value="html" style="margin-right:8px;"> 
-                                <span>Google Sheets (.html)</span>
+                            <label style="display:flex; align-items:center; cursor:pointer; font-weight:600; font-size:0.9rem;">
+                                <input type="radio" name="swal-format" value="html" style="margin-right:8px; accent-color:var(--primary);"> 
+                                Web View
                             </label>
                         </div>
                     </div>
                 `,
                 showCancelButton: true,
                 confirmButtonText: 'Download',
+                confirmButtonColor: 'var(--primary)',
                 preConfirm: () => {
                     return document.querySelector('input[name="swal-format"]:checked').value;
                 }
@@ -375,6 +445,41 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     document.body.removeChild(form);
                 }
             })
+        }
+
+        function exportAllSubjects() {
+            Swal.fire({
+                title: 'Bulk Subject Export',
+                html: `
+                    <div style="text-align:left; padding: 0.5rem;">
+                        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:1.5rem;">Download all subject records in one file.</p>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1.5rem;">
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Start Date</label>
+                                <input type="date" id="bulk-start" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
+                            <div>
+                                <label style="font-size:0.7rem; font-weight:800; color:var(--text-muted); text-transform:uppercase;">End Date</label>
+                                <input type="date" id="bulk-end" class="form-control" value="<?= date('Y-m-d') ?>" style="border-radius:12px; margin-top:4px;">
+                            </div>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Generate Bulk Export',
+                confirmButtonColor: 'var(--primary)',
+                preConfirm: () => {
+                    return [
+                        document.getElementById('bulk-start').value,
+                        document.getElementById('bulk-end').value
+                    ]
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const [start, end] = result.value;
+                    window.open(`api/export_all_subjects.php?start=${start}&end=${end}&format=xls`, '_blank');
+                }
+            });
         }
 
         function notifyAbsentees(date) {
