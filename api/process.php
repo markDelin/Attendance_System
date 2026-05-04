@@ -133,13 +133,14 @@ try {
   if ($existing) {
     // Handling Manual Update
     if (isset($_POST['manual_entry'])) {
-        $sql = "UPDATE attendance SET status = ?, time = ?";
-        $params = [$status, $nowDisplay];
-        
-
-        
-        $sql .= " WHERE id = ?";
-        $params[] = $existing['id'];
+        // If updating a past record, don't overwrite the time with current time.
+        if ($today === date("Y-m-d")) {
+            $sql = "UPDATE attendance SET status = ?, time = ? WHERE id = ?";
+            $params = [$status, $nowDisplay, $existing['id']];
+        } else {
+            $sql = "UPDATE attendance SET status = ? WHERE id = ?";
+            $params = [$status, $existing['id']];
+        }
 
         $pdo->prepare($sql)->execute($params);
 

@@ -13,3 +13,10 @@ __pycache__/
 
 # MacOS
 .DS_Store
+
+# Temporary & Scratch Files
+scratch/
+.gemini/
+node_modules/
+dist/
+build/

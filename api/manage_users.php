@@ -32,8 +32,8 @@ try {
         // Construct composite name
         $name = $last_name . ', ' . $first_name . ($middle_initial ? ' ' . $middle_initial . '.' : '');
 
-        // Check duplicate
-        $check = $pdo->prepare("SELECT qr_code FROM users WHERE qr_code = ?");
+        // Check duplicate (ignoring soft-deleted, so they can be re-added if desired, or maybe we want to allow restore instead? Let's assume re-adding is fine if deleted)
+        $check = $pdo->prepare("SELECT qr_code FROM users WHERE qr_code = ? AND deleted_at IS NULL");
         $check->execute([$qr_code]);
         if ($check->fetch()) {
             echo json_encode(["status" => "error", "message" => "Student ID/QR Code already exists"]);
@@ -105,9 +105,9 @@ try {
         // Cascade delete handled by DB Foreign Keys if enabled, but let's be explicit
         $pdo->beginTransaction();
         
-        // Delete attendance records First
-        $stmt = $pdo->prepare("DELETE FROM attendance WHERE qr_code = ?");
-        $stmt->execute([$qr_code]);
+        // Do NOT delete attendance records here. Soft delete them instead.
+        // $stmt = $pdo->prepare("DELETE FROM attendance WHERE qr_code = ?");
+        // $stmt->execute([$qr_code]);
 
         // PRESERVED: Billing/History is NOT deleted on soft delete
         // It will only be deleted on 'permanent_delete'

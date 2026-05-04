@@ -42,37 +42,44 @@ ksort($grouped); // Sort by SY
             background: var(--bg-card);
             border-radius: var(--radius-md);
             overflow: hidden;
-            border: 1px solid var(--border);
+            border: none;
+            box-shadow: var(--shadow-neu-out-sm);
         }
         .item-table th {
             text-align: left;
-            padding: 1rem;
+            padding: 0.85rem 1.25rem;
             background: var(--bg-card);
             color: var(--text-muted);
-            font-size: 0.8rem;
+            font-size: 0.65rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            border-bottom: 2px solid var(--border);
+            letter-spacing: 0.08em;
+            border-bottom: 2px solid var(--bg-main);
+            font-weight: 800;
         }
         .item-table td {
-            padding: 1.25rem 1rem;
-            border-bottom: 1px solid var(--border);
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--bg-main);
+            font-size: 0.88rem;
         }
-        .item-table tr:hover { background: var(--bg-hover); }
+        .item-table tr { transition: all 0.15s; }
+        .item-table tr:hover { background: var(--bg-main); }
         .item-table tr:last-child td { border-bottom: none; }
         
         .code-badge {
             font-family: monospace;
-            font-size: 0.85rem;
+            font-size: 0.75rem;
             background: var(--bg-main);
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
             color: var(--text-muted);
+            font-weight: 600;
         }
         .sem-title {
-            color: var(--text-main);
-            font-size: 1rem;
-            font-weight: 700;
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
             margin-bottom: 1rem;
             margin-top: 2rem;
             display: flex;
@@ -80,30 +87,47 @@ ksort($grouped); // Sort by SY
             gap: 10px;
         }
         .sem-title::after {
-            content: ""; flex: 1; height: 1px; background: var(--border);
+            content: ""; flex: 1; height: 1px; background: color-mix(in srgb, var(--text-muted) 10%, transparent);
         }
-        .view-toggle {
-            display: inline-flex; background: var(--bg-main); padding: 4px; border-radius: 12px;
-            margin-bottom: 2rem; border: 1px solid var(--border);
+
+        .nav-tabs {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+            overflow-x: auto;
+            padding: 5px;
         }
-        .toggle-btn {
-            padding: 8px 20px; border-radius: 8px; text-decoration: none; color: var(--text-muted);
-            font-weight: 600; font-size: 0.9rem; transition: all 0.2s; border: none; background: none; cursor: pointer;
+        .nav-link {
+            padding: 0.65rem 1.1rem;
+            border-radius: 12px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
         }
-        .toggle-btn.active {
-            background: var(--bg-card); color: var(--primary); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-        }
-        .toggle-btn:hover:not(.active) { color: var(--text-main); background: var(--bg-hover); }
-        
+        .nav-link i { font-size: 0.85rem; opacity: 0.6; }
+        .nav-link.active { box-shadow: var(--shadow-neu-in-sm); color: var(--primary); }
+        .nav-link.active i { opacity: 1; }
+
         .sy-title {
             background: var(--primary);
             color: white;
-            padding: 0.75rem 1.25rem;
-            border-radius: var(--radius-md);
-            margin-top: 3rem;
-            font-weight: 700;
-            display: inline-block;
-            box-shadow: var(--shadow-sm);
+            padding: 0.6rem 1.25rem;
+            border-radius: 12px;
+            margin-top: 2.5rem;
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.82rem;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
         }
     </style>
 </head>
@@ -116,9 +140,9 @@ ksort($grouped); // Sort by SY
         <!-- View Toggle -->
         <div class="animate-fade-up">
             <div class="nav-tabs">
-                <a href="view_subjects_list.php?category=subject" class="nav-link <?= $category === 'subject' ? 'active' : '' ?>">Academic Subjects</a>
-                <a href="view_subjects_list.php?category=event" class="nav-link <?= $category === 'event' ? 'active' : '' ?>">Specific Events</a>
-                <a href="view_attendance.php" class="nav-link">Daily Records</a>
+                <a href="view_subjects_list.php?category=subject" class="nav-link <?= $category === 'subject' ? 'active' : '' ?> hover-press"><i class="bi bi-book"></i> Academic Subjects</a>
+                <a href="view_subjects_list.php?category=event" class="nav-link <?= $category === 'event' ? 'active' : '' ?> hover-press"><i class="bi bi-calendar-event"></i> Specific Events</a>
+                <a href="view_attendance.php" class="nav-link hover-press"><i class="bi bi-calendar-check"></i> Daily Records</a>
             </div>
             
             <div class="mobile-force-stack" style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">

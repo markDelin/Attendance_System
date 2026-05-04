@@ -1,80 +1,110 @@
-# 🎓 QR Tools - Advanced Attendance System
+# 🎓 QR Tools: Advanced Academic & Attendance Ecosystem
 
-A comprehensive, high-performance QR code-based attendance tracking system. Designed with a sleek "Swiss Academic" minimalist UI, this system automates entry logging, subject-specific attendance, robust Telegram integrations, and school year progress tracking.
+[![Version](https://img.shields.io/badge/version-2.5.0-blue.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
+[![UI](https://img.shields.io/badge/UI-Neumorphic-indigo.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-green.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
 
-## 🌟 Key Features
+A high-performance, enterprise-grade attendance tracking and student management ecosystem. Built with a sophisticated **Neumorphic UI** and optimized for both desktop and ultra-wide (20:9) mobile displays, this system integrates QR technology, real-time analytics, and automated communication via Telegram.
 
-- **Blazing Fast QR Scanning**: Real-time scanning for both Desktop and Mobile devices.
-- **Smart Status Calculation**: Automated evaluation of Present/Late/Absent status based on configurable Grace Periods.
-- **Telegram Bot Integration**: Full administrative control from Telegram. Query student dossiers, generate PDF reports, pull latest stats, and send broadcast announcements directly to group chats.
-- **School Year Management**: Seamlessly switch between academic years or semesters and track overall progress inside the main dashboard.
-- **Subject & Event Specific Tracking**: Record attendance independently for daily general ingress, specific class subjects, or special events.
-- **Ambagan (Billing) Module**: Track payments, classroom contributions, and billing histories.
-- **Swiss Academic UI**: A focused, dark-mode-first aesthetic with high-density data tables and fluid micro-animations.
+---
+
+## 🌟 Core Features
+
+### 📡 Smart Ingress & Attendance
+- **Blazing Fast QR Scanning**: Sub-millisecond scanning with instant feedback and audio cues.
+- **Automated Status Engine**: Evaluates **Present/Late/Absent** status based on dynamic grace periods.
+- **Subject-Specific Tracking**: Manage independent attendance logs for specific classes, events, or general daily entry.
+- **System Re-attendance**: Smart correction module to re-evaluate logs or handle re-entry without data duplication.
+
+### 📊 Advanced Analytics & Dashboard
+- **Real-Time KPI Tracking**: Instant visibility into attendance rates, student population stats, and system health.
+- **Daily Status Insights**: Visual heatmaps and status distributions for the current academic day.
+- **Academic Progress Tracking**: Visual progress bars showing the current school year's completion status.
+
+### 📦 Order & Inventory Management
+- **Transaction Logs**: Track and manage ordered records and student fulfillments.
+- **Inventory Control**: Dedicated module to manage products, supplies, or materials associated with the student body.
+- **Status Tracking**: Monitor order statuses from pending to completed or cancelled.
+
+### 👨‍🎓 Student & Group Management
+- **Detailed Student Database**: Centralized hub for student profiles, academic history, and contact information.
+- **Promotion System**: Seamlessly advance student year levels (1st→2nd, 2nd→3rd, etc.) with automated graduation tagging.
+- **Group Management**: Organically organize students into sections, groups, or specialized teams.
+- **Recycle Bin**: Fail-safe data management with a dedicated restoration system for deleted records.
+
+### 🤖 Telegram Bot & Communication
+- **Administrative CLI**: Control the system via Telegram. Query student data, generate PDF reports, and pull live stats.
+- **Broadcast Announcements**: Send formatted announcements directly to student groups or administrative chats.
+- **Birthday Alerts**: Automated countdowns and Telegram notifications for student birthdays.
 
 ---
 
 ## 🚀 Quick Start (Windows)
 
-**The easiest way to launch both the Web Server and the Telegram Bot:**
+**Launch the entire ecosystem (Web Server + Telegram Bot) in one click:**
 
-1. Open the project folder.
-2. Double-click the **`START_SYSTEM.bat`** file.
-3. The Web Application will be available at **[http://localhost:8000](http://localhost:8000)**.
-4. The Telegram Bot will be operational (check the console for details).
+1.  Navigate to the project root.
+2.  Execute **`START_SYSTEM.bat`**.
+3.  **Web Access**: [http://localhost:8000](http://localhost:8000)
+4.  **Bot Interface**: Watch the console for initialization logs.
 
-> **Note**: This batch file automatically manages the PHP configuration and loads the bot logic to ensure everything runs seamlessly together.
-
-## 📱 Mobile/Linux Deployment (Termux)
-
-If you are running the system on an Android device via Termux or a Linux server, follow these steps:
-
-1. **Run the Setup Script**:
-   ```bash
-   bash scripts/mobile/setup_mobile.sh
-   ```
-   *This automatically installs PHP, Python, SQLite, and necessary Telegram bot libraries.*
-
-2. **Start the Services**:
-   ```bash
-   bash scripts/mobile/start_mobile.sh
-   ```
-
-3. **Access the System**:
-   Open a browser and navigate to `http://localhost:8000`.
+> [!TIP]
+> This launcher automatically configures the PHP environment and initializes the Python-based Telegram engine.
 
 ---
 
-## 📂 Project Structure
+## 📱 Mobile & Linux Deployment
 
-Following a modular directory structure for enhanced maintainability:
+For Android (Termux) or dedicated Linux servers:
+
+1.  **Initialize Environment**:
+    ```bash
+    bash scripts/mobile/setup_mobile.sh
+    ```
+2.  **Start Services**:
+    ```bash
+    bash scripts/mobile/start_mobile.sh
+    ```
+
+---
+
+## 📂 System Architecture
 
 ```text
-attendance-system/
-├── START_SYSTEM.bat         # Master Launcher (Windows)
-├── index.php                # Main Dashboard
-├── scan.php                 # Scanner Interface
-├── settings.php             # Core Configuration
-├── api/                     # Backend API Processors
-├── assets/                  # CSS, JS, and Media assets
-├── bot/                     # Python logic for Telegram Bot (attendance_bot.py) 
-├── config/                  # Server configuration (php.ini)
-├── database/                # Local SQLite Database (attendance.db)
-├── docs/                    # Additional Documentation
-├── includes/                # Shared UI components and DB connector
-└── scripts/                 # OS-specific sub-scripts (Windows/unix)
+Attendance_System/
+├── START_SYSTEM.bat         # Windows Master Launcher
+├── index.php                # Pro Analytics Dashboard
+├── scan.php                 # Real-time QR Engine
+├── manage_students.php      # Student Lifecycle Management
+├── orders.php               # Order & Transaction Log
+├── manage_products.php      # Inventory & Product Management
+├── groups.php               # Section & Group Management
+├── reattendance.php         # System Re-run & Correction
+├── api/                     # High-performance Backend Processors
+│   ├── get_analytics.php    # Data Visualization API
+│   ├── mark_absentees.php   # Automated Absentee Logic
+│   └── export.php           # Excel/PDF Generation Engine
+├── bot/                     # Python-based Telegram Integration
+│   ├── attendance_bot.py    # Main Bot Controller
+│   └── generate_report.py   # PDF Report Generator
+├── database/                # SQLite3 Secure Data Storage
+└── assets/                  # Neumorphic CSS & Dynamic JS
 ```
 
-## ❓ Troubleshooting
+---
 
-### "Could not find driver" / Database Errors
-This usually means PHP cannot find the SQLite extension.
-**Solution**: Always use the provided `START_SYSTEM.bat` or ensure you run the server using `php -S 0.0.0.0:8000 -c config/php.ini`.
+## 🛠️ Technology Stack
 
-### Camera Not Working
-- **Desktop**: Ensure your browser has not blocked camera access (check the icon near the address bar).
-- **Mobile Network Access**: If accessing via a local network IP (e.g., `192.168.1.x`), browsers often block the camera on unencrypted `http`. Navigate to `chrome://flags` on your mobile browser and add your IP to "Insecure origins treated as secure".
+- **Core**: PHP 8.x (Backend), SQLite3 (Database)
+- **UI/UX**: Vanilla CSS3 (Neumorphic Framework), Vanilla JS (ES6+)
+- **Automation**: Python 3.10+ (Telegram Bot API)
+- **Deployment**: Portable PHP Server, Termux Compatibility
 
-## 📜 License
+---
 
-[MIT License](LICENSE)
+## 📜 License & Contribution
+
+This project is licensed under the **MIT License**. Contributions for UI/UX improvements or new API integrations are welcome via Pull Requests.
+
+---
+*Built with ❤️ for Modern Educators.*

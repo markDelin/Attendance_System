@@ -76,6 +76,38 @@ foreach ($subjects as $s) {
             border: none;
         }
 
+        /* Scan Button Pulse */
+        .scan-hero-btn {
+            padding: 0.8rem 2.5rem;
+            font-size: 1.05rem;
+            border-radius: 50px;
+            box-shadow: 0 8px 24px -4px color-mix(in srgb, var(--primary) 40%, transparent);
+            position: relative;
+            overflow: hidden;
+        }
+        .scan-hero-btn::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: inherit;
+            border: 2px solid var(--primary);
+            opacity: 0;
+            animation: scanPulse 2s infinite;
+        }
+        @keyframes scanPulse {
+            0% { opacity: 0.6; transform: scale(1); }
+            100% { opacity: 0; transform: scale(1.15); }
+        }
+
+        .context-card {
+            padding: 1rem 1.25rem;
+            border-radius: 16px;
+            background: var(--bg-card);
+            max-width: 400px;
+            margin: 0 auto;
+            box-shadow: var(--shadow-neu-out-sm);
+        }
+
         /* Mobile Adjustments */
         @media (max-width: 400px) {
             .scanner-content {
@@ -101,21 +133,21 @@ foreach ($subjects as $s) {
         
         <!-- Main Actions -->
         <div style="text-align: center; margin-bottom: 2rem;" class="animate-fade-up">
-            <div class="glass-panel" style="padding: 2.5rem 1.5rem; border-radius: 24px; margin-bottom: 2rem;">
-                <div class="flex-center" style="flex-direction: column; gap: 15px;">
-                    <div style="width: 80px; height: 80px; background: rgba(30, 41, 59, 0.05); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.5rem;">
-                        <i class="bi bi-qr-code-scan" style="font-size: 2.5rem;"></i>
+            <div class="glass-panel" style="padding: 2rem 1.5rem; border-radius: 24px; margin-bottom: 1.5rem;">
+                <div class="flex-center" style="flex-direction: column; gap: 12px;">
+                    <div style="width: 70px; height: 70px; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
+                        <i class="bi bi-qr-code-scan" style="font-size: 2rem;"></i>
                     </div>
-                    <button onclick="toggleScanner()" class="btn btn-primary" style="padding: 0.8rem 2.5rem; font-size: 1.1rem; border-radius: 50px; box-shadow: 0 10px 25px -5px rgba(30, 41, 59, 0.2);">
+                    <button onclick="toggleScanner()" class="btn btn-primary scan-hero-btn">
                         Scan Now
                     </button>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin: 0;">Tap to begin capturing student QR codes</p>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin: 0;">Tap to begin capturing student QR codes</p>
                 </div>
             </div>
 
-            <div class="card" style="padding: 1.25rem; border-radius: 20px; border: 1px solid var(--border); background: var(--bg-card); max-width: 400px; margin: 0 auto; box-shadow: var(--glass-shadow);">
-                <label for="scanSubject" style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 0.75rem;">Active Context</label>
-                <select id="scanSubject" class="form-control" style="width: 100%; border-radius: 12px; height: 45px;">
+            <div class="context-card">
+                <label for="scanSubject" style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 0.6rem;">Active Context</label>
+                <select id="scanSubject" class="form-control" style="width: 100%; border-radius: 12px; height: 44px; box-shadow: var(--shadow-neu-in-sm); border: none; background: var(--bg-main); font-weight: 600; font-size: 0.88rem;">
                     <option value="">-- Daily Attendance --</option>
                     
                     <?php if (!empty($groupedContexts['subject'])): ?>

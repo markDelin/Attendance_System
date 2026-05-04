@@ -26,16 +26,17 @@ require_once 'includes/db.php';
             display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 2.5rem;
         }
         .stat-card {
-            background: var(--bg-card); border: none; border-radius: 12px; padding: 1.75rem;
+            background: var(--bg-card); border: none; border-radius: 16px; padding: 1.5rem 1.75rem;
             display: flex; flex-direction: column; position: relative; overflow: hidden;
             box-shadow: var(--shadow-neu-out-sm);
             transition: all 0.4s var(--ease-out-expo);
         }
         .stat-card::after {
-            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); opacity: 0.1;
+            content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--primary); border-radius: 0 4px 4px 0;
         }
-        .stat-value { font-size: 2.75rem; font-weight: 800; line-height: 1; letter-spacing: -0.05em; color: var(--text-main); margin-bottom: 0.75rem; }
-        .stat-label { font-size: 0.75rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-neu-out-lg); }
+        .stat-value { font-size: 2.5rem; font-weight: 800; line-height: 1; letter-spacing: -0.05em; color: var(--text-main); margin-bottom: 0.5rem; }
+        .stat-label { font-size: 0.68rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; }
         
         /* Progress Bar */
         .progress-bar-container {
@@ -79,14 +80,15 @@ require_once 'includes/db.php';
             display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 1rem;
         }
         .action-btn {
-            background: var(--bg-card); border: none; border-radius: 12px;
-            padding: 1.5rem; text-decoration: none; color: var(--text-main);
+            background: var(--bg-card); border: none; border-radius: 16px;
+            padding: 1.5rem 1rem; text-decoration: none; color: var(--text-main);
             transition: all 0.3s var(--ease-out-expo); display: flex; flex-direction: column; 
-            align-items: center; justify-content: center; min-height: 110px; text-align: center;
-            box-shadow: var(--shadow-neu-out-sm);
+            align-items: center; justify-content: center; min-height: 100px; text-align: center;
+            box-shadow: var(--shadow-neu-out-sm); gap: 0.5rem;
         }
-        .action-btn i { font-size: 1.75rem; margin-bottom: 0.75rem; color: var(--primary); }
-        .action-btn span { font-weight: 700; font-size: 0.8rem; letter-spacing: 0.02em; }
+        .action-btn:hover { transform: translateY(-4px); box-shadow: var(--shadow-neu-out-lg); }
+        .action-btn i { font-size: 1.5rem; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); }
+        .action-btn span { font-weight: 700; font-size: 0.75rem; letter-spacing: 0.02em; line-height: 1.3; }
 
         @media (max-width: 768px) {
             .mobile-stack { flex-direction: column; }
@@ -261,12 +263,12 @@ require_once 'includes/db.php';
 
         <div style="margin-top: 2.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
             <div>
-                <h1 style="margin: 0; font-size: 2.25rem; font-weight: 800; letter-spacing: -0.05em;">Dashboard</h1>
-                <p style="color: var(--text-muted); font-size: 1rem; font-weight: 500; margin:0;"><?= date('l, F j, Y') ?></p>
+                <h1 style="margin: 0; font-size: 2rem; font-weight: 800; letter-spacing: -0.05em;">Dashboard</h1>
+                <p style="color: var(--text-muted); font-size: 0.88rem; font-weight: 500; margin:0;"><?= date('l, F j, Y') ?></p>
             </div>
-            <div class="ip-access" style="background: var(--bg-card); padding: 10px 20px; border-radius: 50px; border: 1px solid var(--border); display: flex; align-items: center; gap: 10px;">
-                <div style="width: 10px; height: 10px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.15);"></div>
-                <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Mobile: <b style="color: var(--primary); font-family: monospace;"><?= $localIP ?>:8000</b></span>
+            <div class="ip-access" style="background: var(--bg-card); padding: 8px 18px; border-radius: 50px; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-neu-out-sm);">
+                <div style="width: 8px; height: 8px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12);"></div>
+                <span style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted);">Mobile: <b style="color: var(--primary); font-family: 'JetBrains Mono', monospace; font-size: 0.7rem;"><?= $localIP ?>:8000</b></span>
             </div>
         </div>
 
@@ -331,7 +333,7 @@ require_once 'includes/db.php';
 
 
         <section class="animate-fade-up">
-            <div class="section-title">Navigation Hub</div>
+            <div class="section-title"><i class="bi bi-grid-fill" style="font-size: 0.85rem;"></i> Navigation Hub</div>
             <div class="action-grid">
                 <a href="scan.php" class="action-btn animate-fade-up stagger-1 hover-lift">
                     <i class="bi bi-qr-code-scan"></i>
@@ -361,9 +363,7 @@ require_once 'includes/db.php';
 
             <!-- New Birthday Section -->
             <?php if (!empty($upcomingBirthdays)): ?>
-            <div class="section-title">
-                SYSTEM NOTICE: BIRTHDAYS
-            </div>
+            <div class="section-title"><i class="bi bi-balloon-heart" style="font-size: 0.85rem;"></i> UPCOMING BIRTHDAYS</div>
             <div class="birthday-grid">
                 <?php foreach ($upcomingBirthdays as $idx => $bday): 
                     $stagger = "stagger-" . min($idx + 1, 8);
@@ -372,14 +372,24 @@ require_once 'includes/db.php';
                     $cardClass = ($isFeatured ? 'featured ' : '') . ($isToday ? 'today' : '');
                 ?>
                     <div class="birthday-card <?= $cardClass ?> animate-fade-up <?= $stagger ?> hover-lift">
-                        <div style="display: flex; flex-direction: column; gap: 2px;">
-                            <span class="student-name"><?= htmlspecialchars($bday['name']) ?></span>
-                            <span class="date-badge">
-                                <?= date('M d', strtotime($bday['birthday'])) ?>
-                                <?php if($isToday): ?>
-                                    <span style="color: var(--accent); margin-left: 8px; font-weight: 800;">[ TODAY ]</span>
-                                <?php endif; ?>
-                            </span>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <?php 
+                                $bdayInitial = strtoupper(substr($bday['name'], 0, 1));
+                                $bdayColors = ['#5c6bc0','#42a5f5','#26a69a','#66bb6a','#ec407a','#ab47bc','#ef5350','#ffa726'];
+                                $bdayColor = $bdayColors[$idx % count($bdayColors)];
+                            ?>
+                            <div style="width: 36px; height: 36px; border-radius: 10px; background: <?= $bdayColor ?>; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.82rem; font-family: 'Outfit', sans-serif; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
+                                <?= $bdayInitial ?>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 1px;">
+                                <span class="student-name"><?= htmlspecialchars($bday['name']) ?></span>
+                                <span class="date-badge">
+                                    <?= date('M d', strtotime($bday['birthday'])) ?>
+                                    <?php if($isToday): ?>
+                                        <span style="color: var(--accent); margin-left: 6px; font-weight: 800;">🎂 TODAY</span>
+                                    <?php endif; ?>
+                                </span>
+                            </div>
                         </div>
 
                         <div class="countdown-container" data-target="<?= $bday['next_occurrence'] ?>">
@@ -406,9 +416,7 @@ require_once 'includes/db.php';
             <?php endif; ?>
 
             <?php if (!empty($systemNotices)): ?>
-            <div class="section-title" style="color: var(--danger); opacity: 0.8; margin-top: 3rem;">
-                SYSTEM NOTICE: RECENT RECORDS
-            </div>
+            <div class="section-title" style="color: var(--danger); opacity: 0.8; margin-top: 3rem;"><i class="bi bi-shield-exclamation" style="font-size: 0.85rem;"></i> RECENT SYSTEM NOTICES</div>
             <div style="margin-bottom: 2rem;">
                 <?php foreach ($systemNotices as $idx => $notice): 
                     $stagger = "stagger-" . min($idx + 1, 8);
@@ -430,7 +438,7 @@ require_once 'includes/db.php';
             </div>
             <?php endif; ?>
 
-            <div class="section-title">Utility Tools</div>
+            <div class="section-title"><i class="bi bi-tools" style="font-size: 0.85rem;"></i> Utility Tools</div>
             <div class="action-grid" style="grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));">
                 <a href="markdown_editor.php" class="action-btn animate-fade-up stagger-4 hover-lift">
                     <i class="bi bi-journal-richtext" style="font-size: 1.4rem;"></i>

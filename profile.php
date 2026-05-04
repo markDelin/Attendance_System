@@ -105,9 +105,10 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
 
         .profile-header { text-align: center; }
         .avatar-circle {
-            width: 110px; height: 110px; border-radius: 50%; background: var(--bg-main); margin: 0 auto 1.5rem;
-            display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 300;
-            border: 1px solid var(--border); color: var(--primary); font-family: 'Outfit', sans-serif;
+            width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 1.25rem;
+            display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 800;
+            color: white; font-family: 'Outfit', sans-serif;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
         }
         
         .attendance-rank-box {
@@ -131,28 +132,31 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
         .stats-grid {
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
         }
-        .stat-blk { text-align: center; padding: 12px 0; border: 1px solid var(--border); border-radius: 12px; }
-        .stat-blk b { display: block; font-size: 1.25rem; font-weight: 800; letter-spacing: -0.04em; }
-        .stat-blk span { font-size: 0.6rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); opacity: 0.6; }
+        .stat-blk { text-align: center; padding: 10px 0; background: var(--bg-main); border-radius: 12px; box-shadow: var(--shadow-neu-in-sm); }
+        .stat-blk b { display: block; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.04em; }
+        .stat-blk span { font-size: 0.55rem; text-transform: uppercase; font-weight: 800; color: var(--text-muted); letter-spacing: 0.08em; }
 
-        /* Timeline Rows - High Density */
         .history-item {
-            display: flex; align-items: center; justify-content: space-between; padding: 1.15rem 1.5rem;
-            border-bottom: 1px solid var(--border); background: var(--bg-card); transition: all 0.25s ease;
-            border-radius: 16px; margin-bottom: 0.75rem; border: 1px solid var(--border);
+            display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem;
+            background: var(--bg-card); transition: all 0.25s ease;
+            border-radius: 14px; margin-bottom: 0.5rem; box-shadow: var(--shadow-neu-out-sm);
             z-index: 5; position: relative;
         }
-        .history-item:hover { border-color: var(--primary); transform: translateX(4px); background: var(--bg-hover); }
-        .history-label { font-size: 0.95rem; font-weight: 700; color: var(--text-main); }
-        .history-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--text-muted); }
+        .history-item:hover { transform: translateX(4px); box-shadow: var(--shadow-neu-out-lg); }
+        .history-label { font-size: 0.88rem; font-weight: 700; color: var(--text-main); }
+        .history-meta { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
         
         .status-badge {
             font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
             padding: 4px 12px; border-radius: 50px; border: 1px solid var(--border);
         }
-        .status-present { color: #10b981; background: rgba(16, 185, 129, 0.05); }
-        .status-late { color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
-        .status-absent { color: #ef4444; background: rgba(239, 68, 68, 0.05); }
+        .status-present { color: #10b981; background: rgba(16, 185, 129, 0.08); border-color: rgba(16,185,129,0.2); }
+        .status-late { color: #f59e0b; background: rgba(245, 158, 11, 0.08); border-color: rgba(245,158,11,0.2); }
+        .status-absent { color: #ef4444; background: rgba(239, 68, 68, 0.08); border-color: rgba(239,68,68,0.2); }
+
+        html.dark .status-present { color: #6ee7b7; background: rgba(16,185,129,0.12); }
+        html.dark .status-late { color: #fbbf24; background: rgba(245,158,11,0.12); }
+        html.dark .status-absent { color: #fca5a5; background: rgba(239,68,68,0.12); }
 
         @media (max-width: 992px) {
             .profile-container { grid-template-columns: 1fr; gap: 2rem; }
@@ -170,9 +174,14 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
             <!-- Profile Column (Sidebar) -->
             <aside class="sidebar-monolith">
                 <div class="profile-header">
-                    <div class="avatar-circle"><?= strtoupper(substr($user['name'] ?? '?', 0, 1)) ?></div>
-                    <h2 style="font-weight: 800; letter-spacing: -0.04em; margin: 0 0 0.5rem;"><?= htmlspecialchars($user['name']) ?></h2>
-                    <p style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 0.8rem; letter-spacing: 0.05em; margin: 0 0 1.5rem;"><?= $user['qr_code'] ?></p>
+                    <?php
+                        $profileInitial = strtoupper(substr($user['last_name'] ?? $user['name'] ?? '?', 0, 1));
+                        $profileColors = ['#5c6bc0','#42a5f5','#26a69a','#66bb6a','#ec407a','#ab47bc','#ef5350','#ffa726'];
+                        $profileColor = $profileColors[ord($profileInitial) % count($profileColors)];
+                    ?>
+                    <div class="avatar-circle" style="background: <?= $profileColor ?>;"><?= $profileInitial ?></div>
+                    <h2 style="font-weight: 800; letter-spacing: -0.04em; margin: 0 0 0.35rem; font-size: 1.3rem;"><?= htmlspecialchars($user['name']) ?></h2>
+                    <p style="font-family: 'JetBrains Mono', monospace; color: var(--text-muted); font-size: 0.72rem; letter-spacing: 0.05em; margin: 0 0 1.25rem;"><?= $user['qr_code'] ?></p>
                     
                     <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 2rem;">
                         <span class="badge" style="background: rgba(29, 78, 216, 0.05); color: #1d4ed8; border: 1px solid rgba(29, 78, 216, 0.1);"><?= ($user['student_type'] ?? 'Regular') ?: 'Regular' ?></span>
@@ -238,16 +247,16 @@ $presentPercent = $totalMarks > 0 ? round((($stats['present'] + $stats['late']) 
                     </div>
                 </div>
 
-                <div style="margin-top: 4rem; position: relative; z-index: 20;">
-                    <h5 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.7rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1.5rem;">Contact Information</h5>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem;">
-                        <div style="padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card);">
-                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.05em;">Email Address</small>
-                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main); word-break: break-all;"><?= $user['email'] ?: '—' ?></div>
+                <div style="margin-top: 3rem; position: relative; z-index: 20;">
+                    <h5 style="text-transform: uppercase; letter-spacing: 0.1em; font-size: 0.65rem; color: var(--text-muted); font-weight: 800; margin-bottom: 1rem; display: flex; align-items: center; gap: 6px;"><i class="bi bi-telephone" style="font-size: 0.8rem;"></i> Contact Information</h5>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0.75rem;">
+                        <div style="padding: 1rem 1.25rem; border-radius: 14px; background: var(--bg-card); box-shadow: var(--shadow-neu-out-sm);">
+                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.58rem; text-transform: uppercase; display: flex; align-items: center; gap: 5px; margin-bottom: 5px; letter-spacing: 0.08em;"><i class="bi bi-envelope" style="font-size: 0.72rem;"></i> Email Address</small>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main); word-break: break-all;"><?= $user['email'] ?: '—' ?></div>
                         </div>
-                        <div style="padding: 1.25rem; border-radius: 16px; border: 1px solid var(--border); background: var(--bg-card);">
-                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.6rem; text-transform: uppercase; display: block; margin-bottom: 6px; letter-spacing: 0.05em;">Mobile Contact</small>
-                            <div style="font-size: 0.9rem; font-weight: 700; color: var(--text-main);"><?= $user['contact_number'] ?: '—' ?></div>
+                        <div style="padding: 1rem 1.25rem; border-radius: 14px; background: var(--bg-card); box-shadow: var(--shadow-neu-out-sm);">
+                            <small style="color: var(--text-muted); font-weight: 800; font-size: 0.58rem; text-transform: uppercase; display: flex; align-items: center; gap: 5px; margin-bottom: 5px; letter-spacing: 0.08em;"><i class="bi bi-phone" style="font-size: 0.72rem;"></i> Mobile Contact</small>
+                            <div style="font-size: 0.85rem; font-weight: 700; color: var(--text-main);"><?= $user['contact_number'] ?: '—' ?></div>
                         </div>
                     </div>
                 </div>

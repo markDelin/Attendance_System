@@ -24,13 +24,15 @@ try {
     $absent = $stats['absent'] ?? 0; 
     
     // Total students (for percentage context)
-    $totalStudents = $pdo->query("SELECT COUNT(*) FROM users WHERE student_type = 'regular'")->fetchColumn();
+    $totalStudents = $pdo->query("SELECT COUNT(*) FROM users WHERE student_type = 'regular' AND deleted_at IS NULL")->fetchColumn();
     
     // 2. Weekly Trend (Last 7 Days)
     $trend = [];
     for ($i = 6; $i >= 0; $i--) {
         $date = date('Y-m-d', strtotime("-$i days"));
-        $count = $pdo->query("SELECT COUNT(*) FROM attendance WHERE date = '$date' AND status IN ('present', 'late')")->fetchColumn();
+        $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM attendance WHERE date = ? AND status IN ('present', 'late')");
+        $stmtCount->execute([$date]);
+        $count = $stmtCount->fetchColumn();
         
         $trend[] = [
             'date' => date('M d', strtotime($date)), 

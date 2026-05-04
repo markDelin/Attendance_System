@@ -59,7 +59,7 @@ try {
         $subName = $stmtSub->fetchColumn() ?: 'Unknown Subject';
         $notifContext = "Subject: <b>$subName</b>";
     } else {
-        $session = ucfirst($record['session']);
+        $session = !empty($record['session']) ? ucfirst($record['session']) : 'All Day';
         $notifContext = "Daily Attendance ($session)";
     }
     

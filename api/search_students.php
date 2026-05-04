@@ -16,7 +16,7 @@ try {
     $stmt = $pdo->prepare("
         SELECT qr_code, name 
         FROM users 
-        WHERE name LIKE ? OR qr_code LIKE ? 
+        WHERE (name LIKE ? OR qr_code LIKE ?) AND deleted_at IS NULL
         ORDER BY name ASC 
         LIMIT 10
     ");

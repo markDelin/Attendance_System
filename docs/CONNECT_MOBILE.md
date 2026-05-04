@@ -1,30 +1,46 @@
-# How to Connect Mobile Devices (Scanner)
+# 📱 Mobile Ingress Guide: Connecting External Scanners
 
-Modern mobile browsers (Chrome, Safari, etc.) only allow camera access on **Secure Contexts** (HTTPS). If you access the system via http://192.168.x.x, the camera will be blocked.
-
-## Option 1: Public HTTPS (Easiest & Best)
-Use a "tunnel" to get a secure public address.
-
-1. Open a **Command Prompt** on your computer.
-2. Run this command: 
-   ```bash
-   npx localtunnel --port 8000
-   ```
-3. You will get a link like `https://warm-potato-scans.loca.lt`.
-4. Open that link on your phone. The camera will work perfectly because it is HTTPS.
+This guide explains how to connect mobile devices to your local attendance server. Because modern mobile browsers require **HTTPS** for camera access, follow one of these verified methods to enable remote scanning.
 
 ---
 
-## Option 2: Chrome Android Bypass
-If you don't want to use a tunnel and are on Android:
+## ⚡ Method 1: The "Mobile Node" App (Recommended)
+Use the dedicated **AttendanceMobile** application included in this repository.
 
-1. On your phone's Chrome, go to: `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
-2. Enter your computer's IP address in the text box (e.g., `http://192.168.1.15:8000`).
-3. Set the status to **Enabled**.
-4. Relaunch Chrome.
+1.  **Build/Run** the app located in `/AttendanceMobile`.
+2.  **Input IP**: Enter your PC's Local IP (e.g., `192.168.1.15`) into the app.
+3.  **Bridge**: The app uses a native bridge to bypass browser security, granting instant camera access.
 
 ---
 
-## Tips for Success
-- **Same Wi-Fi**: Ensure your phone and computer are on the same network.
-- **Firewall**: If the phone can't even load the page, ensure your Windows Firewall allows "Port 8000".
+## 🌐 Method 2: Public Tunneling (No App Required)
+If you want to use a standard mobile browser (Chrome/Safari) without installing an app, create a secure tunnel.
+
+1.  Open **PowerShell/Terminal** on your PC.
+2.  Run:
+    ```bash
+    npx localtunnel --port 8000
+    ```
+3.  **Access**: Open the generated `https://...` link on your phone.
+4.  **Security**: The camera will work immediately because the connection is served over HTTPS.
+
+---
+
+## 🔧 Method 3: Chrome Android Bypass
+For developers who prefer a direct LAN connection without tunneling:
+
+1.  On your Android phone, open Chrome and navigate to:
+    `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+2.  **Whitelist**: Enter your server address: `http://192.168.x.x:8000`.
+3.  **Enable**: Set the flag to **Enabled** and relaunch Chrome.
+4.  **Result**: Chrome will now treat your local IP as a "Secure Context".
+
+---
+
+## 🚩 Essential Checklist
+- [ ] **Network Identity**: Both devices MUST be on the same Wi-Fi SSID.
+- [ ] **Windows Firewall**: Ensure **Port 8000** is open for inbound traffic on your PC.
+- [ ] **IP Consistency**: If your router uses DHCP, your local IP might change. Check the dashboard footer for the current address.
+
+---
+*Technical Documentation | QR Tools Ecosystem*

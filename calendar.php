@@ -15,14 +15,30 @@ require_once 'includes/db.php';
     <?php include 'includes/theme_loader.php'; ?>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <style>
-        .fc-event { cursor: pointer; border-radius: 4px; padding: 2px 4px; font-weight: 500; font-size: 0.85rem; border: none; }
-        .fc-toolbar-title { font-size: 1.25rem !important; color: var(--text-main); }
-        .fc-button { background-color: var(--primary) !important; border-color: var(--primary) !important; }
-        .fc-button:hover { background-color: var(--primary-hover) !important; border-color: var(--primary-hover) !important; }
-        .fc-day-today { background-color: rgba(var(--primary-rgb), 0.1) !important; }
+        .fc-event { cursor: pointer; border-radius: 6px; padding: 2px 6px; font-weight: 600; font-size: 0.78rem; border: none; }
+        .fc-toolbar-title { font-size: 1.15rem !important; color: var(--text-main); font-weight: 800 !important; letter-spacing: -0.02em; }
+        .fc-button { background-color: var(--bg-card) !important; border: none !important; color: var(--text-main) !important; box-shadow: var(--shadow-neu-out-sm) !important; font-weight: 700 !important; font-size: 0.78rem !important; border-radius: 10px !important; transition: all 0.2s !important; }
+        .fc-button:hover { box-shadow: var(--shadow-neu-in-sm) !important; transform: scale(0.97); }
+        .fc-button-active { box-shadow: var(--shadow-neu-in-sm) !important; color: var(--primary) !important; }
+        .fc-day-today { background-color: color-mix(in srgb, var(--primary) 6%, transparent) !important; }
+        .fc-col-header-cell { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+        .fc-daygrid-day-number { font-weight: 700; font-size: 0.82rem; color: var(--text-main); }
+        .fc th, .fc td { border-color: color-mix(in srgb, var(--text-muted) 8%, transparent) !important; }
 
         .calendar-wrapper {
-            background: var(--bg-card); padding: 2rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border);
+            background: var(--bg-card); padding: 2rem; border-radius: 20px; box-shadow: var(--shadow-neu-out); border: none;
+        }
+
+        .day-modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            z-index: 1000; align-items: center; justify-content: center;
+        }
+        .day-modal-body {
+            background: var(--bg-card); width: 90%; max-width: 460px; padding: 2rem;
+            border-radius: 20px; max-height: 80vh; overflow-y: auto;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+            animation: scaleIn 0.25s ease;
         }
 
         @media (max-width: 600px) {
@@ -48,15 +64,20 @@ require_once 'includes/db.php';
     </main>
 
     <!-- Details Modal -->
-    <div id="dayModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-        <div class="animate-fade-up" style="background:var(--bg-card); border: 1px solid var(--border); width:90%; max-width:500px; padding:1.5rem; border-radius:12px; max-height:80vh; overflow-y:auto;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h3 id="modalDate" style="margin:0;">Date</h3>
-                <button onclick="closeModal()" style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+    <div id="dayModal" class="day-modal-overlay">
+        <div class="day-modal-body animate-fade-up">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:0.75rem; border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px; height:36px; border-radius:10px; background:color-mix(in srgb, var(--primary) 10%, transparent); color:var(--primary); display:flex; align-items:center; justify-content:center;">
+                        <i class="bi bi-calendar-event" style="font-size:1rem;"></i>
+                    </div>
+                    <h3 id="modalDate" style="margin:0; font-weight:800; font-size:1.1rem; letter-spacing:-0.02em;">Date</h3>
+                </div>
+                <button onclick="closeModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:var(--text-muted); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-main)'" onmouseout="this.style.background='none'">&times;</button>
             </div>
-            <div id="modalContent">Testing...</div>
+            <div id="modalContent" style="color:var(--text-muted); font-size:0.88rem;">Testing...</div>
             <div style="margin-top:1.5rem; text-align:right">
-                 <a id="viewFullLink" href="#" class="btn btn-sm btn-primary">View Full Records</a>
+                 <a id="viewFullLink" href="#" class="btn btn-primary" style="border-radius:50px; padding:0.6rem 1.5rem; font-size:0.78rem; font-weight:800;">View Full Records</a>
             </div>
         </div>
     </div>

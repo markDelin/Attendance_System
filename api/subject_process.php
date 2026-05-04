@@ -144,8 +144,10 @@ try {
         // Fetch Eligible Users: Regular (All) + Irregular (Enrolled)
         $q = "SELECT u.qr_code FROM users u 
               LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
-              WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
-                 OR (u.student_type = 'irregular' AND ss.subject_id = ?)";
+              WHERE u.deleted_at IS NULL AND (
+                  (u.student_type IS NULL OR u.student_type = 'regular') 
+                  OR (u.student_type = 'irregular' AND ss.subject_id = ?)
+              )";
         
         $stmtUsers = $pdo->prepare($q);
         $stmtUsers->execute([$subject_id]);
@@ -159,13 +161,10 @@ try {
         $toInsert = array_diff($eligibleUsers, $existingQRs);
         
         if (!empty($toInsert)) {
-            $sql = "INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES ";
-            $vals = [];
+            $insertStmt = $pdo->prepare("INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES (?, ?, ?, 'present')");
             foreach ($toInsert as $qr) {
-                $vals[] = "($subject_id, '$qr', '$date', 'present')";
+                $insertStmt->execute([$subject_id, $qr, $date]);
             }
-            $sql .= implode(", ", $vals);
-            $pdo->exec($sql);
         }
         
         echo json_encode(['status' => 'success', 'message' => 'All remaining eligible students marked Present.']);
@@ -270,8 +269,10 @@ try {
         // 1. Fetch Eligible Students (Regular + Enrolled Irregular)
         $q = "SELECT u.qr_code FROM users u 
               LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
-              WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
-                 OR (u.student_type = 'irregular' AND ss.subject_id = ?)";
+              WHERE u.deleted_at IS NULL AND (
+                  (u.student_type IS NULL OR u.student_type = 'regular') 
+                  OR (u.student_type = 'irregular' AND ss.subject_id = ?)
+              )";
         
         $stmtUsers = $pdo->prepare($q);
         $stmtUsers->execute([$subject_id]);
@@ -281,14 +282,11 @@ try {
              // 2. Clear existing records for this subject/date to avoid duplicates
              $pdo->prepare("DELETE FROM subject_attendance WHERE subject_id = ? AND date = ?")->execute([$subject_id, $date]);
              
-             // 3. Mark everyone as "no-class"
-             $sql = "INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES ";
-             $vals = [];
+             // 3. Mark everyone as "no-class" using prepared statement
+             $insertStmt = $pdo->prepare("INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES (?, ?, ?, 'no-class')");
              foreach ($eligibleUsers as $qr) {
-                 $vals[] = "($subject_id, '$qr', '$date', 'no-class')";
+                 $insertStmt->execute([$subject_id, $qr, $date]);
              }
-             $sql .= implode(", ", $vals);
-             $pdo->exec($sql);
         }
 
         // 4. Lock the context to prevent further attendance recording for this cancelled class

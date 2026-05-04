@@ -61,26 +61,26 @@ if ($subjectId > 0) {
         .date-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
         .date-control { border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem; font-size: 0.9rem; color: var(--text-main); outline: none; background: var(--bg-main); flex: 1; }
         .toolbar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 1.5rem; }
-        .search-area { position: sticky; top: 0; z-index: 90; background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); padding: 1rem 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
+        .search-area { position: sticky; top: 0; z-index: 90; background: var(--bg-main); padding: 1rem 0; margin-bottom: 1.25rem; }
         .search-container { position: relative; max-width: 600px; margin: 0 auto; }
-        .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 3rem; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-main); font-size: 0.95rem; color: var(--text-main); }
-        .search-input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(23, 23, 23, 0.05); }
+        .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 3rem; border-radius: 14px; border: none; background: var(--bg-main); font-size: 0.88rem; color: var(--text-main); box-shadow: var(--shadow-neu-in-sm); font-weight: 600; }
+        .search-input:focus { outline: none; box-shadow: var(--shadow-neu-in); }
         .search-icon { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-        .student-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-left: 4px solid transparent; }
-        .student-row:hover { border-color: var(--primary); transform: translateX(4px); background: var(--bg-hover); }
-        .student-name { font-family: 'Outfit', sans-serif; font-weight: 600; font-size: 1.05rem; margin: 0; color: var(--text-main); }
-        .student-id { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px; }
+        .student-row { background: var(--bg-card); border: none; border-radius: 14px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-left: 4px solid transparent; box-shadow: var(--shadow-neu-out-sm); }
+        .student-row:hover { transform: translateX(3px); box-shadow: var(--shadow-neu-out); }
+        .student-name { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.92rem; margin: 0; color: var(--text-main); }
+        .student-id { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
         .action-group { display: flex; gap: 6px; }
-        .btn-status { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-main); cursor: pointer; transition: all 0.2s; font-weight: 800; font-size: 0.85rem; color: var(--text-muted); }
-        .btn-status:hover { transform: scale(1.1); z-index: 2; }
-        .student-row.present { border-left-color: #10b981; background: rgba(16, 185, 129, 0.05); }
-        .student-row.present .btn-present { background: #10b981; color: white; border-color: #10b981; box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3); }
-        .student-row.late { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.05); }
-        .student-row.late .btn-late { background: #f59e0b; color: white; border-color: #f59e0b; box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3); }
-        .student-row.absent { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.05); }
-        .student-row.absent .btn-absent { background: #ef4444; color: white; border-color: #ef4444; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3); }
-        .time-stamp { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--primary); font-weight: 800; display: inline-flex; align-items: center; gap: 4px; }
-        .stat-badge { flex: 1; padding: 0.75rem; border-radius: 12px; text-align: center; border: 1px solid var(--border); background: var(--bg-card); transition: all 0.3s; }
+        .btn-status { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: none; background: var(--bg-main); cursor: pointer; transition: all 0.2s; font-weight: 800; font-size: 0.8rem; color: var(--text-muted); box-shadow: var(--shadow-neu-out-sm); }
+        .btn-status:hover { transform: scale(1.08); box-shadow: var(--shadow-neu-in-sm); }
+        .student-row.present { border-left-color: #10b981; background: rgba(16, 185, 129, 0.04); }
+        .student-row.present .btn-present { background: #10b981; color: white; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3); }
+        .student-row.late { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.04); }
+        .student-row.late .btn-late { background: #f59e0b; color: white; box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3); }
+        .student-row.absent { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.04); }
+        .student-row.absent .btn-absent { background: #ef4444; color: white; box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3); }
+        .time-stamp { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); font-weight: 800; display: inline-flex; align-items: center; gap: 3px; }
+        .stat-badge { flex: 1; padding: 0.65rem; border-radius: 12px; text-align: center; background: var(--bg-card); box-shadow: var(--shadow-neu-out-sm); transition: all 0.3s; }
         @media (max-width: 600px) { 
             .mobile-stack { flex-direction: column; align-items: stretch !important; } 
             .student-row { 

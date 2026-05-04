@@ -108,8 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php include 'includes/theme_loader.php'; ?>
     <style>
         input[type=range] {
-            width: 100%; margin: 1rem 0;
+            width: 100%; margin: 0.75rem 0;
             accent-color: var(--primary);
+            height: 6px;
         }
         .switch {
             position: relative; display: inline-block; width: 44px; height: 24px;
@@ -117,26 +118,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
             position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1; transition: .4s; border-radius: 34px;
+            background: var(--bg-main); transition: .4s; border-radius: 34px;
+            box-shadow: var(--shadow-neu-in-sm);
         }
         .slider:before {
             position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
             background-color: white; transition: .4s; border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
         }
-        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider { background-color: var(--primary); box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 30%, transparent); }
         input:checked + .slider:before { transform: translateX(20px); }
         
         .setting-group {
-            padding: 2rem 0;
-            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 0;
+            border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 8%, transparent);
         }
         .setting-group:last-child { border: none; }
-        label { font-weight: 800; display: block; margin-bottom: 0.5rem; letter-spacing: -0.02em; font-size: 1rem; }
-        small { color: var(--text-muted); display: block; font-weight: 500; font-size: 0.8rem; line-height: 1.4; }
+        label { font-weight: 800; display: block; margin-bottom: 0.35rem; letter-spacing: -0.02em; font-size: 0.92rem; }
+        small { color: var(--text-muted); display: block; font-weight: 500; font-size: 0.76rem; line-height: 1.5; }
+
+        .settings-card {
+            background: var(--bg-card);
+            border: none;
+            border-radius: 20px;
+            box-shadow: var(--shadow-neu-out);
+            padding: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .settings-card-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 2px solid color-mix(in srgb, var(--text-muted) 8%, transparent);
+        }
+        .settings-card-header i {
+            font-size: 1.1rem;
+            color: var(--primary);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+        }
+        .settings-card-header h4 {
+            margin: 0;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            font-size: 1.1rem;
+        }
 
         @media (max-width: 600px) {
-            .card { padding: 1.5rem !important; }
+            .settings-card { padding: 1.5rem !important; }
             .setting-group {
                 flex-direction: column !important;
                 align-items: flex-start !important;
@@ -163,12 +200,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <?php include 'includes/navbar.php'; ?>
 
-    <main class="container" style="max-width: 800px; padding-top: 4rem;">
+    <main class="container" style="max-width: 800px; padding-top: 3rem;">
         
         <div class="animate-fade-up">
             <!-- Theme Configuration Card -->
-            <div class="card" style="padding: 3rem; border-radius: 20px; margin-bottom: 2rem;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">System Theme Configuration</h4>
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <i class="bi bi-palette"></i>
+                    <h4>Theme Configuration</h4>
+                </div>
                 
                 <div class="setting-group" style="border: none; padding-top: 0;">
                     <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
@@ -205,8 +245,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         <form method="POST" class="animate-fade-up">
             
-            <div class="card" style="padding: 3rem; border-radius: 20px;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">System Core Configuration</h4>
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <i class="bi bi-gear"></i>
+                    <h4>System Core Configuration</h4>
+                </div>
 
                 <!-- Maintenance Mode -->
                 <div class="setting-group" style="padding-top: 0;">
@@ -287,8 +330,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
             
             <!-- School Year Management & Promotion -->
-            <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em; border-bottom: 2px solid var(--border); padding-bottom: 1rem;">Academic Period & Promotion</h4>
+            <div class="settings-card">
+                <div class="settings-card-header">
+                    <i class="bi bi-mortarboard"></i>
+                    <h4>Academic Period & Promotion</h4>
+                </div>
                 
                 <div class="setting-group" style="padding-top: 0;">
                     <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
@@ -329,9 +375,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <!-- Store Branding & Integration Section -->
-            <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem; border-color: #f1f5f9; background: #fafafa;">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em;">Store & Integration Settings</h4>
+            <div class="settings-card" style="border: 1px dashed color-mix(in srgb, var(--text-muted) 15%, transparent);">
+                <div class="settings-card-header">
+                    <i class="bi bi-shop" style="color: var(--text-muted); background: color-mix(in srgb, var(--text-muted) 10%, transparent);"></i>
+                    <h4>Store & Integration Settings</h4>
+                </div>
 
                 <div class="setting-group" style="padding-top: 0; border-bottom: 1px solid var(--border); margin-bottom: 2rem;">
                     <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
@@ -387,8 +435,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             usort($backupFiles, function($a, $b) { return filemtime($b) - filemtime($a); });
             $lastBackup = !empty($backupFiles) ? date("M j, Y - h:i A", filemtime($backupFiles[0])) : "No backups found";
             ?>
-            <div class="card" style="padding: 3rem; border-radius: 20px; margin-top: 2rem; border: 1px dashed var(--border);">
-                <h4 style="margin-bottom: 2rem; font-weight: 800; letter-spacing: -0.04em;">System Integrity</h4>
+            <div class="settings-card" style="border: 2px dashed color-mix(in srgb, var(--text-muted) 12%, transparent);">
+                <div class="settings-card-header">
+                    <i class="bi bi-shield-check" style="color: var(--success); background: rgba(5,150,105,0.1);"></i>
+                    <h4>System Integrity</h4>
+                </div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div>
                         <label>Database Integrity</label>
@@ -402,8 +453,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
-            <div style="margin-top: 3rem; text-align: right; padding-bottom: 4rem;">
-                <button type="submit" class="btn btn-primary" style="padding: 1rem 3rem; border-radius: 50px; font-weight: 800; font-size: 1.1rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);">
+            <div style="margin-top: 2.5rem; text-align: right; padding-bottom: 4rem;">
+                <button type="submit" class="btn btn-primary" style="padding: 0.9rem 2.5rem; border-radius: 50px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--primary) 30%, transparent);">
                     <i class="bi bi-save"></i> Synchronize Settings
                 </button>
             </div>

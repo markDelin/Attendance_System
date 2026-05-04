@@ -22,7 +22,7 @@ if ($subjectId > 0) {
     $stmt->execute([$subjectId]);
 } else {
     // No subject selected: Show all
-    $stmt = $pdo->query("SELECT * FROM users ORDER BY name");
+    $stmt = $pdo->query("SELECT * FROM users WHERE deleted_at IS NULL ORDER BY name");
 }
 $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 ?>

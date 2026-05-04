@@ -2,12 +2,14 @@
 // delete.php - Delete attendance record(s)
 require '../includes/db.php';
 
-if (isset($_GET['id'])) {
-    $id = intval($_GET['id']);
+if ($_SERVER["REQUEST_METHOD"] !== "POST") exit("Invalid request method");
+
+if (isset($_POST['id'])) {
+    $id = intval($_POST['id']);
     $stmt = $pdo->prepare("DELETE FROM attendance WHERE id = :id");
     $stmt->execute([':id' => $id]);
-} elseif (isset($_GET['date'])) {
-    $date = $_GET['date'];
+} elseif (isset($_POST['date'])) {
+    $date = $_POST['date'];
     $stmt = $pdo->prepare("DELETE FROM attendance WHERE date = :date");
     $stmt->execute([':date' => $date]);
 }

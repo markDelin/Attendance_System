@@ -70,21 +70,61 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         }
         table { width: 100%; border-collapse: collapse; }
         th { 
-            text-align: left; padding: 1.25rem 1rem;
+            text-align: left; padding: 1rem 1.25rem;
             background: var(--bg-card); color: var(--text-muted); 
-            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em;
+            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
             border-bottom: 1px solid var(--bg-main);
             font-weight: 800;
         }
-        td { padding: 1rem; border-bottom: 1px solid var(--bg-main); font-size: 0.9rem; }
+        td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--bg-main); font-size: 0.88rem; }
         tr:last-child td { border-bottom: none; }
         
         .date-card {
             background: var(--bg-card);
             border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            margin-bottom: 2rem;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
             box-shadow: var(--shadow-neu-out);
+        }
+
+        .date-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .date-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .date-day-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            color: var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .date-day-badge .day-num {
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1;
+            font-family: 'Outfit', sans-serif;
+        }
+        .date-day-badge .day-abbr {
+            font-size: 0.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            opacity: 0.7;
         }
 
         /* Pagination Styles */
@@ -93,12 +133,12 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-top: 3rem; margin-bottom: 4rem;
         }
         .pagination-btn {
-            padding: 0.75rem 1.5rem; 
+            padding: 0.65rem 1.25rem; 
             border-radius: 50px; 
             border: none;
             color: var(--text-main); 
             font-weight: 800; 
-            font-size: 0.75rem; 
+            font-size: 0.7rem; 
             text-transform: uppercase;
             transition: all 0.2s; 
             background: var(--bg-card);
@@ -110,39 +150,48 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             transform: scale(0.98);
         }
         .pagination-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
-        .page-info { font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
+        .page-info { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
 
         .nav-tabs {
             display: flex;
-            gap: 1rem;
-            margin-bottom: 2.5rem;
+            gap: 0.75rem;
+            margin-bottom: 2rem;
             overflow-x: auto;
             padding: 5px;
         }
 
         .nav-link {
-            padding: 0.75rem 1.25rem;
+            padding: 0.65rem 1.1rem;
             border-radius: 12px;
-            font-size: 0.8rem;
+            font-size: 0.72rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.04em;
             background: var(--bg-card);
             box-shadow: var(--shadow-neu-out-sm);
             transition: all 0.2s;
             white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-link i {
+            font-size: 0.85rem;
+            opacity: 0.6;
         }
 
         .nav-link.active {
             box-shadow: var(--shadow-neu-in-sm);
             color: var(--primary);
         }
+        .nav-link.active i { opacity: 1; }
 
         .filter-select {
-            font-weight: 800; 
+            font-weight: 700; 
             border-radius: 12px; 
-            font-size: 0.85rem; 
-            padding: 0.6rem 1.25rem; 
+            font-size: 0.82rem; 
+            padding: 0.6rem 1.1rem; 
             cursor: pointer; 
             background: var(--bg-card);
             border: none;
@@ -175,10 +224,10 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
         <!-- View Toggle -->
         <div class="animate-fade-up">
             <div class="nav-tabs">
-                <a href="view_subjects_list.php" class="nav-link hover-press">Subject Records</a>
-                <a href="view_attendance.php" class="nav-link active hover-press">Daily Records</a>
-                <a href="groups.php" class="nav-link hover-press">Groups</a>
-                <a href="calendar.php" class="nav-link hover-press">Calendar</a>
+                <a href="view_subjects_list.php" class="nav-link hover-press"><i class="bi bi-book"></i> Subject Records</a>
+                <a href="view_attendance.php" class="nav-link active hover-press"><i class="bi bi-calendar-check"></i> Daily Records</a>
+                <a href="groups.php" class="nav-link hover-press"><i class="bi bi-diagram-3"></i> Groups</a>
+                <a href="calendar.php" class="nav-link hover-press"><i class="bi bi-calendar3"></i> Calendar</a>
             </div>
             
             <div class="mobile-force-stack" style="margin-bottom: 3rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
@@ -215,17 +264,23 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php foreach ($dates as $idx => $row): ?>
                 <div class="date-card animate-fade-up hover-lift" style="animation-delay: <?= $idx * 0.1 ?>s">
                     
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; padding-bottom: 0.75rem;">
-                        <div>
-                            <h3 style="margin: 0; font-size: 1.25rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;">
-                                <?= date('F j, Y', strtotime($row['date'])) ?>
-                            </h3>
-                            <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; margin-top: 4px; display: block;">
-                                <?= $row['record_count'] ?> Entries
-                            </span>
+                    <div class="date-header">
+                        <div class="date-header-left">
+                            <div class="date-day-badge">
+                                <span class="day-num"><?= date('j', strtotime($row['date'])) ?></span>
+                                <span class="day-abbr"><?= date('D', strtotime($row['date'])) ?></span>
+                            </div>
+                            <div>
+                                <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: var(--text-main); letter-spacing: -0.02em;">
+                                    <?= date('F j, Y', strtotime($row['date'])) ?>
+                                </h3>
+                                <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em;">
+                                    <?= $row['record_count'] ?> Entries
+                                </span>
+                            </div>
                         </div>
                         
-                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <div style="display: flex; gap: 0.4rem; align-items: center;">
                             <?php if ($row['is_notified']): ?>
                                 <span style="font-size: 0.65rem; color: var(--text-muted); padding: 0.25rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; display: flex; align-items: center; gap: 4px; font-weight: 800;">
                                     <i class="bi bi-check2-all"></i> SENT
