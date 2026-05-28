@@ -74,7 +74,7 @@ def get_all_active_students():
     return results
 
 def get_student_stats(qr_code):
-    """Fetches full attendance statistics for a specific student, filtered by active school year."""
+    """Fetches full attendance statistics for a specific student."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
@@ -86,30 +86,21 @@ def get_student_stats(qr_code):
         return None
         
     qr_code, name, course = user
-    
-    # Retrieve active school year and normalize
-    cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
-    setting_row = cursor.fetchone()
-    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
-    normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
+    course_text = f" ({course})" if course else ""
     
     # Aggregated Stats for Overall Summary
-    # 1. Subject Attendance Stats (filtered by active school year)
-    cursor.execute("""
-        SELECT SUM(sa.status = 'present'), SUM(sa.status = 'late'), SUM(sa.status = 'absent')
-        FROM subject_attendance sa
-        JOIN subjects s ON sa.subject_id = s.id
-        WHERE sa.qr_code = ? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ?
-    """, (qr_code, normalized_sy))
-    s_stats = cursor.fetchone()
-    
-    # 2. Daily Event Stats (from attendance table with session, filtered by active school year)
+    # 1. Subject Attendance Stats
     cursor.execute("""
         SELECT SUM(status = 'present'), SUM(status = 'late'), SUM(status = 'absent')
-        FROM attendance 
-        WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
-          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
-    """, (qr_code, normalized_sy))
+        FROM subject_attendance WHERE qr_code = ?
+    """, (qr_code,))
+    s_stats = cursor.fetchone()
+    
+    # 2. Daily Event Stats (from attendance table with session)
+    cursor.execute("""
+        SELECT SUM(status = 'present'), SUM(status = 'late'), SUM(status = 'absent')
+        FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
+    """, (qr_code,))
     d_stats = cursor.fetchone()
     
     p = (s_stats[0] or 0) + (d_stats[0] or 0)
@@ -117,26 +108,24 @@ def get_student_stats(qr_code):
     a = (s_stats[2] or 0) + (d_stats[2] or 0)
     
     # Get Records for Breakdown
-    # 1. Subject Records (filtered by active school year)
+    # 1. Subject Records
     cursor.execute("""
         SELECT s.name, 
             SUM(sa.status = 'present'), SUM(sa.status = 'late'), SUM(sa.status = 'absent'),
             s.category
         FROM subject_attendance sa
         JOIN subjects s ON sa.subject_id = s.id
-        WHERE sa.qr_code = ? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ?
+        WHERE sa.qr_code = ?
         GROUP BY s.id
-    """, (qr_code, normalized_sy))
+    """, (qr_code,))
     subject_contexts = cursor.fetchall()
     
-    # 2. Daily Event Records (filtered by active school year)
+    # 2. Daily Event Records
     cursor.execute("""
         SELECT session, SUM(status = 'present'), SUM(status = 'late'), SUM(status = 'absent'), 'event'
-        FROM attendance 
-        WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
-          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
+        FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
         GROUP BY session
-    """, (qr_code, normalized_sy))
+    """, (qr_code,))
     daily_events = cursor.fetchall()
     
     conn.close()
@@ -144,7 +133,9 @@ def get_student_stats(qr_code):
     subjects = [c for c in subject_contexts if (c[4] or 'subject') == 'subject']
     all_events = [c for c in subject_contexts if c[4] == 'event'] + daily_events
     
-    msg = f"<b>STUDENT DOSSIER</b>\n"
+    today_display = datetime.now().strftime("%b %d, %Y")
+    
+    msg = f"<b>📄 STUDENT DOSSIER</b>\n"
     msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
     msg += f"<b>{name}</b>\n"
     msg += f"<code>{course or 'No Course'}</code>\n"
@@ -320,27 +311,17 @@ def get_student_markdown(qr_code):
     <br>
     """
     
-    # Retrieve active school year and normalize
-    cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
-    setting_row = cursor.fetchone()
-    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
-    normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
-    
     # Aggregated Stats
     cursor.execute("""
-        SELECT SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent') 
-        FROM subject_attendance sa
-        JOIN subjects s ON sa.subject_id = s.id
-        WHERE sa.qr_code=? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ?
-    """, (qr_code, normalized_sy))
+        SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
+        FROM subject_attendance WHERE qr_code=?
+    """, (qr_code,))
     s_stats = cursor.fetchone()
     
     cursor.execute("""
         SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
-        FROM attendance 
-        WHERE qr_code=? AND (session IS NOT NULL AND session != '')
-          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
-    """, (qr_code, normalized_sy))
+        FROM attendance WHERE qr_code=? AND (session IS NOT NULL AND session != '')
+    """, (qr_code,))
     d_stats = cursor.fetchone()
     
     p = (s_stats[0] or 0) + (d_stats[0] or 0)
@@ -363,18 +344,15 @@ def get_student_markdown(qr_code):
     cursor.execute("""
         SELECT s.name, SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent')
         FROM subject_attendance sa JOIN subjects s ON sa.subject_id = s.id
-        WHERE sa.qr_code = ? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ?
-        GROUP BY s.id
-    """, (qr_code, normalized_sy))
+        WHERE sa.qr_code = ? GROUP BY s.id
+    """, (qr_code,))
     subjects_raw = cursor.fetchall()
     
     cursor.execute("""
         SELECT session, SUM(status='present'), SUM(status='late'), SUM(status='absent')
-        FROM attendance 
-        WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
-          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
+        FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
         GROUP BY session
-    """, (qr_code, normalized_sy))
+    """, (qr_code,))
     daily_events = cursor.fetchall()
     
     all_contexts = subjects_raw + daily_events
@@ -635,230 +613,10 @@ while True:
 
     def get_admin_main_keyboard():
         markup = ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.row(KeyboardButton("Search Student"), KeyboardButton("Record Attendance"))
-        markup.row(KeyboardButton("Today's Stats"), KeyboardButton("Announce"))
-        markup.row(KeyboardButton("Export CSV"), KeyboardButton("All Dossiers"), KeyboardButton("Get Database"))
+        markup.row(KeyboardButton("🔍 Search Student"), KeyboardButton("🛍️ Order Product"))
+        markup.row(KeyboardButton("📊 Today's Stats"), KeyboardButton("📣 Announce"))
+        markup.row(KeyboardButton("📄 Export CSV"), KeyboardButton("📄 All Dossiers"), KeyboardButton("📂 Get Database"))
         return markup
-
-    def get_active_subjects():
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM subjects WHERE is_active = 1 ORDER BY name ASC")
-        rows = cursor.fetchall()
-        conn.close()
-        return rows
-
-    def get_eligible_students(recording_type, subject_id=None):
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        if recording_type == 'daily':
-            cursor.execute("""
-                SELECT qr_code, name, course, student_type 
-                FROM users 
-                WHERE deleted_at IS NULL 
-                ORDER BY name ASC
-            """)
-        else:
-            cursor.execute("""
-                SELECT qr_code, name, course, student_type 
-                FROM users 
-                WHERE deleted_at IS NULL 
-                  AND (
-                    student_type != 'irregular' 
-                    OR qr_code IN (SELECT qr_code FROM student_subjects WHERE subject_id = ?)
-                  )
-                ORDER BY name ASC
-            """, (subject_id,))
-        students = cursor.fetchall()
-        conn.close()
-        return students
-
-    def show_subject_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_subject_select'
-        subjects = get_active_subjects()
-        
-        markup = InlineKeyboardMarkup(row_width=1)
-        for sub_id, name in subjects:
-            markup.add(InlineKeyboardButton(name, callback_data=f"rec_subsel_{sub_id}"))
-            
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_mode"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                   
-        msg_text = (
-            "<b>RECORD ATTENDANCE: SELECT SUBJECT</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            "Select the active subject class:"
-        )
-        if not subjects:
-            msg_text += "\n\n<i>No active subjects found.</i>"
-            
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_date_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_date_select'
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton(f"Today ({today_str})", callback_data="rec_date_today"),
-                   InlineKeyboardButton("Custom Date", callback_data="rec_date_custom"))
-        
-        back_callback = "rec_back_mode" if state_data['recording_type'] == 'daily' else "rec_back_subjects"
-        
-        markup.row(InlineKeyboardButton("Back", callback_data=back_callback),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: DATE</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n\n"
-            f"Select the target date for recording:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_custom_date_buttons_screen(chat_id, message_id, state_data):
-        import datetime as dt_mod
-        state_data['state'] = 'recording_date_custom_select'
-        
-        days = []
-        for i in range(1, 8):
-            d = datetime.now() - dt_mod.timedelta(days=i)
-            days.append(d)
-            
-        markup = InlineKeyboardMarkup()
-        row = []
-        for d in days:
-            date_str = d.strftime("%Y-%m-%d")
-            day_label = d.strftime("%Y-%m-%d (%a)")
-            row.append(InlineKeyboardButton(day_label, callback_data=f"rec_dateval_{date_str}"))
-            if len(row) == 2:
-                markup.row(*row)
-                row = []
-        if row:
-            markup.row(*row)
-            
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                   
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: SELECT DATE</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n\n"
-            f"Select one of the past 7 days to record attendance:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_student_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_student_select'
-        
-        recording_type = state_data['recording_type']
-        subject_id = state_data.get('subject_id')
-        students = get_eligible_students(recording_type, subject_id)
-        
-        total_students = len(students)
-        current_page = state_data.get('current_page', 0)
-        page_size = 5
-        max_pages = (total_students + page_size - 1) // page_size if total_students > 0 else 1
-        
-        # bounds check
-        if current_page < 0:
-            current_page = 0
-        elif current_page >= max_pages:
-            current_page = max_pages - 1
-        state_data['current_page'] = current_page
-        
-        start_idx = current_page * page_size
-        end_idx = min(start_idx + page_size, total_students)
-        page_students = students[start_idx:end_idx]
-        
-        markup = InlineKeyboardMarkup(row_width=1)
-        
-        for qr_code, name, course, student_type in page_students:
-            course_tag = f" ({course})" if course else ""
-            type_tag = " (Irregular)" if student_type == 'irregular' else ""
-            btn_text = f"{name}{course_tag}{type_tag}"
-            markup.add(InlineKeyboardButton(btn_text, callback_data=f"rec_stusel_{qr_code}"))
-            
-        nav_row = []
-        if current_page > 0:
-            nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_page_prev"))
-        else:
-            nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_noop"))
-            
-        nav_row.append(InlineKeyboardButton(f"Page {current_page + 1}/{max_pages}", callback_data="rec_noop"))
-        
-        if current_page + 1 < max_pages:
-            nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_page_next"))
-        else:
-            nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_noop"))
-            
-        markup.row(*nav_row)
-        
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if recording_type == 'daily' else state_data.get('subject_name', 'Subject')
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: SELECT STUDENT</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n"
-            f"Date: <b>{state_data['date']}</b>\n\n"
-            f"Select a student from the list below to record attendance:"
-        )
-        if not students:
-            msg_text += "\n\n<i>No eligible students found.</i>"
-            
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_status_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_status_select'
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("Present", callback_data="rec_status_present"),
-                   InlineKeyboardButton("Late", callback_data="rec_status_late"),
-                   InlineKeyboardButton("Absent", callback_data="rec_status_absent"))
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: STATUS</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n"
-            f"Date: <b>{state_data['date']}</b>\n"
-            f"Student: <b>{state_data['student_name']}</b>\n\n"
-            f"Choose attendance status for the student:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def handle_record_attendance(message):
-        """Starts the attendance recording process."""
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-            
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("Daily Attendance", callback_data="rec_mode_daily"),
-                   InlineKeyboardButton("Subject Attendance", callback_data="rec_mode_subject"))
-        markup.row(InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        msg_text = (
-            "<b>RECORD ATTENDANCE</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            "Select the type of attendance you wish to record:"
-        )
-        
-        frame_msg = bot.send_message(message.chat.id, msg_text, reply_markup=markup, parse_mode='HTML')
-        
-        with user_states_lock:
-            user_states[message.from_user.id] = {
-                'state': 'recording_mode_select',
-                'frame_msg_id': frame_msg.message_id
-            }
 
     def trigger_announcement_confirmation(user_id, chat_id, content_type):
         with user_states_lock:
@@ -1495,251 +1253,6 @@ while True:
             
         bot.answer_callback_query(call.id)
 
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('rec_'))
-    def handle_recording_callbacks(call):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(call.from_user.id) != str(ADMIN_ID).strip():
-            bot.answer_callback_query(call.id, "Unauthorized.")
-            return
-            
-        state_data = user_states.get(call.from_user.id)
-        if not state_data or state_data.get('frame_msg_id') != call.message.message_id:
-            if call.data in ['rec_mode_daily', 'rec_mode_subject']:
-                user_states[call.from_user.id] = {'state': 'recording_mode_select', 'frame_msg_id': call.message.message_id}
-                state_data = user_states[call.from_user.id]
-            else:
-                bot.answer_callback_query(call.id, "Session expired or invalid message.")
-                return
-                
-        action = call.data
-        
-        if action == 'rec_cancel':
-            bot.edit_message_text(
-                "<b>Recording Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe recording process was terminated.",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                parse_mode='HTML'
-            )
-            with user_states_lock:
-                user_states[call.from_user.id] = {'state': 'idle'}
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_mode_daily':
-            state_data['recording_type'] = 'daily'
-            show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_mode_subject':
-            state_data['recording_type'] = 'subject'
-            show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action.startswith('rec_subsel_'):
-            sub_id = int(action.split('_')[2])
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM subjects WHERE id = ? LIMIT 1", (sub_id,))
-            row = cursor.fetchone()
-            conn.close()
-            
-            if row:
-                state_data['subject_id'] = sub_id
-                state_data['subject_name'] = row[0]
-                show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_back_mode':
-            state_data['state'] = 'recording_mode_select'
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("Daily Attendance", callback_data="rec_mode_daily"),
-                       InlineKeyboardButton("Subject Attendance", callback_data="rec_mode_subject"))
-            markup.row(InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-            bot.edit_message_text(
-                "<b>RECORD ATTENDANCE</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nSelect the type of attendance you wish to record:",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                reply_markup=markup,
-                parse_mode='HTML'
-            )
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_back_subjects':
-            show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_back_dates':
-            show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_date_today':
-            state_data['date'] = datetime.now().strftime("%Y-%m-%d")
-            state_data['current_page'] = 0
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_date_custom':
-            show_custom_date_buttons_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action.startswith('rec_dateval_'):
-            date_val = action.split('_', 2)[2]
-            state_data['date'] = date_val
-            state_data['current_page'] = 0
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_page_prev':
-            state_data['current_page'] = state_data.get('current_page', 0) - 1
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_page_next':
-            state_data['current_page'] = state_data.get('current_page', 0) + 1
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_noop':
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_back_student_select':
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action.startswith('rec_stusel_'):
-            qr_code = action.split('_', 2)[2]
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT qr_code, name, course, student_type FROM users WHERE qr_code = ? LIMIT 1", (qr_code,))
-            row = cursor.fetchone()
-            conn.close()
-
-            if row:
-                state_data['student_qr'] = row[0]
-                state_data['student_name'] = row[1]
-                state_data['student_course'] = row[2]
-                state_data['student_type'] = row[3]
-                
-                if state_data['recording_type'] == 'subject' and state_data.get('student_type') == 'irregular':
-                    conn = sqlite3.connect(DB_PATH)
-                    cursor = conn.cursor()
-                    cursor.execute("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?", 
-                                   (state_data['student_qr'], state_data['subject_id']))
-                    enrolled = cursor.fetchone()
-                    conn.close()
-
-                    if not enrolled:
-                        markup = InlineKeyboardMarkup()
-                        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
-                                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                        bot.edit_message_text(
-                            f"<b>Enrollment Restriction</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                            f"Student: <b>{state_data['student_name']}</b> is irregular and NOT enrolled in "
-                            f"<b>{state_data['subject_name']}</b>.\n\nRecording is blocked.",
-                            chat_id=call.message.chat.id,
-                            message_id=call.message.message_id,
-                            reply_markup=markup,
-                            parse_mode='HTML'
-                        )
-                        bot.answer_callback_query(call.id)
-                        return
-                
-                show_status_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action.startswith('rec_status_'):
-            status = action.split('_')[2]
-            
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                
-                recording_type = state_data['recording_type']
-                student_qr = state_data['student_qr']
-                date_val = state_data['date']
-                
-                if recording_type == 'subject':
-                    subject_id = state_data['subject_id']
-                    cursor.execute("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?", 
-                                   (subject_id, student_qr, date_val))
-                    existing = cursor.fetchone()
-                    time_now = datetime.now().strftime("%H:%M:%S")
-                    
-                    if existing:
-                        cursor.execute("UPDATE subject_attendance SET status = ?, time = ?, recorded_at = CURRENT_TIMESTAMP WHERE id = ?",
-                                       (status, time_now, existing[0]))
-                    else:
-                        cursor.execute("INSERT INTO subject_attendance (subject_id, qr_code, date, time, status) VALUES (?, ?, ?, ?, ?)",
-                                       (subject_id, student_qr, date_val, time_now, status))
-                else:
-                    cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
-                    setting_row = cursor.fetchone()
-                    active_sy = setting_row[0] if (setting_row and setting_row[0]) else "SY 2026-2027"
-                    
-                    cursor.execute("SELECT id FROM attendance WHERE qr_code = ? AND date = ?", 
-                                   (student_qr, date_val))
-                    existing = cursor.fetchone()
-                    time_display = datetime.now().strftime("%I:%M %p")
-                    
-                    if existing:
-                        if date_val == datetime.now().strftime("%Y-%m-%d"):
-                            cursor.execute("UPDATE attendance SET status = ?, time = ? WHERE id = ?",
-                                           (status, time_display, existing[0]))
-                        else:
-                            cursor.execute("UPDATE attendance SET status = ? WHERE id = ?",
-                                           (status, existing[0]))
-                    else:
-                        cursor.execute("INSERT INTO attendance (qr_code, date, time, status, school_year) VALUES (?, ?, ?, ?, ?)",
-                                       (student_qr, date_val, time_display, status, active_sy))
-                
-                conn.commit()
-                conn.close()
-                
-                markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("Record Another", callback_data="rec_another"),
-                           InlineKeyboardButton("Finish", callback_data="rec_cancel"))
-                
-                context_name = "Daily Attendance" if recording_type == 'daily' else state_data['subject_name']
-                msg_success = (
-                    f"<b>Attendance Recorded Successfully</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                    f"Student: <b>{state_data['student_name']}</b>\n"
-                    f"Context: <b>{context_name}</b>\n"
-                    f"Date: <b>{date_val}</b>\n"
-                    f"Status: <b>{status.capitalize()}</b>"
-                )
-                bot.edit_message_text(msg_success, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode='HTML')
-                
-            except Exception as e:
-                bot.send_message(call.message.chat.id, f"Database Error: {e}")
-                
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_another':
-            state_data.pop('student_qr', None)
-            state_data.pop('student_name', None)
-            state_data.pop('student_course', None)
-            state_data.pop('student_type', None)
-            
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
     @bot.message_handler(func=lambda message: not message.text.startswith('/'))
     def handle_text_interactions(message):
         """Routes text from buttons or search queries."""
@@ -1749,14 +1262,6 @@ while True:
         
         text = message.text
         
-        # Intercept manual typing during attendance recording flow
-        if state.startswith('recording_'):
-            try:
-                bot.delete_message(message.chat.id, message.message_id)
-            except:
-                pass
-            return
-            
         # --- ADMIN ONLY / PRIVATE ONLY GATING ---
         if state.startswith('ordering_'):
             # Allow active order flows to continue (for students/admins)
@@ -1874,19 +1379,19 @@ while True:
             return
 
         # Main Interface Button routing (Admins only, Private only)
-        if text == "Search Student":
-            bot.reply_to(message, "<b>Search</b>\nType the student name or ID to search.")
-        elif text == "Record Attendance":
-            handle_record_attendance(message)
-        elif text == "Today's Stats":
+        if text == "🔍 Search Student":
+            bot.reply_to(message, "🔍 <b>Search</b>\nType the student name or ID to search.")
+        elif text == "🛍️ Order Product":
+            handle_order_command(message)
+        elif text == "📊 Today's Stats":
             handle_today(message)
-        elif text == "Announce":
+        elif text == "📣 Announce":
             handle_announce_command(message)
-        elif text == "Export CSV":
+        elif text == "📄 Export CSV":
             handle_export(message)
-        elif text == "All Dossiers":
+        elif text == "📄 All Dossiers":
             handle_dossier_all(message)
-        elif text == "Get Database":
+        elif text == "📂 Get Database":
             handle_getdb(message)
         else:
             # Fallback to auto-search

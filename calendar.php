@@ -15,37 +15,94 @@ require_once 'includes/db.php';
     <?php include 'includes/theme_loader.php'; ?>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
     <style>
-        .fc-event { cursor: pointer; border-radius: 6px; padding: 2px 6px; font-weight: 600; font-size: 0.78rem; border: none; }
-        .fc-toolbar-title { font-size: 1.15rem !important; color: var(--text-main); font-weight: 800 !important; letter-spacing: -0.02em; }
-        .fc-button { background-color: var(--bg-card) !important; border: none !important; color: var(--text-main) !important; box-shadow: var(--shadow-neu-out-sm) !important; font-weight: 700 !important; font-size: 0.78rem !important; border-radius: 10px !important; transition: all 0.2s !important; }
-        .fc-button:hover { box-shadow: var(--shadow-neu-in-sm) !important; transform: scale(0.97); }
-        .fc-button-active { box-shadow: var(--shadow-neu-in-sm) !important; color: var(--primary) !important; }
-        .fc-day-today { background-color: color-mix(in srgb, var(--primary) 6%, transparent) !important; }
-        .fc-col-header-cell { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
-        .fc-daygrid-day-number { font-weight: 700; font-size: 0.82rem; color: var(--text-main); }
+        .fc-event { cursor: pointer; border-radius: 8px; padding: 4px 8px; font-weight: 700; font-size: 0.76rem; border: none; box-shadow: var(--shadow-neu-out-sm); transition: all 0.2s; }
+        .fc-event:hover { transform: scale(1.03) translateY(-1px); box-shadow: var(--shadow-neu-out); }
+        .fc-toolbar-title { font-size: 1.25rem !important; color: var(--text-main); font-weight: 900 !important; letter-spacing: -0.03em; font-family: 'Outfit', sans-serif; }
+        
+        /* Premium Navigation Buttons */
+        .fc-button { 
+            background-color: var(--bg-card) !important; 
+            border: 1px solid var(--border) !important; 
+            color: var(--text-main) !important; 
+            box-shadow: var(--shadow-neu-out-sm) !important; 
+            font-weight: 800 !important; 
+            font-size: 0.78rem !important; 
+            border-radius: 12px !important; 
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important; 
+            text-transform: uppercase !important;
+            letter-spacing: 0.05em !important;
+        }
+        .fc-button:hover { 
+            box-shadow: var(--shadow-neu-out) !important; 
+            transform: translateY(-1px); 
+            border-color: var(--primary) !important;
+            color: var(--primary) !important;
+        }
+        .fc-button-active { 
+            box-shadow: var(--shadow-neu-in-sm) !important; 
+            color: var(--primary) !important; 
+            background-color: var(--bg-main) !important;
+        }
+        
+        /* Modernized Today / Cell Highlights */
+        .fc-day-today { 
+            background-color: color-mix(in srgb, var(--primary) 8%, transparent) !important; 
+            position: relative;
+        }
+        .fc-day-today::after {
+            content: '';
+            position: absolute;
+            top: 6px; right: 6px;
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: var(--primary);
+            box-shadow: 0 0 8px var(--primary);
+        }
+        .fc-col-header-cell { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-muted); padding: 8px 0 !important; }
+        .fc-daygrid-day-number { font-weight: 800; font-size: 0.85rem; color: var(--text-main); font-family: 'Outfit', sans-serif; padding: 6px 8px !important; }
         .fc th, .fc td { border-color: color-mix(in srgb, var(--text-muted) 8%, transparent) !important; }
-
+        
+        /* Glass wrapper */
         .calendar-wrapper {
-            background: var(--bg-card); padding: 2rem; border-radius: 20px; box-shadow: var(--shadow-neu-out); border: none;
+            background: var(--bg-card); 
+            padding: 2.25rem; 
+            border-radius: 24px; 
+            box-shadow: var(--shadow-neu-out); 
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+        .calendar-wrapper:hover {
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
         }
 
+        /* Backdrop-Blurred Modal */
         .day-modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+            background: rgba(0,0,0,0.45); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
             z-index: 1000; align-items: center; justify-content: center;
         }
         .day-modal-body {
-            background: var(--bg-card); width: 90%; max-width: 460px; padding: 2rem;
-            border-radius: 20px; max-height: 80vh; overflow-y: auto;
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
-            animation: scaleIn 0.25s ease;
+            background: var(--bg-card); 
+            width: 90%; 
+            max-width: 480px; 
+            padding: 2.25rem;
+            border-radius: 24px; 
+            max-height: 80vh; 
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-neu-out);
+            animation: modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.95) translateY(10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
         @media (max-width: 600px) {
-            .calendar-wrapper { padding: 0.75rem !important; margin-top: 0.5rem !important; }
-            .fc-toolbar-title { font-size: 1rem !important; }
-            .fc-toolbar { flex-direction: column; gap: 10px; }
-            .fc-header-toolbar { margin-bottom: 1rem !important; }
+            .calendar-wrapper { padding: 1rem !important; margin-top: 0.5rem !important; border-radius: 16px; }
+            .fc-toolbar-title { font-size: 1.05rem !important; }
+            .fc-toolbar { flex-direction: column; gap: 12px; }
+            .fc-header-toolbar { margin-bottom: 1.25rem !important; }
         }
     </style>
 </head>
@@ -55,8 +112,8 @@ require_once 'includes/db.php';
 
     <main class="container">
         
-        <div class="animate-fade-up" style="margin-top: 2rem; margin-bottom: 2rem;">
-            <div class="calendar-wrapper">
+        <div class="animate-fade-up stagger-1" style="margin-top: 2rem; margin-bottom: 2rem;">
+            <div class="calendar-wrapper interactive-glow">
                 <div id='calendar'></div>
             </div>
         </div>
@@ -65,19 +122,19 @@ require_once 'includes/db.php';
 
     <!-- Details Modal -->
     <div id="dayModal" class="day-modal-overlay">
-        <div class="day-modal-body animate-fade-up">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; padding-bottom:0.75rem; border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px; height:36px; border-radius:10px; background:color-mix(in srgb, var(--primary) 10%, transparent); color:var(--primary); display:flex; align-items:center; justify-content:center;">
-                        <i class="bi bi-calendar-event" style="font-size:1rem;"></i>
+        <div class="day-modal-body">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.75rem; padding-bottom:1rem; border-bottom: 1px solid var(--border);">
+                <div style="display:flex; align-items:center; gap:12px;">
+                    <div style="width:40px; height:40px; border-radius:12px; background:color-mix(in srgb, var(--primary) 10%, transparent); color:var(--primary); display:flex; align-items:center; justify-content:center; box-shadow: var(--shadow-neu-out-sm);">
+                        <i class="bi bi-calendar-event" style="font-size:1.1rem;"></i>
                     </div>
-                    <h3 id="modalDate" style="margin:0; font-weight:800; font-size:1.1rem; letter-spacing:-0.02em;">Date</h3>
+                    <h3 id="modalDate" style="margin:0; font-weight:900; font-size:1.15rem; letter-spacing:-0.03em; font-family:'Outfit', sans-serif;">Date</h3>
                 </div>
-                <button onclick="closeModal()" style="background:none; border:none; font-size:1.25rem; cursor:pointer; color:var(--text-muted); width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; transition:all 0.2s;" onmouseover="this.style.background='var(--bg-main)'" onmouseout="this.style.background='none'">&times;</button>
+                <button onclick="closeModal()" class="btn-icon" title="Close Modal">&times;</button>
             </div>
-            <div id="modalContent" style="color:var(--text-muted); font-size:0.88rem;">Testing...</div>
-            <div style="margin-top:1.5rem; text-align:right">
-                 <a id="viewFullLink" href="#" class="btn btn-primary" style="border-radius:50px; padding:0.6rem 1.5rem; font-size:0.78rem; font-weight:800;">View Full Records</a>
+            <div id="modalContent" style="color:var(--text-muted); font-size:0.9rem; line-height:1.6; font-weight:500;">Testing...</div>
+            <div style="margin-top:2rem; text-align:right">
+                 <a id="viewFullLink" href="#" class="btn btn-primary" style="border-radius:50px; padding:0.65rem 1.75rem; font-size:0.8rem; font-weight:800; letter-spacing:0.02em; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);">View Full Records</a>
             </div>
         </div>
     </div>

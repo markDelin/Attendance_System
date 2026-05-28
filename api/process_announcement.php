@@ -37,7 +37,7 @@ try {
     } elseif ($type === 'system_refresh') {
         // Fetch settings for active school year
         $settingsStmt = $pdo->query("SELECT active_school_year FROM settings LIMIT 1");
-        $settings = $settingsStmt->fetch(PDO::FETCH_ASSOC);
+        $settings = $settingsStmt ? ($settingsStmt->fetch(PDO::FETCH_ASSOC) ?: []) : [];
         $sy = $settings['active_school_year'] ?? 'N/A';
 
         $f = function($p, $m) {

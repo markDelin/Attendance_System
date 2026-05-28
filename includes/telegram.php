@@ -7,7 +7,7 @@ function send_telegram_notification($message) {
     
     try {
         $stmt = $pdo->query("SELECT telegram_bot_token, telegram_group_id FROM settings LIMIT 1");
-        $settings = $stmt->fetch(PDO::FETCH_ASSOC);
+        $settings = $stmt ? ($stmt->fetch(PDO::FETCH_ASSOC) ?: []) : [];
         
         $token = $settings['telegram_bot_token'] ?? '';
         $chat_id = $settings['telegram_group_id'] ?? '';

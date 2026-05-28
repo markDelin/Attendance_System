@@ -54,9 +54,17 @@ try {
         $email = $_POST['email'] ?? '';
         $birthday = $_POST['birthday'] ?? '';
         $birthday_image = $_POST['birthday_image'] ?? '';
+        $home_address = $_POST['home_address'] ?? '';
+        $guardian_name = $_POST['guardian_name'] ?? '';
+        $guardian_contact = $_POST['guardian_contact'] ?? '';
+        $blood_type = $_POST['blood_type'] ?? '';
+        $lrn = $_POST['lrn'] ?? '';
+        $mother_name = $_POST['mother_name'] ?? '';
+        $father_name = $_POST['father_name'] ?? '';
+        $guardian_relationship = $_POST['guardian_relationship'] ?? '';
 
-        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, email, birthday, birthday_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $birthday_image]);
+        $stmt = $pdo->prepare("INSERT INTO users (qr_code, name, first_name, last_name, middle_initial, student_type, course, section, place_of_birth, sex, civil_status, religion, citizenship, contact_number, email, birthday, birthday_image, home_address, guardian_name, guardian_contact, blood_type, lrn, mother_name, father_name, guardian_relationship) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$qr_code, $name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $birthday_image, $home_address, $guardian_name, $guardian_contact, $blood_type, $lrn, $mother_name, $father_name, $guardian_relationship]);
         
         echo json_encode(["status" => "success", "message" => "Student added successfully"]);
 
@@ -74,7 +82,6 @@ try {
         $type = $_POST['student_type'] ?? 'regular';
         
         // New Fields
-        // New Fields
         $course = $_POST['course'] ?? '';
         $section = $_POST['section'] ?? '';
         $place_of_birth = $_POST['place_of_birth'] ?? '';
@@ -87,9 +94,17 @@ try {
         $birthday = $_POST['birthday'] ?? '';
         $year_level = $_POST['year_level'] ?? '1st';
         $birthday_image = $_POST['birthday_image'] ?? '';
+        $home_address = $_POST['home_address'] ?? '';
+        $guardian_name = $_POST['guardian_name'] ?? '';
+        $guardian_contact = $_POST['guardian_contact'] ?? '';
+        $blood_type = $_POST['blood_type'] ?? '';
+        $lrn = $_POST['lrn'] ?? '';
+        $mother_name = $_POST['mother_name'] ?? '';
+        $father_name = $_POST['father_name'] ?? '';
+        $guardian_relationship = $_POST['guardian_relationship'] ?? '';
 
-        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, email = ?, birthday = ?, year_level = ?, birthday_image = ? WHERE qr_code = ?");
-        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $year_level, $birthday_image, $qr_code]);
+        $stmt = $pdo->prepare("UPDATE users SET name = ?, first_name = ?, last_name = ?, middle_initial = ?, student_type = ?, course = ?, section = ?, place_of_birth = ?, sex = ?, civil_status = ?, religion = ?, citizenship = ?, contact_number = ?, email = ?, birthday = ?, year_level = ?, birthday_image = ?, home_address = ?, guardian_name = ?, guardian_contact = ?, blood_type = ?, lrn = ?, mother_name = ?, father_name = ?, guardian_relationship = ? WHERE qr_code = ?");
+        $stmt->execute([$name, $first_name, $last_name, $middle_initial, $type, $course, $section, $place_of_birth, $sex, $civil_status, $religion, $citizenship, $contact_number, $email, $birthday, $year_level, $birthday_image, $home_address, $guardian_name, $guardian_contact, $blood_type, $lrn, $mother_name, $father_name, $guardian_relationship, $qr_code]);
         
         echo json_encode(["status" => "success", "message" => "User updated successfully"]);
 

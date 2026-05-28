@@ -10,13 +10,19 @@ $python = (PHP_OS_FAMILY === 'Windows') ? 'python' : 'python3';
 
 // Path to the generator script
 $generator = realpath(__DIR__ . '/../bot/generate_report.py');
+
+if (!$generator || !file_exists($generator)) {
+    die("Error: PDF generator script not found. Please ensure bot/generate_report.py exists.");
+}
+
 $workingDir = dirname($generator);
 
 // Execute the Python script
 $output = [];
 $return_var = 0;
 // We pass the QR code as an argument. The script prints the filename it created.
-exec("cd $workingDir && $python " . escapeshellarg($generator) . " " . escapeshellarg($qr), $output, $return_var);
+$escapedDir = escapeshellarg($workingDir);
+exec("cd $escapedDir && $python " . escapeshellarg($generator) . " " . escapeshellarg($qr), $output, $return_var);
 
 if ($return_var !== 0) {
     die("Error generating PDF dossier. Status: $return_var. Check Python install.");

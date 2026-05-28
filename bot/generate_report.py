@@ -38,45 +38,70 @@ def get_student_data(qr_code):
         return None
     name, course, stype, year = user
     
-    # 2. General Stats (Aggregated from Subjects/Events)
+    # Retrieve active school year and normalize
+    cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
+    setting_row = cursor.fetchone()
+    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
+    normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
+    
+    # 2. General Stats (Aggregated from Subjects/Events, Filtered by active school year)
     cursor.execute("""
-        SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
-        FROM subject_attendance WHERE qr_code=?
-    """, (qr_code,))
+        SELECT SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent') 
+        FROM subject_attendance sa
+        JOIN subjects s ON sa.subject_id = s.id
+        WHERE sa.qr_code=? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ?
+    """, (qr_code, normalized_sy))
     stats = cursor.fetchone()
     p, l, a = (stats[0] or 0, stats[1] or 0, stats[2] or 0)
     
-    # 2b. Check for Specific Events in Daily Attendance (those with a session title)
+    # 2b. Check for Specific Events in Daily Attendance
     cursor.execute("""
         SELECT SUM(status='present'), SUM(status='late'), SUM(status='absent') 
-        FROM attendance WHERE qr_code=? AND (session IS NOT NULL AND session != '')
-    """, (qr_code,))
+        FROM attendance 
+        WHERE qr_code=? AND (session IS NOT NULL AND session != '')
+          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
+    """, (qr_code, normalized_sy))
     daily_event_stats = cursor.fetchone()
     if daily_event_stats and any(daily_event_stats):
         p += (daily_event_stats[0] or 0)
         l += (daily_event_stats[1] or 0)
         a += (daily_event_stats[2] or 0)
 
-    # 3. Subject Stats
+    # 3. Subject Stats (Filtered by active school year)
     cursor.execute("""
-        SELECT s.name, SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent'), s.category
+        SELECT s.name, SUM(sa.status='present'), SUM(sa.status='late'), SUM(sa.status='absent'), s.category, s.school_year
         FROM subject_attendance sa JOIN subjects s ON sa.subject_id = s.id
-        WHERE sa.qr_code = ? GROUP BY s.id
-    """, (qr_code,))
+        WHERE sa.qr_code = ? AND REPLACE(REPLACE(s.school_year, 'SY ', ''), 'sy ', '') = ? 
+        GROUP BY s.id
+    """, (qr_code, normalized_sy))
     subjects_raw = cursor.fetchall()
     
-    # 3b. Daily Events (from attendance table with session)
+    # 3b. Daily Events (Filtered by active school year)
     cursor.execute("""
-        SELECT session, SUM(status='present'), SUM(status='late'), SUM(status='absent'), 'event'
-        FROM attendance WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
-        GROUP BY session
-    """, (qr_code,))
+        SELECT session, SUM(status='present'), SUM(status='late'), SUM(status='absent'), 'event', school_year
+        FROM attendance 
+        WHERE qr_code = ? AND (session IS NOT NULL AND session != '')
+          AND REPLACE(REPLACE(school_year, 'SY ', ''), 'sy ', '') = ?
+        GROUP BY session, school_year
+    """, (qr_code, normalized_sy))
     daily_events = cursor.fetchall()
-    
-    subjects = subjects_raw + daily_events
     
     conn.close()
     
+    # Group by school year
+    by_sy = {}
+    for s in subjects_raw:
+        sy = s[5] or 'No School Year'
+        if sy not in by_sy:
+            by_sy[sy] = []
+        by_sy[sy].append(s)
+        
+    for ev in daily_events:
+        sy = ev[5] or 'No School Year'
+        if sy not in by_sy:
+            by_sy[sy] = []
+        by_sy[sy].append(ev)
+        
     # Build HTML with Premium Formatting
     html = f"<h1 style='font-family: helvetica; color: #0f172a;'>{name}</h1>"
     html += f"<p><b>Course:</b> {course or 'N/A'}<br>"
@@ -85,13 +110,16 @@ def get_student_data(qr_code):
     html += "<h2 style='border-bottom: 0.5px solid #cbd5e1; padding-bottom: 5px;'>Attendance Summary</h2>"
     html += f"<ul><li>Present: <b>{p}</b></li><li>Late: <b>{l}</b></li><li>Absent: <b>{a}</b></li></ul>"
     
-    if subjects:
-        html += "<h2>Subject Breakdown</h2>"
+    sorted_sys = sorted(by_sy.keys(), key=lambda x: (0 if x == 'No School Year' else 1, x), reverse=True)
+    
+    for sy in sorted_sys:
+        html += f"<h2 style='border-bottom: 0.5px solid #cbd5e1; padding-bottom: 5px; margin-top: 15px;'>SCHOOL YEAR: {sy.upper()}</h2>"
         html += "<table border='1' width='100%' cellpadding='5'>"
-        html += "<thead><tr bgcolor='#f1f5f9'><th width='70%'><b>Subject Name</b></th><th width='10%'><b>P</b></th><th width='10%'><b>L</b></th><th width='10%'><b>A</b></th></tr></thead>"
+        html += "<thead><tr bgcolor='#f1f5f9'><th width='70%'><b>Subject / Event Name</b></th><th width='10%'><b>P</b></th><th width='10%'><b>L</b></th><th width='10%'><b>A</b></th></tr></thead>"
         html += "<tbody>"
-        for s in subjects:
-            html += f"<tr><td>{s[0]}</td><td align='center'>{s[1]}</td><td align='center'>{s[2]}</td><td align='center'>{s[3]}</td></tr>"
+        for s in by_sy[sy]:
+            label = str(s[0]).replace('-', ' ').upper()
+            html += f"<tr><td>{label}</td><td align='center'>{s[1]}</td><td align='center'>{s[2]}</td><td align='center'>{s[3]}</td></tr>"
         html += "</tbody></table>"
         
     return html

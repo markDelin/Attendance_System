@@ -40,14 +40,14 @@ class AnimatedList {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             const index = parseInt(entry.target.dataset.index || 0);
-            const delay = index * 0.05; // 50ms stagger
+            const delay = Math.min(index * 0.03, 0.5); // Fast stagger, capped at 500ms max to load instantly
             entry.target.style.transitionDelay = `${delay}s`;
             entry.target.classList.add('in-view');
             observer.unobserve(entry.target); // Animate in once
           }
         });
       },
-      { threshold: 0.1, root: null } // Use viewport for better mobile reliability
+      { threshold: 0.05, root: this.list || null } // Track relative to scroll container for instant triggering
     );
 
     this.items.forEach((item, index) => {
@@ -119,9 +119,8 @@ class AnimatedList {
       });
 
       item.addEventListener('click', (e) => {
-        // If a specific interactive element was clicked (Edit, Delete, etc), do not trigger the default item action
+        // If a specific interactive element was clicked (Edit, Delete, etc), let it bubble natively with zero JS interference
         if (e.target.closest('a, button, input, select, textarea')) {
-          this.setSelectedIndex(index);
           return;
         }
 

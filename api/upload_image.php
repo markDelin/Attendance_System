@@ -71,6 +71,46 @@ if (!in_array(strtolower($ext), $allowed)) {
     exit;
 }
 
+// Validate MIME type (prevents disguised PHP files)
+$mimeType = false;
+if (class_exists('finfo')) {
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+    $mimeType = $finfo->file($file['tmp_name']);
+} elseif (function_exists('mime_content_type')) {
+    $mimeType = mime_content_type($file['tmp_name']);
+} elseif (function_exists('getimagesize')) {
+    $imageInfo = getimagesize($file['tmp_name']);
+    if ($imageInfo !== false) {
+        $mimeType = $imageInfo['mime'];
+    }
+}
+if (!$mimeType) {
+    $extMap = [
+        'jpg' => 'image/jpeg',
+        'jpeg' => 'image/jpeg',
+        'png' => 'image/png',
+        'gif' => 'image/gif',
+        'webp' => 'image/webp'
+    ];
+    $lowerExt = strtolower($ext);
+    if (isset($extMap[$lowerExt])) {
+        $mimeType = $extMap[$lowerExt];
+    }
+}
+$allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+if (!in_array($mimeType, $allowedMimes)) {
+    echo json_encode(['success' => false, 'error' => 'Invalid file content. The file does not appear to be a valid image.']);
+    exit;
+}
+
+// File size limit (5MB)
+$maxSize = 5 * 1024 * 1024;
+if ($file['size'] > $maxSize) {
+    echo json_encode(['success' => false, 'error' => 'File too large. Maximum size is 5MB.']);
+    exit;
+}
+
 // Generate unique filename
 $filename = uniqid('img_') . '.' . $ext;
 $targetPath = $targetDir . $filename;

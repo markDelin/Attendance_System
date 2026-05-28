@@ -33,7 +33,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Re-attendance | QR Tools by MCK</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
@@ -47,113 +47,115 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             margin-bottom: 2rem;
         }
 
-        .date-container {
+        /* Glassmorphic Date Control */
+        .date-container-glass {
             display: flex;
             align-items: center;
-            gap: 12px;
-            background: var(--bg-main);
-            padding: 1rem;
+            justify-content: center;
+            gap: 15px;
+            background: var(--bg-card);
+            padding: 1.25rem 2rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            max-width: 480px;
+            margin: 0 auto 2rem;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .date-container-glass:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-neu-out);
+        }
+        .date-label { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+        .date-control-glass {
+            border: 1px solid var(--border);
             border-radius: 12px;
-            border: 1px solid var(--border);
-            max-width: 400px;
-            margin: 0 auto 1.5rem;
-        }
-
-        .date-label {
-            font-size: 0.8rem;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-        }
-
-        .date-control {
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 0.5rem;
-            font-size: 0.95rem;
+            padding: 0.6rem 1rem;
+            font-size: 0.92rem;
             color: var(--text-main);
             outline: none;
-            background: var(--bg-card);
-            flex: 1;
+            background: var(--bg-main);
+            box-shadow: var(--shadow-neu-in-sm);
+            font-weight: 700;
+            transition: all 0.25s;
+        }
+        .date-control-glass:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
         }
 
         .search-area {
             position: sticky;
             top: 0;
             z-index: 90;
-            background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
+            background: var(--bg-main);
             padding: 1rem 0;
-            border-bottom: 1px solid var(--border);
-            margin-bottom: 2rem;
+            margin-bottom: 1.25rem;
         }
 
-        .search-container {
-            position: relative;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .search-input {
+        /* Interactive Search Input */
+        .search-container { position: relative; max-width: 600px; margin: 0 auto; }
+        .search-input-glass {
             width: 100%;
-            padding: 0.75rem 1rem 0.75rem 3rem;
-            border-radius: 12px;
+            padding: 0.9rem 1.25rem 0.9rem 3.2rem;
+            border-radius: 16px;
             border: 1px solid var(--border);
             background: var(--bg-card);
+            font-size: 0.92rem;
             color: var(--text-main);
-            font-size: 0.95rem;
+            box-shadow: var(--shadow-neu-out-sm);
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-
-        .search-input:focus {
+        .search-input-glass:focus {
             outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(23, 23, 23, 0.05);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+            transform: scale(0.995);
         }
+        .search-icon { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.05rem; }
 
-        .search-icon {
-            position: absolute;
-            left: 1.25rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-        }
-
-        /* High-Density Row Design */
+        /* Premium Student Row Styling */
         .student-row {
             background: var(--bg-card);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 1rem 1.25rem;
+            border-radius: 18px;
+            padding: 1.1rem 1.5rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border-left: 4px solid transparent;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-left: 5px solid transparent;
+            box-shadow: var(--shadow-neu-out-sm);
         }
-
         .student-row:hover {
-            border-color: var(--primary);
-            transform: translateX(4px);
-            background: var(--bg-hover);
+            transform: translateX(4px) translateY(-1px);
+            box-shadow: var(--shadow-neu-out);
+            border-color: color-mix(in srgb, var(--text-muted) 15%, transparent);
         }
 
         .student-name {
             font-family: 'Outfit', sans-serif;
-            font-weight: 600;
-            font-size: 1.05rem;
+            font-weight: 700;
+            font-size: 0.98rem;
             margin: 0;
             color: var(--text-main);
+            transition: color 0.2s;
+        }
+        .student-name:hover {
+            color: var(--primary);
         }
 
         .student-id {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text-muted);
             background: var(--bg-main);
-            padding: 2px 6px;
-            border-radius: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            border: 1px solid var(--border);
         }
 
         .action-group {
@@ -161,41 +163,110 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
             gap: 6px;
         }
 
+        /* Premium Toggle Capsule Buttons */
+        .compact-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
         .btn-status {
-            width: 38px;
-            height: 38px;
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-            background: var(--bg-main);
-            cursor: pointer;
-            transition: all 0.2s;
+            font-size: 0.76rem;
             font-weight: 800;
-            font-size: 0.85rem;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            background: var(--bg-main);
             color: var(--text-muted);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            box-shadow: var(--shadow-neu-out-sm);
         }
-
         .btn-status:hover {
-            transform: scale(1.1);
-            z-index: 2;
+            transform: translateY(-2px) scale(1.05);
+            color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-neu-out);
         }
 
-        /* Status Colors */
-        .student-row.present { border-left-color: #10b981; }
-        .student-row.late { border-left-color: #f59e0b; }
-        .student-row.absent { border-left-color: #ef4444; }
+        /* Active Status Animations */
+        .student-row.present { border-left-color: #10b981; background: rgba(16, 185, 129, 0.02); }
+        .student-row.present .btn-status.btn-present {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
+
+        .student-row.late { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.02); }
+        .student-row.late .btn-status.btn-late {
+            background: #f59e0b;
+            color: white;
+            border-color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
+
+        .student-row.absent { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.02); }
+        .student-row.absent .btn-status.btn-absent {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
 
         .time-stamp {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.06em;
             color: var(--primary);
             font-weight: 800;
             display: inline-flex;
             align-items: center;
             gap: 4px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* Glass Stats Cards */
+        .stat-badge-glass {
+            background: var(--bg-card);
+            padding: 1.25rem;
+            border-radius: 16px;
+            text-align: center;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .stat-badge-glass:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-neu-out);
+        }
+
+        @media (max-width: 600px) {
+            .student-row {
+                padding: 1.25rem 1rem;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+            .action-group {
+                justify-content: space-between;
+                border-top: 1px solid var(--border);
+                padding-top: 10px;
+                width: 100%;
+            }
+            .btn-status {
+                flex: 1;
+                height: 40px;
+            }
         }
     </style>
 </head>
@@ -204,69 +275,79 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Nav -->
     <?php 
     $navbar_actions = '
-        <div class="btn-group">
-            <button onclick="setMode(\'daily\')" id="btnDaily" class="btn btn-primary btn-sm">Daily</button>
-            <button onclick="setMode(\'subject\')" id="btnSubject" class="btn btn-ghost btn-sm">Subject</button>
-        </div>
+        <button onclick="setMode(\'daily\')" id="btnDaily" class="btn-icon active" title="Daily Mode">
+            <i class="bi bi-calendar-check" style="font-size: 0.95rem;"></i>
+        </button>
+        <button onclick="setMode(\'subject\')" id="btnSubject" class="btn-icon" title="Subject Mode">
+            <i class="bi bi-book" style="font-size: 0.95rem;"></i>
+        </button>
     ';
     include 'includes/navbar.php'; 
     ?>
     
-    <div class="container animate-fade-up" style="max-width: 800px; margin-top: 2rem;">
-        <div class="date-container">
+    <div class="container animate-fade-up" style="max-width: 800px; margin-top: 2rem; padding-top: 1rem;">
+        
+        <!-- Glassmorphic Date Control -->
+        <div class="date-container-glass stagger-1">
             <span class="date-label">Attendance Date</span>
-            <input type="date" id="attendanceDate" class="date-control" value="<?= $selectedDate ?>" onchange="refreshData()">
+            <input type="date" id="attendanceDate" class="date-control-glass" value="<?= $selectedDate ?>" onchange="refreshData()">
         </div>
         
-        <div id="subjectControls" class="mobile-force-stack" style="display:none; margin-bottom: 1.5rem; gap: 1rem;">
-             <select id="subjectSelect" class="form-control" onchange="refreshData()" style="border-radius: 12px; padding: 0.8rem; width: 100%;">
+        <!-- Subject Selection Area -->
+        <div id="subjectControls" class="stagger-2" style="display:none; margin-bottom: 2rem;">
+             <select id="subjectSelect" class="form-control" onchange="refreshData()" style="border-radius: 14px; padding: 0.75rem 1rem; font-weight: 700; background: var(--bg-main); border: 1px solid var(--border); box-shadow: var(--shadow-neu-in-sm);">
                 <option value="">Loading Subjects...</option>
             </select>
         </div>
         
-        <!-- Stats -->
-         <div id="subjectStats" style="display:none; margin-bottom: 2rem;">
+        <!-- Stats Grid -->
+         <div id="subjectStats" class="stagger-3" style="display:none; margin-bottom: 2.25rem;">
             <div class="mobile-force-stack" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-                <div style="background: rgba(16, 185, 129, 0.1); padding: 1rem; border-radius: 12px; text-align: center; border: 1px solid rgba(16, 185, 129, 0.2);">
-                    <span style="display:block; font-size: 1.5rem; font-weight: 800; color: #10b981;" id="count-present">0</span>
-                    <small style="color: #10b981; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Present</small>
+                <div class="stat-badge-glass" style="border-top: 3px solid #10b981;">
+                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #10b981;" id="count-present">0</span>
+                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Present</small>
                 </div>
-                <div style="background: rgba(245, 158, 11, 0.1); padding: 1rem; border-radius: 12px; text-align: center; border: 1px solid rgba(245, 158, 11, 0.2);">
-                    <span style="display:block; font-size: 1.5rem; font-weight: 800; color: #f59e0b;" id="count-late">0</span>
-                    <small style="color: #f59e0b; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Late</small>
+                <div class="stat-badge-glass" style="border-top: 3px solid #f59e0b;">
+                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #f59e0b;" id="count-late">0</span>
+                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Late</small>
                 </div>
-                <div style="background: rgba(239, 68, 68, 0.1); padding: 1rem; border-radius: 12px; text-align: center; border: 1px solid rgba(239, 68, 68, 0.2);">
-                    <span style="display:block; font-size: 1.5rem; font-weight: 800; color: #ef4444;" id="count-absent">0</span>
-                    <small style="color: #ef4444; font-size: 0.65rem; font-weight: 700; text-transform: uppercase;">Absent</small>
+                <div class="stat-badge-glass" style="border-top: 3px solid #ef4444;">
+                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #ef4444;" id="count-absent">0</span>
+                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Absent</small>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Search Bar -->
-    <div class="search-area">
+    <div class="search-area stagger-4">
         <div class="container" style="max-width: 800px;">
             <div class="search-container">
                 <i class="bi bi-search search-icon"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by name..." autocomplete="off">
+                <input type="text" id="searchInput" class="search-input-glass" placeholder="Search by name..." autocomplete="off">
             </div>
         </div>
     </div>
 
-    <main class="container" style="max-width: 800px;">
+    <main class="container animate-fade-up stagger-5" style="max-width: 800px;">
         <div class="scroll-list-container">
             <div class="top-gradient"></div>
             <div class="bottom-gradient"></div>
             <div id="studentList" class="scroll-list student-list no-scrollbar" style="max-height: 60vh;">
-                <?php foreach ($users as $user): ?>
-                    <div class="student-row animated-item" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
+                <?php 
+                $idx = 0;
+                foreach ($users as $user): 
+                    $staggerClass = 'stagger-' . (($idx % 8) + 1);
+                    $idx++;
+                ?>
+                    <div class="student-row animated-item interactive-glow <?= $staggerClass ?>" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
                     
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0;">
                         <h5 class="student-name"><?= htmlspecialchars($user['name']) ?></h5>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
                             <span class="student-id"><?= $user['qr_code'] ?></span>
-                            <span class="time-stamp" style="display: none;">
-                                <i class="bi bi-check-circle-fill"></i> Saved
+                             <span class="time-stamp" style="display: none;">
+                                <i class="bi bi-check-circle"></i> Saved
                             </span>
                         </div>
                     </div>
@@ -275,6 +356,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'present')" class="btn-status btn-present" title="Mark Present">P</button>
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'late')" class="btn-status btn-late" title="Mark Late">L</button>
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'absent')" class="btn-status btn-absent" title="Mark Absent">A</button>
+                        <button onclick="clearStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>')" class="btn-status" title="Clear Record" style="color:var(--text-muted); font-size: 0.72rem;"><i class="bi bi-trash"></i></button>
                     </div>
 
                 </div>
@@ -305,9 +387,18 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         function setMode(mode) {
              currentMode = mode;
-             // Update Button Styles
-             document.getElementById('btnDaily').className = mode === 'daily' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
-             document.getElementById('btnSubject').className = mode === 'subject' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+             const bD = document.getElementById('btnDaily');
+             const bS = document.getElementById('btnSubject');
+             
+             if (bD && bS) {
+                 if(mode === 'daily') {
+                     bD.className = 'btn-icon active';
+                     bS.className = 'btn-icon';
+                 } else {
+                     bS.className = 'btn-icon active';
+                     bD.className = 'btn-icon';
+                 }
+             }
              
              // Update UI
              document.getElementById('subjectControls').style.display = mode === 'subject' ? 'block' : 'none';
@@ -453,6 +544,60 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 const urlSubId = urlParams.get('subject_id');
                 if(urlSubId) {
                      sel.value = urlSubId;
+                }
+            });
+        }
+
+        function clearStatus(qr, name) {
+            const date = document.getElementById('attendanceDate').value;
+            const row = document.getElementById('row-' + qr);
+            
+            Swal.fire({
+                title: 'Clear Record?',
+                text: `Remove attendance for ${name} on ${date}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Yes, clear'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    row.style.opacity = '0.7';
+                    
+                    let api = 'api/delete.php';
+                    let formData = new FormData();
+                    
+                    if (currentMode === 'subject') {
+                        api = 'api/delete_subject.php';
+                        formData.append('type', 'subject_record_by_qr');
+                        formData.append('qr_code', qr);
+                        formData.append('subject_id', currentSubjectId);
+                        formData.append('date', date);
+                    } else {
+                        formData.append('qr_code', qr);
+                        formData.append('date', date);
+                        formData.append('action', 'delete_by_qr');
+                    }
+
+                    fetch(api, { method: 'POST', body: formData })
+                    .then(r => r.json())
+                    .then(d => {
+                        row.style.opacity = '1';
+                        if (d.status === 'success') {
+                            row.classList.remove('present', 'late', 'absent');
+                            const ts = row.querySelector('.time-stamp');
+                            if(ts) ts.style.display = 'none';
+                            
+                            Swal.fire({
+                                title: 'Cleared!',
+                                text: 'Attendance record removed.',
+                                icon: 'success',
+                                confirmButtonColor: 'var(--primary)'
+                            });
+                            updateStatsCounts();
+                        } else {
+                            Swal.fire('Error', d.message, 'error');
+                        }
+                    });
                 }
             });
         }

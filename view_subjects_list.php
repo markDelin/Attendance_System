@@ -6,8 +6,16 @@ require_once "includes/db.php";
 // Fetch Category from URL
 $category = $_GET['category'] ?? 'subject';
 
-// Fetch Subjects/Events
-$stmt = $pdo->prepare("SELECT * FROM subjects WHERE category = ? ORDER BY is_active DESC, semester DESC, name ASC");
+// Fetch Subjects/Events with dynamic schedule subquery
+$stmt = $pdo->prepare("
+    SELECT s.*, 
+           (SELECT GROUP_CONCAT(day_of_week || ' ' || start_time || '-' || end_time, '||') 
+            FROM schedules 
+            WHERE subject_id = s.id) as schedule_list
+    FROM subjects s
+    WHERE s.category = ? 
+    ORDER BY s.is_active DESC, s.semester DESC, s.name ASC
+");
 $stmt->execute([$category]);
 $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -30,7 +38,7 @@ ksort($grouped); // Sort by SY
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subject Records | Attendance System</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <?php include 'includes/theme_loader.php'; ?>
     <link rel="stylesheet" href="assets/css/AnimatedList.css">
@@ -152,13 +160,10 @@ ksort($grouped); // Sort by SY
                         Select a <?= $category === 'event' ? 'event' : 'subject' ?> to view attendance logs.
                     </p>
                 </div>
-                <div style="flex-shrink: 0; display: flex; gap: 10px;">
-                     <button onclick="exportAll()" class="btn btn-ghost btn-sm" style="padding: 0.75rem 1.25rem; font-weight: 800; border-radius: 12px; border: 1px solid var(--border);">
-                        <i class="bi bi-collection"></i> Bulk Export
-                     </button>
-                     <button onclick="openAddDialog()" class="btn btn-primary btn-sm" style="padding: 0.75rem 1.5rem; font-weight: 800; border-radius: 12px;">
-                        <i class="bi bi-plus-lg"></i> New <?= ucfirst($category) ?>
-                     </button>
+                 <div style="flex-shrink: 0; display: flex; gap: 10px;">
+                      <button onclick="exportAll()" class="btn btn-ghost" style="width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Bulk Export">
+                         <i class="bi bi-collection" style="font-size: 1.1rem; color: var(--text-muted);"></i>
+                      </button>
                 </div>
             </div>
         </div>
@@ -167,7 +172,7 @@ ksort($grouped); // Sort by SY
             <div class="animate-fade-up" style="padding: 4rem; text-align: center; border: 1px dashed var(--border); border-radius: var(--radius-lg);">
                 <i class="bi bi-journal-x" style="font-size: 2rem; color: var(--text-muted); display: block; margin-bottom: 1rem;"></i>
                 <p style="color: var(--text-muted); margin-bottom: 1.5rem;">No subjects found in the database.</p>
-                <a href="groups.php" class="btn btn-primary" style="font-size: 0.9rem;">Manage Subjects</a>
+                <a href="subjects.php" class="btn btn-primary" style="font-size: 0.9rem;">Manage Subjects in Subject Portal</a>
             </div>
         <?php else: ?>
             <?php foreach ($grouped as $sy => $semesters): ?>
@@ -178,29 +183,51 @@ ksort($grouped); // Sort by SY
                         <div class="scroll-list-container">
                             <div class="top-gradient"></div>
                             <div class="bottom-gradient"></div>
-                            <div class="scroll-list no-scrollbar" style="max-height: 400px; padding: 0.5rem 0;">
-                                <table class="item-table mobile-card-table">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th style="width: 120px;" class="hide-mobile">Code</th>
-                                    <th style="width: 120px; text-align: center;">Records</th>
-                                    <th style="width: 50px;"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                            <div class="scroll-list no-scrollbar" style="max-height: calc(75vh - 120px); padding: 0.5rem 0.25rem;">
                                 <?php foreach ($subs as $s): 
                                     $count = $pdo->query("SELECT COUNT(*) FROM subject_attendance WHERE subject_id = {$s['id']}")->fetchColumn();
                                 ?>
-                                <tr class="animated-item" onclick="window.location.href='view_subject_attendance.php?id=<?= $s['id'] ?>'" style="cursor: pointer;">
-                                    <td data-label="Name" style="font-weight: 600; color: var(--text-main);"><?= htmlspecialchars($s['name']) ?></td>
-                                    <td data-label="Code" class="hide-mobile"><span class="code-badge"><?= htmlspecialchars($s['code'] ?? 'CODE') ?></span></td>
-                                    <td data-label="Records" style="text-align: center; font-weight: 600;"><?= $count ?></td>
-                                    <td data-label="Link" style="text-align: right; color: var(--text-muted);"><i class="bi bi-chevron-right"></i></td>
-                                </tr>
+                                <div class="animated-item hover-lift" onclick="window.location.href='view_subject_attendance.php?id=<?= $s['id'] ?>'" 
+                                     style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 1.1rem 1.25rem; border-bottom: 1px solid color-mix(in srgb, var(--border) 40%, transparent); transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1); background: var(--bg-card); border-radius: 18px; border: 1px solid var(--border); margin-bottom: 0.75rem; box-shadow: var(--shadow-neu-out-sm);">
+                                    <div style="flex: 1; min-width: 0; padding-right: 12px;">
+                                        <p style="margin: 0; font-weight: 800; font-size: 0.95rem; color: var(--text-main); display: flex; align-items: center; flex-wrap: wrap; gap: 8px; font-family:'Outfit', sans-serif; line-height: 1.2;">
+                                            <?= htmlspecialchars($s['name']) ?>
+                                            <?php if (!empty($s['code'])): ?>
+                                                <span style="font-family:'JetBrains Mono', monospace; font-size: 0.65rem; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); padding: 2px 7px; border-radius: 6px; font-weight: 700;"><?= htmlspecialchars($s['code']) ?></span>
+                                            <?php endif; ?>
+                                        </p>
+                                        <div style="display: flex; gap: 12px; align-items: center; margin-top: 5px; flex-wrap: wrap;">
+                                            <?php if (!empty($s['room'])): ?>
+                                                <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; display: inline-flex; align-items: center; gap: 2px;"><i class="bi bi-geo-alt" style="font-size:0.72rem;"></i><?= htmlspecialchars($s['room']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($s['lecturer'])): ?>
+                                                <span style="font-size: 0.68rem; color: var(--text-muted); font-weight: 600; display: inline-flex; align-items: center; gap: 2px;"><i class="bi bi-person" style="font-size:0.72rem;"></i><?= htmlspecialchars($s['lecturer']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                        
+                                        <?php if (!empty($s['schedule_list'])): ?>
+                                            <div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px;">
+                                                <?php foreach (explode('||', $s['schedule_list']) as $sched): ?>
+                                                    <span style="font-family:'JetBrains Mono', monospace; font-size: 0.62rem; background: color-mix(in srgb, var(--primary) 5%, transparent); color: var(--text-main); border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent); padding: 2px 7px; border-radius: 30px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <i class="bi bi-clock" style="font-size:0.68rem; color:var(--primary);"></i>
+                                                        <?= htmlspecialchars($sched) ?>
+                                                    </span>
+                                                <?php endforeach; ?>
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                    
+                                    <div style="display: flex; align-items: center; gap: 1rem; flex-shrink: 0;">
+                                        <div style="text-align: right; min-width: 42px;">
+                                            <span style="font-size: 1.15rem; font-weight: 850; color: var(--primary); display: block; font-family:'Outfit', sans-serif; line-height: 1;"><?= $count ?></span>
+                                            <span style="font-size: 0.55rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 2px;">Logs</span>
+                                        </div>
+                                        <div style="width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: color-mix(in srgb, var(--primary) 6%, transparent); color: var(--primary); font-size: 0.85rem; border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);">
+                                            <i class="bi bi-chevron-right"></i>
+                                        </div>
+                                    </div>
+                                </div>
                                 <?php endforeach; ?>
-                                </tbody>
-                                </table>
                             </div>
                         </div>
                     </div>
@@ -249,69 +276,6 @@ ksort($grouped); // Sort by SY
                 if (result.isConfirmed) {
                     const [start, end] = result.value;
                     window.open(`api/export_all_subjects.php?start=${start}&end=${end}&format=xls`, '_blank');
-                }
-            });
-        }
-
-        function openAddDialog() {
-            Swal.fire({
-                title: 'New ' + (currentCategory === 'event' ? 'Event' : 'Subject'),
-                html: `
-                    <div style="text-align: left; padding: 0.5rem;">
-                        <div style="margin-bottom: 1rem;">
-                            <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block;">Name</label>
-                            <input id="swal-name" class="form-control" placeholder="${currentCategory === 'event' ? 'e.g. Field Trip' : 'e.g. Math 101'}" style="border-radius: 12px;">
-                        </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                            <div>
-                                <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block;">School Year</label>
-                                <input id="swal-sy" class="form-control" placeholder="2025-2026" style="border-radius: 12px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; display: block;">Semester</label>
-                                <input id="swal-sem" class="form-control" placeholder="1, 2, etc." style="border-radius: 12px;">
-                            </div>
-                        </div>
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonText: 'Create ' + ucfirst(currentCategory),
-                cancelButtonText: 'Cancel',
-                confirmButtonColor: 'var(--primary)',
-                preConfirm: () => {
-                    const name = document.getElementById('swal-name').value;
-                    const sy = document.getElementById('swal-sy').value;
-                    const sem = document.getElementById('swal-sem').value;
-                    if (!name || (!sy && currentCategory === 'subject') || !sem) {
-                        Swal.showValidationMessage('Please fill all required fields');
-                        return false;
-                    }
-                    return [name, sy, sem];
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    const [name, sy, sem] = result.value;
-                    fetch('api/subject_process.php', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: new URLSearchParams({ 
-                            action: 'add_subject', 
-                            name: name, 
-                            school_year: sy,
-                            semester: sem,
-                            category: currentCategory
-                        })
-                    })
-                    .then(r => r.json())
-                    .then(d => {
-                        if(d.status === 'success') {
-                            Toast.fire({ icon: 'success', title: d.message }).then(() => {
-                                window.location.reload();
-                            });
-                        } else {
-                            Swal.fire('Error', d.message, 'error');
-                        }
-                    });
                 }
             });
         }

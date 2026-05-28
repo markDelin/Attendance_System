@@ -15,14 +15,17 @@ try {
         $name = trim($_POST['name'] ?? '');
         $semester = trim($_POST['semester'] ?? '');
         $school_year = trim($_POST['school_year'] ?? '');
+        $code = trim($_POST['code'] ?? '');
+        $room = trim($_POST['room'] ?? '');
+        $lecturer = trim($_POST['lecturer'] ?? '');
         
         if (empty($name) || empty($semester)) {
             echo json_encode(['status' => 'error', 'message' => 'Name and Semester are required.']);
             exit;
         }
 
-        $stmt = $pdo->prepare("INSERT INTO subjects (name, semester, school_year, category) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$name, $semester, $school_year, $category]);
+        $stmt = $pdo->prepare("INSERT INTO subjects (name, semester, school_year, category, code, room, lecturer) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$name, $semester, $school_year, $category, $code, $room, $lecturer]);
         
         echo json_encode(['status' => 'success', 'message' => ucfirst($category) . ' added.', 'id' => $pdo->lastInsertId()]);
 
@@ -102,22 +105,67 @@ try {
 
     // 4. Delete Subject
     } elseif ($action === 'delete_subject') {
-        $id = $_POST['id'] ?? 0;
+        // Accept both 'id' and 'subject_id' for compatibility
+        $id = $_POST['id'] ?? $_POST['subject_id'] ?? 0;
         $pdo->prepare("DELETE FROM subjects WHERE id = ?")->execute([$id]);
         echo json_encode(['status' => 'success', 'message' => 'Subject deleted.']);
 
+    // 4b. Get Active-SY Subjects (for Manual Entry dropdown)
+    } elseif ($action === 'get_subjects_active') {
+        // Fetch active school year from settings
+        $syStmt = $pdo->query("SELECT active_school_year FROM settings LIMIT 1");
+        $activeSY = $syStmt ? ($syStmt->fetchColumn() ?: '') : '';
+
+        if ($activeSY) {
+            $stmt = $pdo->prepare("SELECT * FROM subjects WHERE school_year = ? ORDER BY semester DESC, name ASC");
+            $stmt->execute([$activeSY]);
+        } else {
+            // fallback: return all if no active SY set
+            $stmt = $pdo->query("SELECT * FROM subjects ORDER BY school_year DESC, semester DESC, name ASC");
+        }
+        $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Group by Semester
+        $grouped = [];
+        foreach ($subjects as $s) {
+            $sem = $s['semester'] ?: 'No Semester';
+            $grouped[$sem][] = $s;
+        }
+        echo json_encode(['status' => 'success', 'data' => $grouped, 'active_sy' => $activeSY]);
+
     // 5. Update Subject
     } elseif ($action === 'update_subject') {
-        $id = $_POST['id'] ?? 0;
-        $name = trim($_POST['name'] ?? '');
-        $semester = trim($_POST['semester'] ?? '');
-        $school_year = trim($_POST['school_year'] ?? '');
-        $category = trim($_POST['category'] ?? 'subject');
-        $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : 1;
-        
-        if (empty($name) || empty($semester)) { echo json_encode(['status' => 'error', 'message' => 'Invalid data.']); exit; }
+        $id = $_POST['id'] ?? $_POST['subject_id'] ?? 0;
+        if (!$id) {
+            echo json_encode(['status' => 'error', 'message' => 'Subject ID is required.']);
+            exit;
+        }
 
-        $pdo->prepare("UPDATE subjects SET name = ?, semester = ?, school_year = ?, category = ?, is_active = ? WHERE id = ?")->execute([$name, $semester, $school_year, $category, $is_active, $id]);
+        // Fetch existing subject details to handle partial updates cleanly
+        $stmt = $pdo->prepare("SELECT * FROM subjects WHERE id = ?");
+        $stmt->execute([$id]);
+        $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$existing) {
+            echo json_encode(['status' => 'error', 'message' => 'Subject not found.']);
+            exit;
+        }
+
+        $name = isset($_POST['name']) ? trim($_POST['name']) : $existing['name'];
+        $semester = isset($_POST['semester']) ? trim($_POST['semester']) : $existing['semester'];
+        $school_year = isset($_POST['school_year']) ? trim($_POST['school_year']) : $existing['school_year'];
+        $category = isset($_POST['category']) ? trim($_POST['category']) : $existing['category'];
+        $code = isset($_POST['code']) ? trim($_POST['code']) : $existing['code'];
+        $room = isset($_POST['room']) ? trim($_POST['room']) : $existing['room'];
+        $lecturer = isset($_POST['lecturer']) ? trim($_POST['lecturer']) : $existing['lecturer'];
+        $is_active = isset($_POST['is_active']) ? (int)$_POST['is_active'] : (int)$existing['is_active'];
+        
+        if (empty($name) || empty($semester)) { 
+            echo json_encode(['status' => 'error', 'message' => 'Name and Semester are required.']); 
+            exit; 
+        }
+
+        $pdo->prepare("UPDATE subjects SET name = ?, semester = ?, school_year = ?, category = ?, code = ?, room = ?, lecturer = ?, is_active = ? WHERE id = ?")->execute([$name, $semester, $school_year, $category, $code, $room, $lecturer, $is_active, $id]);
         echo json_encode(['status' => 'success', 'message' => ucfirst($category) . ' updated.']);
         
     // 6. Get Realtime Attendance (For UI Highlight)

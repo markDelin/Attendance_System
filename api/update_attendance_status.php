@@ -73,6 +73,8 @@ try {
     $message .= "🏫 <b>Context:</b> $notifContext\n";
     $message .= "📊 <b>Status:</b> $statusEmoji " . ucfirst($newStatus);
     
+    send_telegram_notification($message);
+    
     echo json_encode(['status' => 'success', 'new_status' => $newStatus, 'message' => 'Updated successfully!']);
 } catch (PDOException $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

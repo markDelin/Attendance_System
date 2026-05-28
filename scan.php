@@ -68,12 +68,32 @@ foreach ($subjects as $s) {
         }
         .scanner-content {
             background: var(--bg-card);
-            width: 95%; max-width: 400px;
+            width: 95%; max-width: 420px;
             padding: 2rem;
             border-radius: var(--radius-lg);
             position: relative;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-            border: none;
+            border: 1px solid var(--border);
+        }
+        .modal-close-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-main);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-size: 1rem;
+        }
+        .modal-close-btn:hover {
+            background: var(--bg-hover);
+            color: var(--danger);
+            border-color: var(--danger);
+            transform: scale(1.05);
         }
 
         /* Scan Button Pulse */
@@ -183,9 +203,9 @@ foreach ($subjects as $s) {
                     </h5>
                 </div>
                 <div style="text-align:right; display: flex; align-items: center; gap: 10px;">
-                     <button id="btnNotify" onclick="finishAndNotify()" class="btn btn-ghost btn-sm" style="color: var(--primary); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 6px; border-radius: 50px; font-weight: 700;">
-                        <i class="bi bi-bell-fill"></i> <span class="hide-mobile">Notify</span>
-                     </button>
+                      <button id="btnNotify" onclick="finishAndNotify()" class="btn btn-ghost btn-sm" style="color: var(--primary); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 6px; border-radius: 50px; font-weight: 700;">
+                        <i class="bi bi-bell"></i> <span class="hide-mobile">Notify</span>
+                      </button>
                      <span id="countBadge" style="background:var(--bg-main); color:var(--primary); padding:4px 12px; border: 1px solid var(--border); border-radius:12px; font-size:0.8rem; font-weight:800;">0</span>
                      <a href="view_attendance.php" style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 700; border-bottom: 2px solid var(--primary);">Records</a>
                 </div>
@@ -203,24 +223,42 @@ foreach ($subjects as $s) {
 
     <!-- Scanner Modal -->
     <div id="scannerModal">
-        <div class="scanner-content animate-fade-up">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
-                <h4>Scan QR</h4>
-                <button onclick="toggleScanner()" style="background:none; border:none; font-size: 1.2rem;"><i class="bi bi-x-lg"></i></button>
+        <div class="scanner-content animate-fade-up" style="padding: 1.5rem 1.75rem 1.75rem;">
+            <div class="modal-header-pro" style="padding: 0 0 1.25rem 0; margin-bottom: 1.25rem; border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 12%, transparent); display: flex; align-items: center; justify-content: space-between;">
+                <div class="header-left" style="display: flex; align-items: center; gap: 0.85rem;">
+                    <div class="header-icon" style="width: 42px; height: 42px; border-radius: 12px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);">
+                        <i class="bi bi-qr-code-scan"></i>
+                    </div>
+                    <div class="header-text">
+                        <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: var(--text-main);">Live Attendance Scanner</h3>
+                        <small style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; display: block;">Personal Attendance Scanner</small>
+                    </div>
+                </div>
+                <button onclick="toggleScanner()" class="modal-close-btn" title="Close">
+                    <i class="bi bi-x-lg"></i>
+                </button>
             </div>
             
-            <div style="position: relative;">
-                <div id="reader" style="width: 100%; border-radius: var(--radius-md); overflow: hidden;"></div>
+            <div class="scanner-view-wrapper">
+                <!-- High-tech radar sweeps & reticles -->
+                <div class="scanner-grid-overlay"></div>
+                <div class="scanner-laser-line"></div>
+                <div class="reticle-corner reticle-tl"></div>
+                <div class="reticle-corner reticle-tr"></div>
+                <div class="reticle-corner reticle-bl"></div>
+                <div class="reticle-corner reticle-br"></div>
+                
+                <div id="reader" style="width: 100%; overflow: hidden;"></div>
                 
                 <!-- Scan Result Overlay -->
-                <div id="scanFeedback" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); border-radius:var(--radius-md); flex-direction:column; align-items:center; justify-content:center; z-index:10; transition: all 0.3s ease;">
-                    <div id="feedbackIcon" style="font-size: 4rem; margin-bottom: 10px;"></div>
-                    <div id="feedbackText" style="color:white; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; text-align:center; padding: 0 1rem;"></div>
+                <div id="scanFeedback" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); flex-direction:column; align-items:center; justify-content:center; z-index:10; transition: all 0.3s ease;">
+                    <div id="feedbackIcon" style="font-size: 4.5rem; margin-bottom: 10px;"></div>
+                    <div id="feedbackText" style="color:white; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; text-align:center; padding: 0 1.25rem; font-family: 'Outfit', sans-serif; line-height: 1.2;"></div>
                 </div>
             </div>
 
-            <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.9rem;">
-                Point camera at student QR code.
+            <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; margin-bottom: 0;">
+                Align student QR code within targeting indicators.
             </p>
         </div>
     </div>
@@ -380,12 +418,12 @@ foreach ($subjects as $s) {
             .then(r => r.json())
             .then(data => {
                 if (data.status === 'new') {
-                    showScanFeedback('question', 'New Student', '#3b82f6');
+                    showScanFeedback('question', 'New Classmate', '#3b82f6');
                     // New Registration
                     Swal.fire({
-                        title: 'New Student',
+                        title: 'New Classmate',
                         html: `
-                            <p style="margin-bottom:15px; color:#666;">Unknown QR. Register new student?</p>
+                            <p style="margin-bottom:15px; color:#666;">Unknown QR. Register new classmate?</p>
                             <input id="reg-firstname" class="swal2-input" placeholder="First Name" style="margin-bottom: 10px;">
                             <input id="reg-lastname" class="swal2-input" placeholder="Last Name">
                         `,
@@ -449,10 +487,10 @@ foreach ($subjects as $s) {
             const icon = document.getElementById('feedbackIcon');
             const label = document.getElementById('feedbackText');
             
-            icon.innerHTML = type === 'check' ? '<i class="bi bi-check-circle-fill"></i>' : 
-                             type === 'info' ? '<i class="bi bi-info-circle-fill"></i>' :
-                             type === 'x' ? '<i class="bi bi-x-circle-fill"></i>' :
-                             '<i class="bi bi-question-circle-fill"></i>';
+            icon.innerHTML = type === 'check' ? '<i class="bi bi-check-circle"></i>' : 
+                             type === 'info' ? '<i class="bi bi-info-circle"></i>' :
+                             type === 'x' ? '<i class="bi bi-x-circle"></i>' :
+                             '<i class="bi bi-question-circle"></i>';
             
             icon.style.color = color;
             label.innerHTML = text;
@@ -476,7 +514,7 @@ foreach ($subjects as $s) {
         function regHelper(data) {
              if(data.status === 'success') {
                 playSound('success');
-                Swal.fire('Registered!', 'Student added.', 'success').then(() => {
+                Swal.fire('Registered!', 'Classmate added.', 'success').then(() => {
                     fetchRecentList(); // Refresh list
                     resumeScanning();
                 });
@@ -548,32 +586,45 @@ foreach ($subjects as $s) {
 
             if (data.length === 0) {
                 attendanceList.innerHTML = `
-                    <div style="padding: 2rem; text-align: center;">
-                        <p style="color: var(--text-muted);">No scans yet for this mode.</p>
+                    <div style="padding: 3rem 2rem; text-align: center; border: 1.5px dashed var(--border); border-radius: 20px; background: var(--bg-card);">
+                        <i class="bi bi-qr-code" style="font-size: 2rem; color: var(--text-muted); opacity: 0.5; display: block; margin-bottom: 0.75rem;"></i>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; font-weight: 500; margin: 0;">No active logs scanned for this session mode.</p>
                     </div>`;
                 return;
             }
 
-            data.forEach(record => {
-                const badgeClass = 'badge-' + (record.status || 'present').toLowerCase();
-                // Minimalist Card Style for Scanner
+            data.forEach((record, idx) => {
+                const badgeClass = (record.status || 'present').toLowerCase();
+                const initial = escapeHtml(record.name.charAt(0).toUpperCase());
+                const colors = ['#5c6bc0','#42a5f5','#26a69a','#66bb6a','#ec407a','#ab47bc','#ef5350','#ffa726'];
+                const avatarColor = colors[idx % colors.length];
+                
                 const row = document.createElement('div');
-                row.className = 'student-row animate-fade-in';
-                row.style.background = 'var(--bg-card)';
-                row.style.border = '1px solid var(--border)';
-                row.style.borderRadius = 'var(--radius-md)';
-                row.style.padding = '0.8rem 1rem';
+                row.className = 'glass-panel hover-lift animate-fade-up';
+                row.style.padding = '0.95rem 1.25rem';
+                row.style.borderRadius = '16px';
                 row.style.display = 'flex';
                 row.style.justifyContent = 'space-between';
                 row.style.alignItems = 'center';
+                row.style.animationDelay = (idx * 0.05) + 's';
+                row.style.boxShadow = 'var(--shadow-neu-out-sm)';
+                row.style.border = '1px solid var(--border)';
+                row.style.background = 'var(--bg-card)';
+                row.style.marginBottom = '0.5rem';
 
                 row.innerHTML = `
-                    <div class="student-info">
-                        <h6 style="margin:0; font-size: 0.95rem; font-weight: 600;">${escapeHtml(record.name)}</h6>
+                    <div style="display: flex; align-items: center; gap: 0.75rem; min-width: 0;">
+                        <div style="width: 36px; height: 36px; border-radius: 10px; background: ${avatarColor}; color: white; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.85rem; font-family: 'Outfit', sans-serif; flex-shrink: 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                            ${initial}
+                        </div>
+                        <div style="min-width: 0;">
+                            <h6 style="margin:0; font-size: 0.92rem; font-weight: 800; color: var(--text-main); font-family: 'Outfit', sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;">${escapeHtml(record.name)}</h6>
+                            <span style="font-size: 0.62rem; color: var(--text-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-top: 1px;">Checkpoint Recorded</span>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span style="font-size: 0.8rem; font-weight: bold; color: var(--primary);">${record.time}</span>
-                        <span class="badge ${badgeClass}" style="padding: 0.3rem 0.6rem; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${(record.status || 'PRESENT').toUpperCase()}</span>
+                    <div style="display: flex; align-items: center; gap: 12px; flex-shrink: 0;">
+                        <span style="font-size: 0.82rem; font-weight: 800; color: var(--primary); font-family: 'JetBrains Mono', monospace;">${record.time}</span>
+                        <span class="badge ${badgeClass}" style="padding: 0.35rem 0.75rem; font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">${(record.status || 'PRESENT').toUpperCase()}</span>
                     </div>
                 `;
                 attendanceList.appendChild(row);
@@ -590,7 +641,7 @@ foreach ($subjects as $s) {
                 .replace(/'/g, "&#039;");
         }
 
-        window.onload = function() {
+        document.addEventListener('DOMContentLoaded', function() {
             // Check for Secure Context
             if (!window.isSecureContext && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
                 Swal.fire({
@@ -612,18 +663,8 @@ foreach ($subjects as $s) {
                 });
             }
             
-            fetchRecentList();
-            setInterval(fetchRecentList, 5000);
-        };
-
-        // Subject Change Listener
-        document.getElementById('scanSubject').addEventListener('change', () => {
-             fetchRecentList();
-        });
-        
-        // Auto-select subject on load
-        window.addEventListener('load', () => {
-             fetch('api/subject_process.php', {
+            // Auto-select subject based on current schedule, then fetch list
+            fetch('api/subject_process.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                 body: new URLSearchParams({ action: 'get_current_subject' })
@@ -637,15 +678,14 @@ foreach ($subjects as $s) {
                          shortToast('info', `Auto-selected: ${d.data.name}`);
                      }
                 }
-                // Fetch list initially (after auto-select check logic or default)
-                // We add a small delay or just call it.
-                // Parameter override check takes precedence
                 checkUrlParam();
             })
             .catch(() => {
-                // Determine list anyway if fetch fails
                 checkUrlParam();
             });
+            
+            // Start periodic refresh
+            setInterval(fetchRecentList, 5000);
         });
 
          function checkUrlParam() {

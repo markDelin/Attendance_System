@@ -8,7 +8,7 @@ require_once 'includes/db.php';
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Announcements | QR Tools</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
@@ -102,16 +102,16 @@ require_once 'includes/db.php';
             
             <!-- Composer Card -->
             <div class="animate-fade-up">
-                <div class="card" style="padding: 2.5rem; height: 100%;">
-                    <h4 style="margin-bottom: 1.5rem; font-weight: 800; letter-spacing: -0.04em;">Custom Announcement</h4>
+                <div class="glass-panel interactive-glow" style="padding: 2.5rem; height: 100%; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-neu-out);">
+                    <h4 style="margin-bottom: 1.5rem; font-weight: 900; letter-spacing: -0.04em; font-family:'Outfit', sans-serif;">Custom Announcement</h4>
                     
                     <div style="margin-bottom: 1.5rem;">
-                        <label style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: block;">Message Content</label>
-                        <textarea id="custom_message" class="form-control" style="height: 200px; resize: none; border-radius: 16px;" placeholder="Type your announcement here... HTML tags like <b>, <i>, <code> are supported."></textarea>
+                        <label style="font-size: 0.72rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; display: block; font-weight:800; letter-spacing:0.05em;">Message Content</label>
+                        <textarea id="custom_message" class="form-control" style="height: 200px; resize: none; border-radius: 16px; font-weight:600; padding:1rem; border:1px solid var(--border); background:var(--bg-main); box-shadow:var(--shadow-neu-in-sm);" placeholder="Type your announcement here... HTML tags like <b>, <i>, <code> are supported."></textarea>
                     </div>
 
                     <div style="margin-bottom: 1.5rem;">
-                        <span class="preview-label">Live Preview (Mockup)</span>
+                        <span class="preview-label" style="font-size: 0.72rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px; display:block;">Live Preview (Telegram Mockup)</span>
                         <div id="message_preview" class="preview-bubble">
                             <div id="preview_content"><i>Start typing to see preview...</i></div>
                             <div style="margin-top: 1rem; color: var(--text-muted); font-size: 0.85rem; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 0.5rem; font-family: monospace;">
@@ -120,19 +120,19 @@ require_once 'includes/db.php';
                         </div>
                     </div>
 
-                    <button onclick="sendAnnouncement('custom')" class="btn btn-primary hover-lift" style="width: 100%; padding: 1rem; border-radius: 50px; font-weight: 800;">
-                        <i class="bi bi-send-fill"></i> Broadcast Now
+                    <button onclick="sendAnnouncement('custom')" class="btn btn-primary hover-lift" style="width: 100%; padding: 1rem; border-radius: 50px; font-weight: 800; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--primary) 30%, transparent);">
+                        <i class="bi bi-send"></i> Broadcast Now
                     </button>
                 </div>
             </div>
 
             <!-- Templates Card -->
             <div class="animate-fade-up stagger-1">
-                <div class="card" style="padding: 2.5rem; height: 100%;">
-                    <h4 style="margin-bottom: 1.5rem; font-weight: 800; letter-spacing: -0.04em;">Default Options</h4>
+                <div class="glass-panel interactive-glow" style="padding: 2.5rem; height: 100%; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-neu-out);">
+                    <h4 style="margin-bottom: 1.5rem; font-weight: 900; letter-spacing: -0.04em; font-family:'Outfit', sans-serif;">Default Options</h4>
                     
                     <button onclick="promptSetCount()" class="template-btn">
-                        <i class="bi bi-people-fill"></i>
+                        <i class="bi bi-people" style="font-size: 1.5rem;"></i>
                         <div>
                             <b>Student Count Only</b>
                             <small>Broadcast regular count for SET A, B, or C</small>
@@ -140,24 +140,24 @@ require_once 'includes/db.php';
                     </button>
 
                     <button onclick="promptNewStudent()" class="template-btn">
-                        <i class="bi bi-person-plus-fill"></i>
+                        <i class="bi bi-person-plus" style="font-size: 1.5rem;"></i>
                         <div>
                             <b>New Student Notice</b>
                             <small>Announce a new arrival</small>
                         </div>
                     </button>
 
-                    <button onclick="triggerSystemRefresh()" class="template-btn" style="border: 1px solid rgba(var(--primary-rgb), 0.2); background: linear-gradient(145deg, var(--bg-card), rgba(var(--primary-rgb), 0.02));">
-                        <i class="bi bi-arrow-repeat" style="color: #10b981;"></i>
+                    <button onclick="triggerSystemRefresh()" class="template-btn" style="border: 1px solid color-mix(in srgb, var(--primary) 20%, transparent); background: linear-gradient(145deg, var(--bg-card), color-mix(in srgb, var(--primary) 2%, transparent));">
+                        <i class="bi bi-arrow-repeat" style="color: #10b981; font-size: 1.5rem;"></i>
                         <div>
                             <b>System Reset Notice</b>
                             <small>Notify TG of new subjects/SY reset</small>
                         </div>
                     </button>
 
-                    <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(92, 107, 192, 0.05); border-radius: 16px; border: 1px dashed var(--primary);">
-                        <h5 style="font-size: 0.85rem; color: var(--primary); margin-bottom: 0.5rem;"><i class="bi bi-info-circle"></i> Admin Protocol</h5>
-                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
+                    <div style="margin-top: 2rem; padding: 1.5rem; background: color-mix(in srgb, var(--primary) 5%, transparent); border-radius: 18px; border: 1px dashed var(--primary);">
+                        <h5 style="font-size: 0.85rem; color: var(--primary); margin-bottom: 0.5rem; font-weight: 800;"><i class="bi bi-info-circle"></i> Admin Protocol</h5>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0; line-height: 1.45; font-weight:500;">
                             All messages are queued and processed by the background worker. Messages include the official system footer automatically.
                         </p>
                     </div>
@@ -166,8 +166,6 @@ require_once 'includes/db.php';
 
         </div>
     </main>
-
-    <?php include 'includes/footer.php'; ?>
 
     <script>
         const textarea = document.getElementById('custom_message');

@@ -20,7 +20,7 @@ if (!$student) die("Student not found.");
 $sy_stmt = $pdo->prepare("SELECT DISTINCT school_year FROM attendance WHERE qr_code = ? AND school_year IS NOT NULL ORDER BY school_year DESC");
 $sy_stmt->execute([$qr_code]);
 $sy_list = $sy_stmt->fetchAll(PDO::FETCH_COLUMN);
-$active_sy = $_GET['sy'] ?? $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+$active_sy = $_GET['sy'] ?? ($pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn() ?: 'SY 2024-2025');
 
 // Fetch Attendance Logs (Filtered by SY - but only for Specific Events)
 $logs = $pdo->prepare("SELECT * FROM attendance WHERE qr_code = ? AND (school_year = ? OR school_year IS NULL) AND (session IS NOT NULL AND session != '') ORDER BY date DESC, time DESC");
@@ -56,7 +56,7 @@ $attendance = $attendance_events;
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>History: <?= htmlspecialchars($student['name']) ?> | QR Tools</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <?php include 'includes/theme_loader.php'; ?>
     <style>

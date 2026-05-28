@@ -60,6 +60,13 @@
         }, 300);
     });
 
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
     function renderResults(data) {
         if (data.length === 0) {
             searchResults.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted);">No students found.</div>';
@@ -68,10 +75,10 @@
 
         searchResults.innerHTML = data.map(s => `
             <a href="profile.php?qr=${encodeURIComponent(s.qr_code)}" class="search-result-item">
-                <div class="avatar">${s.name.charAt(0).toUpperCase()}</div>
+                <div class="avatar">${escapeHtml(s.name.charAt(0).toUpperCase())}</div>
                 <div class="info">
-                    <b>${s.name}</b>
-                    <small class="spoiler" onclick="this.classList.toggle('revealed'); event.preventDefault(); event.stopPropagation();">${s.qr_code}</small>
+                    <b>${escapeHtml(s.name)}</b>
+                    <small class="spoiler" onclick="this.classList.toggle('revealed'); event.preventDefault(); event.stopPropagation();">${escapeHtml(s.qr_code)}</small>
                 </div>
             </a>
         `).join('');

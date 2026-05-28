@@ -2,9 +2,6 @@
 // settings.php - Configuration
 require 'includes/db.php';
 
-// Fetch Subjects for Dropdown
-$subjects = $pdo->query("SELECT * FROM subjects ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
-
 // Auto-Migration for new columns (Safe to run multiple times)
 $missingCols = ['am_in', 'am_out', 'pm_in', 'pm_out'];
 $defaults = ['08:00', '11:00', '13:00', '16:00'];
@@ -46,7 +43,7 @@ $showSuccess = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // 1. Preserve existing Ambagan settings
     $stmt = $pdo->query("SELECT billing_quota, billing_mode FROM settings LIMIT 1");
-    $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+    $existing = $stmt ? ($stmt->fetch(PDO::FETCH_ASSOC) ?: []) : [];
     $billing_quota = $existing['billing_quota'] ?? 50; 
     $billing_mode = $existing['billing_mode'] ?? 'fixed'; 
 
@@ -102,78 +99,347 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Settings | QR Tools</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
     <style>
+        /* Premium Range Slider styling */
         input[type=range] {
             width: 100%; margin: 0.75rem 0;
             accent-color: var(--primary);
             height: 6px;
+            background: var(--bg-main);
+            border-radius: 10px;
+            outline: none;
+            box-shadow: var(--shadow-neu-in-sm);
         }
+        
+        /* Satisfying Spring Switch Toggle */
         .switch {
             position: relative; display: inline-block; width: 44px; height: 24px;
         }
         .switch input { opacity: 0; width: 0; height: 0; }
         .slider {
             position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-            background: var(--bg-main); transition: .4s; border-radius: 34px;
+            background: var(--bg-main); transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); border-radius: 34px;
             box-shadow: var(--shadow-neu-in-sm);
         }
         .slider:before {
             position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
-            background-color: white; transition: .4s; border-radius: 50%;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+            background-color: white; transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.18);
         }
-        input:checked + .slider { background-color: var(--primary); box-shadow: 0 0 8px color-mix(in srgb, var(--primary) 30%, transparent); }
+        input:checked + .slider { background-color: var(--primary); box-shadow: 0 0 10px color-mix(in srgb, var(--primary) 30%, transparent); }
         input:checked + .slider:before { transform: translateX(20px); }
         
         .setting-group {
-            padding: 1.5rem 0;
+            padding: 1.75rem 0;
             border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 8%, transparent);
         }
         .setting-group:last-child { border: none; }
-        label { font-weight: 800; display: block; margin-bottom: 0.35rem; letter-spacing: -0.02em; font-size: 0.92rem; }
-        small { color: var(--text-muted); display: block; font-weight: 500; font-size: 0.76rem; line-height: 1.5; }
+        label { font-weight: 800; display: block; margin-bottom: 0.45rem; letter-spacing: -0.02em; font-size: 0.95rem; color: var(--text-main); }
+        small { color: var(--text-muted); display: block; font-weight: 500; font-size: 0.78rem; line-height: 1.55; }
 
+        /* Premium bordered settings card */
         .settings-card {
             background: var(--bg-card);
-            border: none;
-            border-radius: 20px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
             box-shadow: var(--shadow-neu-out);
             padding: 2.5rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
+            transition: all 0.3s;
+        }
+        .settings-card:hover {
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
+            transform: translateY(-1px);
         }
 
         .settings-card-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 1.75rem;
-            padding-bottom: 0.75rem;
+            gap: 12px;
+            margin-bottom: 2rem;
+            padding-bottom: 0.85rem;
             border-bottom: 2px solid color-mix(in srgb, var(--text-muted) 8%, transparent);
         }
         .settings-card-header i {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             color: var(--primary);
-            width: 32px;
-            height: 32px;
+            width: 38px;
+            height: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 12px;
             background: color-mix(in srgb, var(--primary) 10%, transparent);
+            box-shadow: var(--shadow-neu-out-sm);
         }
         .settings-card-header h4 {
             margin: 0;
-            font-weight: 800;
+            font-weight: 900;
             letter-spacing: -0.04em;
+            font-size: 1.15rem;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-main);
+        }
+
+        /* Subject Management Styles */
+        .subj-row:last-child { border-bottom: none !important; }
+        .subj-row:hover { background: color-mix(in srgb, var(--primary) 4%, transparent); }
+        .subj-action-btn {
+            width: 34px; height: 34px; border-radius: 9px;
+            display: flex; align-items: center; justify-content: center;
+            border: 1px solid var(--border); background: var(--bg-card);
+            color: var(--text-muted); cursor: pointer; font-size: 0.85rem;
+            transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+        }
+        .subj-action-btn:hover { background: var(--bg-hover); color: var(--primary); border-color: var(--primary); transform: translateY(-1px); }
+        .subj-delete-btn:hover { color: var(--danger); border-color: var(--danger); }
+
+        /* ── Premium Subject Custom Modals Overhaul ── */
+        .custom-modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .custom-modal-overlay.active {
+            opacity: 1;
+            display: flex;
+        }
+        .custom-modal-body {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-neu-out-lg);
+            border-radius: 24px;
+            width: 95%;
+            max-width: 480px;
+            padding: 0;
+            overflow: hidden;
+            position: relative;
+            transform: scale(0.92) translateY(10px);
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .custom-modal-overlay.active .custom-modal-body {
+            transform: scale(1) translateY(0);
+        }
+        .custom-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1.5rem 1.75rem 1rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 12%, transparent);
+        }
+        .custom-modal-header .header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .custom-modal-header .header-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
             font-size: 1.1rem;
+            box-shadow: var(--shadow-neu-out-sm);
+        }
+        .custom-modal-header .header-text h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.25;
+            color: var(--text-main);
+        }
+        .custom-modal-header .header-text small {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: block;
+        }
+        .custom-modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-main);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .custom-modal-close:hover {
+            background: var(--bg-hover);
+            color: var(--danger);
+            border-color: var(--danger);
+        }
+        .custom-modal-content {
+            padding: 1.5rem 1.75rem 1.75rem;
+        }
+        .custom-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.75rem 1.25rem;
+            border-top: 1px solid color-mix(in srgb, var(--text-muted) 8%, transparent);
+            background: color-mix(in srgb, var(--bg-main) 30%, var(--bg-card));
+        }
+        .custom-modal-footer button {
+            font-weight: 700;
+            font-size: 0.82rem;
+        }
+
+        /* Form Styles inside Modals */
+        .modal-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 1.25rem;
+        }
+        .modal-field:last-child {
+            margin-bottom: 0;
+        }
+        .modal-field label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .modal-field input, .modal-field select {
+            padding: 0.75rem 0.9rem;
+            font-size: 0.88rem;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--bg-main);
+            color: var(--text-main);
+            transition: all 0.25s;
+            font-weight: 600;
+        }
+        .modal-field input:focus, .modal-field select:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+            outline: none;
+        }
+
+        /* Success/Error Specific Style */
+        .notif-modal-body {
+            text-align: center;
+            padding: 2.5rem 2rem 2rem;
+        }
+        .notif-icon-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            font-size: 2.25rem;
+            position: relative;
+            animation: bounceCircle 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+        }
+        @keyframes bounceCircle {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .notif-success-circle {
+            background: color-mix(in srgb, var(--success) 12%, transparent);
+            color: var(--success);
+            box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--success) 35%, transparent);
+        }
+        .notif-error-circle {
+            background: color-mix(in srgb, var(--danger) 12%, transparent);
+            color: var(--danger);
+            box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--danger) 35%, transparent);
+        }
+        .notif-title {
+            font-size: 1.35rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.5rem;
+            font-family: 'Outfit', sans-serif;
+            color: var(--text-main);
+        }
+        .notif-message {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+            font-weight: 500;
+        }
+        .notif-btn {
+            padding: 0.75rem 2.25rem;
+            border-radius: 50px;
+            border: none;
+            font-weight: 800;
+            font-size: 0.88rem;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: all 0.25s;
+        }
+        .notif-success-btn {
+            background: var(--success);
+            color: white;
+        }
+        .notif-success-btn:hover {
+            background: color-mix(in srgb, var(--success) 85%, black);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--success) 35%, transparent);
+        }
+        .notif-error-btn {
+            background: var(--danger);
+            color: white;
+        }
+        .notif-error-btn:hover {
+            background: color-mix(in srgb, var(--danger) 85%, black);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px color-mix(in srgb, var(--danger) 35%, transparent);
+        }
+
+        /* Delete Specific Modal */
+        .delete-modal-body {
+            text-align: center;
+            padding: 2.25rem 2rem 1.75rem;
+        }
+        .delete-icon {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: color-mix(in srgb, var(--danger) 10%, transparent);
+            color: var(--danger);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.85rem;
+            margin: 0 auto 1.25rem;
+            box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--danger) 30%, transparent);
         }
 
         @media (max-width: 600px) {
-            .settings-card { padding: 1.5rem !important; }
+            .settings-card { padding: 1.5rem !important; border-radius: 18px; }
             .setting-group {
                 flex-direction: column !important;
                 align-items: flex-start !important;
@@ -361,15 +627,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     </div>
                 </div>
 
+                <!-- Subject Portal Standalone Link -->
+                <div class="setting-group" style="border-top: 1px dashed var(--border); margin-top: 1rem; padding-top: 2rem;">
+                    <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="max-width: 70%;">
+                            <label><i class="bi bi-book" style="color: var(--primary);"></i> Academic Subjects Portal</label>
+                            <small>Manage all academic subjects, class schedules, locations, and lecturers inside a dedicated portal.</small>
+                        </div>
+                        <a href="subjects.php" class="btn hover-lift" style="background: var(--primary); color: white; border-radius: 12px; padding: 0.75rem 1.5rem; font-size: 0.8rem; border: none; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+                            <i class="bi bi-arrow-right-circle"></i> SUBJECT PORTAL
+                        </a>
+                    </div>
+                </div>
+
                 <!-- Danger Zone: Promotion -->
                 <div class="setting-group" style="border-top: 1px dashed var(--border); margin-top: 1rem; padding-top: 2rem; border-bottom: none;">
                     <div class="mobile-force-stack" style="display: flex; justify-content: space-between; align-items: center; background: rgba(239, 68, 68, 0.05); padding: 1.5rem; border-radius: 16px; border: 1px dashed rgba(239, 68, 68, 0.2);">
                         <div style="max-width: 70%;">
-                            <label style="color: var(--danger);"><i class="bi bi-rocket-takeoff"></i> Advanced Promotion Hub</label>
-                            <small>This will increment the year level of all <b>Regular Students</b> (1st→2nd, 2nd→3rd, 3rd→4th). 4th Year students will be marked as <b>Graduated</b>.</small>
+                            <label style="color: var(--danger);"><i class="bi bi-rocket-takeoff"></i> Year Transition & Attendance Reset</label>
+                            <small>Advances all regular classmates by one year (1st→2nd, 2nd→3rd, 3rd→4th, 4th→Graduated) and completely resets the attendance performance matrix, active subjects, and schedules to start the new year fresh.</small>
                         </div>
                         <button type="button" onclick="promoteStudents()" class="btn hover-lift" style="background: var(--danger); color: white; border-radius: 12px; padding: 0.75rem 1.5rem; font-size: 0.8rem; border: none;">
-                            PROMOTE ALL
+                            TRANSITION NOW
                         </button>
                     </div>
                 </div>
@@ -429,6 +708,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             </div>
 
+
+
             <!-- System Backup & Integrity -->
             <?php
             $backupFiles = glob('backups/*.{db,zip}', GLOB_BRACE);
@@ -451,17 +732,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                     </div>
                 </div>
-            </div>
-
-            <div style="margin-top: 2.5rem; text-align: right; padding-bottom: 4rem;">
+                  <div style="margin-top: 2.5rem; text-align: right; padding-bottom: 4rem;">
                 <button type="submit" class="btn btn-primary" style="padding: 0.9rem 2.5rem; border-radius: 50px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--primary) 30%, transparent);">
                     <i class="bi bi-save"></i> Synchronize Settings
                 </button>
             </div>
 
         </form>
-
     </main>
+
+
+
+    <!-- 3. Notification Modal (Success / Error) -->
+    <div id="notificationModal" class="custom-modal-overlay" onclick="if(event.target == this) closeNotifModal()">
+        <div class="custom-modal-body" style="max-width: 400px;">
+            <div class="notif-modal-body">
+                <div id="notifIconCircle" class="notif-icon-circle">
+                    <i id="notifIcon" class="bi"></i>
+                </div>
+                <h3 id="notifTitle" class="notif-title">Notification</h3>
+                <p id="notifMessage" class="notif-message">Message details go here.</p>
+                <button type="button" id="notifCloseBtn" onclick="closeNotifModal()" class="notif-btn">OK</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         <?php if ($showSuccess): ?>
@@ -473,12 +767,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         async function promoteStudents() {
             const { value: confirmText } = await Swal.fire({
-                title: 'Confirm Global Promotion',
-                text: "This will advance ALL Regular students by one year. This action is bulk and irreversible. Type 'PROMOTE' to confirm.",
+                title: 'Confirm Year Transition & Reset',
+                text: "This will advance all regular classmates by one year and completely reset the attendance performance matrix, active subjects, and schedules to start the new year fresh. This is bulk and irreversible. Type 'PROMOTE' to confirm.",
                 input: 'text',
                 icon: 'warning',
                 showCancelButton: true,
-                confirmButtonText: 'Execute Promotion',
+                confirmButtonText: 'Execute Transition',
                 confirmButtonColor: 'var(--danger)',
                 background: 'var(--bg-card)',
                 color: 'var(--text-main)',
@@ -491,7 +785,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             if (confirmText === 'PROMOTE') {
                 Swal.fire({
-                    title: 'Promoting Students...',
+                    title: 'Transitioning & Resetting Matrix...',
                     allowOutsideClick: false,
                     didOpen: () => { Swal.showLoading(); }
                 });
@@ -538,7 +832,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 Swal.close();
 
                 if (res.success) {
-                    // ... success logic ...
                     document.getElementById('birthday_image_input').value = res.path;
                     const preview = document.getElementById('bdayPreview');
                     if (preview.tagName === 'IMG') {
@@ -567,7 +860,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 });
             }
         });
-    </script>
 
+        const Toast = Swal.mixin({
+            toast: true, position: 'bottom-end', showConfirmButton: false,
+            timer: 2500, timerProgressBar: true
+        });
+
+        // Synthesize Premium Sound FX using Web Audio API
+        let modalAudioCtx = null;
+        function playModalSound(type) {
+            try {
+                if (!modalAudioCtx) {
+                    modalAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (modalAudioCtx.state === 'suspended') {
+                    modalAudioCtx.resume();
+                }
+                const now = modalAudioCtx.currentTime;
+                
+                if (type === 'success') {
+                    const notes = [329.63, 392.00, 523.25, 659.25];
+                    notes.forEach((freq, idx) => {
+                        const osc = modalAudioCtx.createOscillator();
+                        const gain = modalAudioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        
+                        gain.gain.setValueAtTime(0, now + idx * 0.06);
+                        gain.gain.linearRampToValueAtTime(0.04, now + idx * 0.06 + 0.03);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.25);
+                        
+                        osc.connect(gain);
+                        gain.connect(modalAudioCtx.destination);
+                        
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.3);
+                    });
+                } else if (type === 'error') {
+                    const osc = modalAudioCtx.createOscillator();
+                    const gain = modalAudioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(80, now + 0.25);
+                    
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    
+                    osc.connect(gain);
+                    gain.connect(modalAudioCtx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.3);
+                } else if (type === 'click') {
+                    const osc = modalAudioCtx.createOscillator();
+                    const gain = modalAudioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(800, now);
+                    
+                    gain.gain.setValueAtTime(0.02, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.015);
+                    
+                    osc.connect(gain);
+                    gain.connect(modalAudioCtx.destination);
+                    
+                    osc.start(now);
+                    osc.stop(now + 0.02);
+                }
+            } catch (e) {
+                console.warn("Audio Context error:", e);
+            }
+        }
+
+        let shouldReloadOnNotifClose = false;
+
+        function showNotifModal(type, title, message, reloadOnClose = false) {
+            shouldReloadOnNotifClose = reloadOnClose;
+            const notifModal = document.getElementById('notificationModal');
+            const circle = document.getElementById('notifIconCircle');
+            const icon = document.getElementById('notifIcon');
+            const titleEl = document.getElementById('notifTitle');
+            const msgEl = document.getElementById('notifMessage');
+            const btn = document.getElementById('notifCloseBtn');
+
+            titleEl.innerText = title;
+            msgEl.innerText = message;
+            circle.className = 'notif-icon-circle';
+            btn.className = 'notif-btn';
+
+            if (type === 'success') {
+                circle.classList.add('notif-success-circle');
+                icon.className = 'bi bi-check-lg';
+                btn.classList.add('notif-success-btn');
+                playModalSound('success');
+            } else {
+                circle.classList.add('notif-error-circle');
+                icon.className = 'bi bi-exclamation-lg';
+                btn.classList.add('notif-error-btn');
+                playModalSound('error');
+            }
+            notifModal.classList.add('active');
+        }
+
+        function closeNotifModal() {
+            playModalSound('click');
+            const notifModal = document.getElementById('notificationModal');
+            notifModal.classList.remove('active');
+            if (shouldReloadOnNotifClose) {
+                setTimeout(() => location.reload(), 150);
+            }
+        }
+    </script>
 </body>
 </html>

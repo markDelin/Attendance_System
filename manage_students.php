@@ -21,9 +21,10 @@ $irregularUsers = array_filter($allUsers, function($u) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Manage Students | QR Tools by MCK</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/js/html5-qrcode.min.js"></script>
     <?php include 'includes/theme_loader.php'; ?>
     <link rel="stylesheet" href="assets/css/AnimatedList.css">
     <script src="assets/js/AnimatedList.js"></script>
@@ -305,8 +306,11 @@ $irregularUsers = array_filter($allUsers, function($u) {
     <!-- Nav (Standardized) -->
     <?php 
     $navbar_actions = '
-        <button onclick="addStudent()" class="btn btn-primary" style="padding: 0.5rem 1rem; border-radius: 20px;">
-            <i class="bi bi-person-plus"></i> Add
+        <button onclick="openScanModal()" class="btn-icon hover-press" style="margin-right: 6px; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main);" title="Upload & Scan Classmate QR">
+            <i class="bi bi-qr-code-scan" style="display: inline-block !important; font-size: 0.95rem !important; margin-bottom: 0 !important; opacity: 1 !important; line-height: 1 !important; vertical-align: middle !important;"></i>
+        </button>
+        <button onclick="addStudent()" class="btn btn-primary" style="width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: none;" title="Add Student">
+            <i class="bi bi-person-plus" style="display: inline-block !important; font-size: 0.95rem !important; margin-bottom: 0 !important; opacity: 1 !important; line-height: 1 !important; vertical-align: middle !important;"></i>
         </button>
     ';
     include 'includes/navbar.php'; 
@@ -317,10 +321,10 @@ $irregularUsers = array_filter($allUsers, function($u) {
         <div class="container">
             <div class="search-container">
                 <i class="bi bi-search search-icon"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by name or student ID..." autocomplete="off">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by name or classmate ID..." autocomplete="off">
             </div>
             <div class="list-meta">
-                <span class="student-count"><strong><?= count($allUsers) ?></strong> students enrolled</span>
+                <span class="student-count"><strong><?= count($allUsers) ?></strong> classmates enrolled</span>
             </div>
         </div>
     </div>
@@ -337,7 +341,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
                         <table class="student-table">
                         <thead>
                             <tr>
-                                <th class="column-student">Student</th>
+                                <th class="column-student">Classmate</th>
                                 <th class="column-course hide-mobile">Course & Section</th>
                                 <th class="column-type">Type</th>
                                 <th class="column-actions">Actions</th>
@@ -377,6 +381,14 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 echo ' data-qr="'.htmlspecialchars($user['qr_code']??'').'"';
                                 echo ' data-name="'.htmlspecialchars($user['name']??'').'"';
                                 echo ' data-bday-img="'.htmlspecialchars($user['birthday_image']??'').'"';
+                                echo ' data-address="'.htmlspecialchars($user['home_address']??'').'"';
+                                echo ' data-guardian-name="'.htmlspecialchars($user['guardian_name']??'').'"';
+                                echo ' data-guardian-contact="'.htmlspecialchars($user['guardian_contact']??'').'"';
+                                echo ' data-blood-type="'.htmlspecialchars($user['blood_type']??'').'"';
+                                echo ' data-lrn="'.htmlspecialchars($user['lrn']??'').'"';
+                                echo ' data-mother-name="'.htmlspecialchars($user['mother_name']??'').'"';
+                                echo ' data-father-name="'.htmlspecialchars($user['father_name']??'').'"';
+                                echo ' data-guardian-relationship="'.htmlspecialchars($user['guardian_relationship']??'').'"';
                             ?>
                         >
                             <td data-label="Student" class="column-student">
@@ -432,213 +444,30 @@ $irregularUsers = array_filter($allUsers, function($u) {
 
     <!-- Professional Management Modal -->
     <style>
-        /* ── Modal Professional Overhaul ── */
-        #managementModal .modal-body {
-            max-width: 680px;
-            padding: 0;
-            border-radius: 28px;
-            overflow: hidden;
-            background: var(--bg-card);
-        }
-
-        .modal-header-pro {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1.75rem 2rem 1.25rem;
-            border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 12%, transparent);
-        }
-
-        .modal-header-pro .header-left {
-            display: flex;
-            align-items: center;
-            gap: 0.85rem;
-        }
-
-        .modal-header-pro .header-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 14px;
-            background: var(--primary);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.15rem;
-            box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
-        }
-
-        .modal-header-pro .header-text h3 {
-            margin: 0;
-            font-size: 1.15rem;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-            line-height: 1.2;
-        }
-
-        .modal-header-pro .header-text small {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
-        }
-
-        .modal-close-btn {
-            width: 36px;
-            height: 36px;
-            border-radius: 10px;
-            border: none;
-            background: var(--bg-main);
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            box-shadow: var(--shadow-neu-out-sm);
-            font-size: 1rem;
-        }
-
-        .modal-close-btn:hover {
-            box-shadow: var(--shadow-neu-in-sm);
-            color: var(--danger);
-            transform: scale(0.95);
-        }
-
-        .modal-scroll-area {
-            padding: 1.5rem 2rem 2rem;
-            max-height: calc(85vh - 160px);
-            overflow-y: auto;
-            scroll-behavior: smooth;
-        }
-
-        .modal-scroll-area::-webkit-scrollbar { width: 4px; }
-        .modal-scroll-area::-webkit-scrollbar-track { background: transparent; }
-        .modal-scroll-area::-webkit-scrollbar-thumb {
-            background: color-mix(in srgb, var(--text-muted) 25%, transparent);
-            border-radius: 10px;
-        }
-
-        /* ── Section Groups ── */
-        .form-section {
-            margin-bottom: 1.75rem;
-            animation: sectionFadeIn 0.4s var(--ease-out-expo) both;
-        }
-
-        .form-section:nth-child(2) { animation-delay: 0.05s; }
-        .form-section:nth-child(3) { animation-delay: 0.1s; }
-        .form-section:nth-child(4) { animation-delay: 0.15s; }
-        .form-section:nth-child(5) { animation-delay: 0.2s; }
-
-        @keyframes sectionFadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            margin-bottom: 1rem;
-            padding-bottom: 0.6rem;
-            border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
-        }
-
-        .section-header i {
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            background: color-mix(in srgb, var(--primary) 12%, transparent);
-            color: var(--primary);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-            flex-shrink: 0;
-        }
-
-        .section-header span {
-            font-size: 0.65rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            color: var(--text-muted);
-        }
-
-        /* ── Field Grid ── */
-        .field-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.85rem;
-        }
-
-        .field-grid .full-width {
-            grid-column: 1 / -1;
-        }
-
-        .field-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-
-        .field-group label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            margin: 0;
-            border: none;
-            padding: 0;
-        }
-
-        .field-group label .req {
-            color: var(--danger);
-            font-size: 0.75rem;
-        }
-
-        .field-group .form-control {
-            padding: 0.7rem 1rem;
-            font-size: 0.88rem;
-            border-radius: 12px;
-        }
-
-        /* ── Divider ── */
-        .form-divider {
-            height: 1px;
-            background: color-mix(in srgb, var(--text-muted) 10%, transparent);
-            margin: 0.5rem 0 1.5rem;
-        }
-
         /* ── Birthday Thumbnail Pro ── */
         .bday-upload-area {
             display: flex;
             gap: 1rem;
             align-items: flex-start;
-            padding: 1rem;
+            padding: 1.25rem;
             background: var(--bg-main);
             border-radius: 14px;
-            box-shadow: var(--shadow-neu-in-sm);
+            border: 1px solid var(--border);
         }
 
         .bday-preview-box {
-            width: 56px;
-            height: 56px;
-            border-radius: 12px;
+            width: 64px;
+            height: 64px;
+            border-radius: 10px;
             background: var(--bg-card);
             display: flex;
             align-items: center;
             justify-content: center;
             color: var(--text-muted);
             overflow: hidden;
-            box-shadow: var(--shadow-neu-out-sm);
+            border: 1px solid var(--border);
             flex-shrink: 0;
-            font-size: 1.2rem;
+            font-size: 1.4rem;
         }
 
         .bday-preview-box img {
@@ -669,85 +498,11 @@ $irregularUsers = array_filter($allUsers, function($u) {
             gap: 4px;
         }
 
-        /* ── Footer Actions ── */
-        .modal-footer-pro {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem 2rem;
-            border-top: 1px solid color-mix(in srgb, var(--text-muted) 10%, transparent);
-            background: color-mix(in srgb, var(--bg-main) 50%, var(--bg-card));
-        }
-
-        .modal-footer-pro .btn-discard {
-            padding: 0.7rem 1.5rem;
-            border-radius: 12px;
-            border: none;
-            background: var(--bg-card);
-            color: var(--text-muted);
-            font-weight: 700;
-            font-size: 0.82rem;
-            cursor: pointer;
-            box-shadow: var(--shadow-neu-out-sm);
-            transition: all 0.2s var(--ease-out-expo);
-            display: flex;
-            align-items: center;
-            gap: 0.4rem;
-        }
-
-        .modal-footer-pro .btn-discard:hover {
-            box-shadow: var(--shadow-neu-in-sm);
-            color: var(--danger);
-            transform: scale(0.97);
-        }
-
-        .modal-footer-pro .btn-save {
-            padding: 0.7rem 2rem;
-            border-radius: 12px;
-            border: none;
-            background: var(--primary);
-            color: white;
-            font-weight: 800;
-            font-size: 0.82rem;
-            cursor: pointer;
-            transition: all 0.25s var(--ease-out-expo);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            box-shadow: 0 4px 14px color-mix(in srgb, var(--primary) 30%, transparent);
-        }
-
-        .modal-footer-pro .btn-save:hover {
-            background: var(--primary-hover);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px color-mix(in srgb, var(--primary) 40%, transparent);
-        }
-
-        .modal-footer-pro .btn-save:active {
-            transform: scale(0.97);
-        }
-
-        /* ── Mobile Responsive ── */
-        @media (max-width: 768px) {
-            #managementModal .modal-body {
-                width: 100%;
-                max-width: 100%;
-                border-radius: 24px 24px 0 0;
-                max-height: 92vh;
-                align-self: flex-end;
-            }
-
-            .modal-header-pro { padding: 1.25rem 1.25rem 1rem; }
-            .modal-scroll-area { padding: 1.25rem; max-height: calc(92vh - 150px); }
-            .modal-footer-pro { padding: 1rem 1.25rem; }
-
-            .field-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .field-grid .half-mobile {
-                grid-column: auto;
-            }
+        /* ── Divider ── */
+        .form-divider {
+            height: 1px;
+            background: color-mix(in srgb, var(--text-muted) 10%, transparent);
+            margin: 0.5rem 0 1.5rem;
         }
     </style>
 
@@ -760,7 +515,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
                         <i class="bi bi-person-badge" id="modalIcon"></i>
                     </div>
                     <div class="header-text">
-                        <h3 id="modalTitle">Student Profile</h3>
+                        <h3 id="modalTitle">Classmate Profile</h3>
                         <small id="modalSubtitle">Complete all required fields</small>
                     </div>
                 </div>
@@ -783,7 +538,7 @@ $irregularUsers = array_filter($allUsers, function($u) {
                         </div>
                         <div class="field-grid">
                             <div class="field-group full-width">
-                                <label>Student ID / QR Code <span class="req">*</span></label>
+                                <label>Classmate ID / QR Code <span class="req">*</span></label>
                                 <input type="text" name="qr_code" id="m-qr" class="form-control" required placeholder="e.g. 2024-0001">
                             </div>
                         </div>
@@ -826,6 +581,10 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 <label>Mobile Number</label>
                                 <input type="text" name="contact_number" id="m-contact" class="form-control" placeholder="0917XXXXXXX">
                             </div>
+                            <div class="field-group full-width">
+                                <label>Home Address</label>
+                                <input type="text" name="home_address" id="m-address" class="form-control" placeholder="e.g. 123 Street, City, Province">
+                            </div>
                         </div>
                     </div>
 
@@ -836,6 +595,10 @@ $irregularUsers = array_filter($allUsers, function($u) {
                             <span>Academic Details</span>
                         </div>
                         <div class="field-grid">
+                            <div class="field-group">
+                                <label>Learner Reference Number (LRN)</label>
+                                <input type="text" name="lrn" id="m-lrn" class="form-control" placeholder="e.g. 102938475612">
+                            </div>
                             <div class="field-group">
                                 <label>Course / Strand</label>
                                 <input type="text" name="course" id="m-course" class="form-control" placeholder="e.g. BSCS">
@@ -887,6 +650,20 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                     </select>
                                 </div>
                                 <div class="field-group">
+                                    <label>Blood Type</label>
+                                    <select name="blood_type" id="m-blood-type" class="form-control">
+                                        <option value="">Select...</option>
+                                        <option value="A+">A+</option>
+                                        <option value="A-">A-</option>
+                                        <option value="B+">B+</option>
+                                        <option value="B-">B-</option>
+                                        <option value="AB+">AB+</option>
+                                        <option value="AB-">AB-</option>
+                                        <option value="O+">O+</option>
+                                        <option value="O-">O-</option>
+                                    </select>
+                                </div>
+                                <div class="field-group">
                                     <label>Civil Status</label>
                                     <input type="text" name="civil_status" id="m-civil" class="form-control" placeholder="e.g. Single">
                                 </div>
@@ -901,6 +678,36 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 <div class="field-group">
                                     <label>Place of Birth</label>
                                     <input type="text" name="place_of_birth" id="m-pob" class="form-control" placeholder="e.g. Manila">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Section: Parents & Emergency Contacts -->
+                        <div class="form-section">
+                            <div class="section-header">
+                                <i class="bi bi-shield-check"></i>
+                                <span>Parents & Emergency Info</span>
+                            </div>
+                            <div class="field-grid">
+                                <div class="field-group">
+                                    <label>Father's Full Name</label>
+                                    <input type="text" name="father_name" id="m-father-name" class="form-control" placeholder="Father's name">
+                                </div>
+                                <div class="field-group">
+                                    <label>Mother's Full Name</label>
+                                    <input type="text" name="mother_name" id="m-mother-name" class="form-control" placeholder="Mother's name">
+                                </div>
+                                <div class="field-group">
+                                    <label>Guardian Name / Emergency Contact</label>
+                                    <input type="text" name="guardian_name" id="m-guardian-name" class="form-control" placeholder="Guardian's name">
+                                </div>
+                                <div class="field-group">
+                                    <label>Relationship to Student</label>
+                                    <input type="text" name="guardian_relationship" id="m-guardian-relationship" class="form-control" placeholder="e.g. Mother, Uncle">
+                                </div>
+                                <div class="field-group full-width">
+                                    <label>Emergency Contact Number</label>
+                                    <input type="text" name="guardian_contact" id="m-guardian-contact" class="form-control" placeholder="Emergency contact phone number">
                                 </div>
                             </div>
                         </div>
@@ -1006,6 +813,14 @@ $irregularUsers = array_filter($allUsers, function($u) {
             document.getElementById('m-year').value = d.year;
             document.getElementById('m-type').value = d.type;
             document.getElementById('m-citizenship').value = d.citizenship;
+            document.getElementById('m-address').value = d.address || '';
+            document.getElementById('m-guardian-name').value = d.guardianName || '';
+            document.getElementById('m-guardian-contact').value = d.guardianContact || '';
+            document.getElementById('m-blood-type').value = d.bloodType || '';
+            document.getElementById('m-lrn').value = d.lrn || '';
+            document.getElementById('m-mother-name').value = d.motherName || '';
+            document.getElementById('m-father-name').value = d.fatherName || '';
+            document.getElementById('m-guardian-relationship').value = d.guardianRelationship || '';
             
             const bdayImg = d.bdayImg || '';
             document.getElementById('m-bday-img').value = bdayImg;

@@ -11,6 +11,12 @@ $backupDir = __DIR__ . '/../backups';
 $tempDir = __DIR__ . '/../temp_restore';
 $zipPath = $backupDir . '/' . basename($filename);
 
+// Validate file extension
+if (pathinfo($zipPath, PATHINFO_EXTENSION) !== 'zip') {
+    echo json_encode(['status' => 'error', 'message' => 'Invalid file type. Only .zip backups are supported.']);
+    exit;
+}
+
 if (!file_exists($zipPath)) {
     echo json_encode(['status' => 'error', 'message' => 'Backup file not found']);
     exit;
@@ -182,5 +188,10 @@ try {
 } catch (Exception $e) {
     if (isset($pdo) && $pdo->inTransaction()) $pdo->rollBack();
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+} finally {
+    // Always cleanup temp directory to prevent leaks
+    if (is_dir($tempDir)) {
+        cleanup($tempDir);
+    }
 }
 ?>

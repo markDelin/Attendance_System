@@ -80,7 +80,7 @@ usort($other, $sortByTime);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subject Schedule</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> <!-- Ensure Swal is here -->
@@ -421,14 +421,12 @@ usort($other, $sortByTime);
 
     <?php 
     $navbar_actions = '
-        <div class="nav-actions">
-            <button onclick="toggleEditMode()" class="btn btn-ghost" id="btn-edit" style="color: var(--text-main); border-radius: 50px;">
-                <i class="bi bi-pencil"></i> <span class="hide-mobile">Edit</span>
-            </button>
-            <button onclick="downloadImage()" class="btn btn-primary" id="btn-download" style="border-radius: 50px;">
-                <i class="bi bi-download"></i> <span class="hide-mobile">Download</span>
-            </button>
-        </div>
+        <button onclick="toggleEditMode()" class="btn btn-ghost" id="btn-edit" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Toggle Edit Mode">
+            <i class="bi bi-pencil" style="font-size: 0.95rem; color: var(--text-muted);"></i>
+        </button>
+        <button onclick="downloadImage()" class="btn btn-primary" id="btn-download" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none;" title="Download Image">
+            <i class="bi bi-download" style="font-size: 0.95rem;"></i>
+        </button>
     ';
     include 'includes/navbar.php'; 
     ?>
@@ -498,7 +496,7 @@ usort($other, $sortByTime);
             </div>
 
              <button onclick="editHeader()" class="btn btn-secondary btn-edit-header" style="background:#e2e8f0; color: #475569; padding: 0.4rem 1rem; margin-top: 1rem; border-radius: 50px;">
-                <i class="bi bi-gear-fill"></i> Edit Header/Footer
+                <i class="bi bi-gear"></i> Edit Header/Footer
             </button>
         </div>
 
@@ -510,7 +508,7 @@ usort($other, $sortByTime);
                     <div class="template-preview schedule-container">
                         <div class="header-title">
                      <?php if(true): ?>
-                    <i class="bi bi-cpu-fill" style=" font-size: 2rem;"></i>
+                    <i class="bi bi-cpu" style=" font-size: 2rem;"></i>
                     <span>Subject Schedule</span>
                     <i class="bi bi-journal-text" style="font-size: 2rem;"></i>
                      <?php endif; ?>

@@ -9,7 +9,7 @@ if ($_SERVER["REQUEST_METHOD"] !== "POST") exit(json_encode(["status" => "error"
 if (empty(trim($_POST["qr_code"]))) exit(json_encode(["status" => "error", "message" => "QR code is required"]));
 
 // Get Settings
-$settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 $defaults = ['call_time'=>'08:00', 'grace_period'=>20, 'absent_after'=>30, 'am_in'=>'08:00', 'am_out'=>'11:00', 'pm_in'=>'13:00', 'pm_out'=>'16:00', 'time_in_out_enabled'=>0];
 $s = array_merge($defaults, $settings ?: []);
 
@@ -117,9 +117,9 @@ try {
           exit();
       }
 
-      // Insert Subject Record
-      $pdo->prepare("INSERT INTO subject_attendance (subject_id, qr_code, date, status) VALUES (?, ?, ?, ?)")
-          ->execute([$subjectId, $qr, $today, $status]);
+      // Insert Subject Record (include time for display)
+      $pdo->prepare("INSERT INTO subject_attendance (subject_id, qr_code, date, time, status) VALUES (?, ?, ?, ?, ?)")
+          ->execute([$subjectId, $qr, $today, $nowDisplay, $status]);
 
       echo json_encode([
           "status" => "success",
@@ -205,15 +205,15 @@ function calculateAttendanceStatus(
 ) {
   $current = strtotime($currentTime);
   $call = strtotime($callTime . ":00");
-  $graceEnd = $call + $gracePeriod * 60;
-  $absentTime = $graceEnd + $absentAfter * 60;
+  $graceEnd = $call + $gracePeriod * 60;       // Present window ends here
+  $absentTime = $graceEnd + $absentAfter * 60;  // Late window ends here
 
-  if ($current <= $call) {
-    return "present";
+  if ($current <= $graceEnd) {
+    return "present";  // Within call time + grace period
   } elseif ($current <= $absentTime) {
-    return "late";
+    return "late";     // Within grace period + absent_after window
   } else {
-    return "absent";
+    return "absent";   // Beyond all windows
   }
 }
 

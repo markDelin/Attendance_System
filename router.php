@@ -4,6 +4,10 @@
  * Fixes MIME type issues for PHP Built-in Server in Termux/Android.
  */
 
+function decodeURI($uri) {
+    return rawurldecode(explode('?', $uri)[0]);
+}
+
 $uri = decodeURI($_SERVER['REQUEST_URI']);
 $file = __DIR__ . $uri;
 
@@ -35,7 +39,3 @@ if (is_file($file)) {
 
 // Fallback to index if file not found (standard PHP-S behavior if we return false)
 return false;
-
-function decodeURI($uri) {
-    return rawurldecode(explode('?', $uri)[0]);
-}

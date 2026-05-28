@@ -26,8 +26,13 @@ $stmt->execute([$limit, $offset]);
 $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Fetch All Available School Years for Filter
-$sy_list = $pdo->query("SELECT DISTINCT school_year FROM attendance WHERE school_year IS NOT NULL ORDER BY school_year DESC")->fetchAll(PDO::FETCH_COLUMN);
-$active_sy = $_GET['sy'] ?? $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+$sy_list_raw = $pdo->query("SELECT DISTINCT school_year FROM attendance WHERE school_year IS NOT NULL ORDER BY school_year DESC")->fetchAll(PDO::FETCH_COLUMN);
+$active_sy = $_GET['sy'] ?? ($pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn() ?: 'SY 2024-2025');
+// Always include the active SY from settings in the list
+$sy_list = $sy_list_raw;
+if (!in_array($active_sy, $sy_list)) {
+    array_unshift($sy_list, $active_sy);
+}
 
 // Handle Filtered Counts & Dates
 $where_sy = $active_sy ? "WHERE school_year = '$active_sy'" : "";
@@ -54,7 +59,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Records | QR Tools by MCK</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.4" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
@@ -63,95 +68,113 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <style>
         .table-wrapper {
             background: var(--bg-card);
-            border: none;
-            border-radius: var(--radius-md);
+            border: 1px solid var(--border);
+            border-radius: 16px;
             overflow: hidden;
             box-shadow: var(--shadow-neu-out-sm);
         }
         table { width: 100%; border-collapse: collapse; }
         th { 
-            text-align: left; padding: 1rem 1.25rem;
-            background: var(--bg-card); color: var(--text-muted); 
-            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
-            border-bottom: 1px solid var(--bg-main);
+            text-align: left; padding: 1.1rem 1.25rem;
+            background: var(--bg-hover); color: var(--text-muted); 
+            font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em;
+            border-bottom: 1px solid var(--border);
             font-weight: 800;
         }
-        td { padding: 0.85rem 1.25rem; border-bottom: 1px solid var(--bg-main); font-size: 0.88rem; }
+        td { padding: 0.95rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.88rem; color: var(--text-main); }
         tr:last-child td { border-bottom: none; }
+        tr { transition: background-color 0.2s; }
+        tr:hover td { background-color: var(--bg-hover) !important; }
         
         .date-card {
             background: var(--bg-card);
-            border-radius: var(--radius-lg);
-            padding: 1.25rem 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: var(--shadow-neu-out);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 1.75rem;
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-
+        .date-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-neu-out-lg);
+            border-color: rgba(59, 130, 246, 0.2);
+        }
+ 
         .date-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.25rem;
-            padding-bottom: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
         }
-
+ 
         .date-header-left {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
+            gap: 1rem;
         }
-
+ 
         .date-day-badge {
-            width: 44px;
-            height: 44px;
-            border-radius: 12px;
-            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: color-mix(in srgb, var(--primary) 8%, transparent);
             color: var(--primary);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.06);
+            border: 1px solid color-mix(in srgb, var(--primary) 12%, transparent);
         }
         .date-day-badge .day-num {
-            font-size: 1rem;
+            font-size: 1.15rem;
             font-weight: 800;
             line-height: 1;
             font-family: 'Outfit', sans-serif;
         }
         .date-day-badge .day-abbr {
-            font-size: 0.5rem;
-            font-weight: 700;
+            font-size: 0.55rem;
+            font-weight: 800;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            opacity: 0.7;
+            opacity: 0.8;
         }
-
+ 
         /* Pagination Styles */
         .pagination {
             display: flex; justify-content: center; align-items: center; gap: 1rem;
             margin-top: 3rem; margin-bottom: 4rem;
         }
         .pagination-btn {
-            padding: 0.65rem 1.25rem; 
+            padding: 0.7rem 1.5rem; 
             border-radius: 50px; 
-            border: none;
+            border: 1px solid var(--border);
             color: var(--text-main); 
             font-weight: 800; 
-            font-size: 0.7rem; 
+            font-size: 0.72rem; 
             text-transform: uppercase;
+            letter-spacing: 0.05em;
             transition: all 0.2s; 
             background: var(--bg-card);
             box-shadow: var(--shadow-neu-out-sm);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
         .pagination-btn:hover:not(:disabled) { 
-            box-shadow: var(--shadow-neu-in-sm);
+            box-shadow: var(--shadow-neu-out-lg);
             color: var(--primary); 
-            transform: scale(0.98);
+            border-color: var(--primary);
+            transform: translateY(-1px);
         }
-        .pagination-btn:disabled { opacity: 0.3; cursor: not-allowed; box-shadow: none; }
+        .pagination-btn:disabled { opacity: 0.35; cursor: not-allowed; box-shadow: none; }
         .page-info { font-size: 0.7rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; }
-
+ 
         .nav-tabs {
             display: flex;
             gap: 0.75rem;
@@ -159,47 +182,82 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
             overflow-x: auto;
             padding: 5px;
         }
-
+ 
         .nav-link {
-            padding: 0.65rem 1.1rem;
-            border-radius: 12px;
-            font-size: 0.72rem;
+            padding: 0.7rem 1.25rem;
+            border-radius: 14px;
+            font-size: 0.75rem;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.05em;
             background: var(--bg-card);
+            border: 1px solid var(--border);
             box-shadow: var(--shadow-neu-out-sm);
             transition: all 0.2s;
             white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
+            color: var(--text-muted);
         }
-
+ 
         .nav-link i {
-            font-size: 0.85rem;
-            opacity: 0.6;
+            font-size: 0.95rem;
+            opacity: 0.7;
         }
-
+ 
         .nav-link.active {
             box-shadow: var(--shadow-neu-in-sm);
             color: var(--primary);
+            border-color: var(--primary);
+            background: var(--bg-hover);
         }
         .nav-link.active i { opacity: 1; }
-
+ 
         .filter-select {
-            font-weight: 700; 
-            border-radius: 12px; 
-            font-size: 0.82rem; 
-            padding: 0.6rem 1.1rem; 
-            cursor: pointer; 
+            font-weight: 800;
+            font-family: 'Outfit', 'Inter', sans-serif;
+            border-radius: 50px;
+            font-size: 0.78rem;
+            padding: 0.55rem 1rem 0.55rem 1rem;
+            cursor: pointer;
             background: var(--bg-card);
-            border: none;
+            border: 1px solid var(--border);
             box-shadow: var(--shadow-neu-out-sm);
+            color: var(--text-main);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%2394a3b8' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.85rem center;
+            padding-right: 2rem;
+            min-width: 130px;
+            transition: all 0.2s var(--ease-out-expo);
+            letter-spacing: 0.01em;
         }
         .filter-select:focus {
-            box-shadow: var(--shadow-neu-in-sm);
             outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 15%, transparent);
+        }
+        .filter-select:hover {
+            border-color: var(--primary);
+            box-shadow: var(--shadow-neu-out);
+        }
+        .filter-select option {
+            background: var(--bg-card);
+            color: var(--text-main);
+            font-weight: 700;
+            padding: 6px;
+        }
+        .filter-label {
+            font-size: 0.6rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            display: block;
+            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -207,14 +265,14 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <?php 
     $navbar_actions = '
-        <a href="settings.php" class="btn btn-ghost">
-            <i class="bi bi-gear"></i> <span class="d-none-mobile">Settings</span>
+        <a href="settings.php" class="btn btn-ghost" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Settings">
+            <i class="bi bi-gear" style="font-size: 0.95rem; color: var(--text-muted);"></i>
         </a>
-        <button onclick="exportRange()" class="btn btn-ghost">
-            <i class="bi bi-calendar-range"></i> <span class="d-none-mobile">Export Range</span>
+        <button onclick="exportRange()" class="btn btn-ghost" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Export Range">
+            <i class="bi bi-calendar-range" style="font-size: 0.95rem; color: var(--text-muted);"></i>
         </button>
-        <button onclick="exportAllSubjects()" class="btn btn-ghost" title="Bulk Export All Subjects">
-            <i class="bi bi-collection"></i> <span class="d-none-mobile">Bulk Export</span>
+        <button onclick="exportAllSubjects()" class="btn btn-ghost" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Bulk Export">
+            <i class="bi bi-collection" style="font-size: 0.95rem; color: var(--text-muted);"></i>
         </button>
     ';
     include 'includes/navbar.php'; 
@@ -239,15 +297,15 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
                 <div style="flex-shrink: 0; display: flex; gap: 1rem; align-items: flex-end;">
                      <div style="text-align: right;">
-                        <label style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 5px; display: block;">Academic Year</label>
-                        <select onchange="window.location.href='?sy='+this.value" class="filter-select">
+                        <label class="filter-label">Academic Year</label>
+                        <select onchange="window.location.href='?sy='+this.value" class="filter-select" title="Filter by School Year">
                             <?php foreach ($sy_list as $sy): ?>
                                 <option value="<?= htmlspecialchars($sy) ?>" <?= $active_sy == $sy ? 'selected' : '' ?>><?= htmlspecialchars($sy) ?></option>
                             <?php endforeach; ?>
                         </select>
                      </div>
-                     <button onclick="window.location.href='scan.php'" class="btn btn-primary btn-sm" style="padding: 0.75rem 1.5rem; font-weight: 800; border-radius: 12px; height: fit-content;">
-                        <i class="bi bi-qr-code-scan"></i> Scanner
+                     <button onclick="window.location.href='scan.php'" class="btn btn-primary" style="width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: none;" title="Open Scanner">
+                        <i class="bi bi-qr-code-scan" style="font-size: 1.1rem;"></i>
                      </button>
                 </div>
             </div>
@@ -260,6 +318,46 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <a href="scan.php" class="btn btn-primary" style="font-size: 0.9rem;">Start Scanning</a>
             </div>
         <?php else: ?>
+
+            <!-- Daily Attendance Metrics Bar -->
+            <?php
+            // Calculate total records for this school year
+            $recordsCount = $pdo->prepare("SELECT COUNT(*) FROM attendance WHERE school_year = ? OR school_year IS NULL");
+            $recordsCount->execute([$active_sy]);
+            $totalCount = $recordsCount->fetchColumn();
+            
+            // Calculate unique logs dates
+            $uniqueDates = $totalDates;
+            ?>
+            <div class="animate-fade-up" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.25rem; margin-bottom: 2.25rem;">
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-neu-out-sm);">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="bi bi-calendar-check"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 1.45rem; font-weight: 900; color: var(--text-main); display: block; font-family:'Outfit', sans-serif; line-height: 1.1;"><?= $uniqueDates ?></span>
+                        <span style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-top: 2px;">Logged Days</span>
+                    </div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-neu-out-sm);">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, #10b981 10%, transparent); color: #10b981; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="bi bi-people"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 1.45rem; font-weight: 900; color: var(--text-main); display: block; font-family:'Outfit', sans-serif; line-height: 1.1;"><?= $totalCount ?></span>
+                        <span style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-top: 2px;">Total Entries</span>
+                    </div>
+                </div>
+                <div style="background: var(--bg-card); border: 1px solid var(--border); border-radius: 20px; padding: 1.25rem; display: flex; align-items: center; gap: 1rem; box-shadow: var(--shadow-neu-out-sm);">
+                    <div style="width: 44px; height: 44px; border-radius: 12px; background: color-mix(in srgb, #f59e0b 10%, transparent); color: #f59e0b; display: flex; align-items: center; justify-content: center; font-size: 1.25rem;">
+                        <i class="bi bi-shield-check"></i>
+                    </div>
+                    <div>
+                        <span style="font-size: 0.88rem; font-weight: 800; color: var(--text-main); display: block; line-height: 1.25;"><?= htmlspecialchars($active_sy) ?></span>
+                        <span style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-top: 2px;">Active Year</span>
+                    </div>
+                </div>
+            </div>
 
             <?php foreach ($dates as $idx => $row): ?>
                 <div class="date-card animate-fade-up hover-lift" style="animation-delay: <?= $idx * 0.1 ?>s">
@@ -583,10 +681,23 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 showCancelButton: true,
                 confirmButtonColor: '#ef4444',
                 cancelButtonColor: '#64748b',
-                confirmButtonText: 'Yes, delete it!'
+                confirmButtonText: 'Yes, delete it!',
+                showLoaderOnConfirm: true,
+                preConfirm: () => {
+                    const formData = new FormData();
+                    formData.append(type, value);
+                    return fetch('api/delete.php', { method: 'POST', body: formData })
+                           .then(r => r.json())
+                           .catch(() => { return { status: 'success' }; }); // Fallback for redirecting script
+                }
             }).then((result) => {
                 if (result.isConfirmed) {
-                    window.location.href = `api/delete.php?${type}=${value}`;
+                    Swal.fire({
+                        title: 'Deleted!',
+                        text: 'The record has been removed.',
+                        icon: 'success',
+                        confirmButtonColor: 'var(--primary)'
+                    }).then(() => location.reload());
                 }
             })
         }

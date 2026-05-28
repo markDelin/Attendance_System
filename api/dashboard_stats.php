@@ -7,8 +7,8 @@ require "../includes/db.php";
 $today = date('Y-m-d');
 
 try {
-    // 1. Total Students
-    $totalStudents = $pdo->query("SELECT COUNT(*) FROM users")->fetchColumn();
+    // 1. Total Students (exclude soft-deleted)
+    $totalStudents = $pdo->query("SELECT COUNT(*) FROM users WHERE deleted_at IS NULL")->fetchColumn();
 
     // 2. Today's Total Attendance (Modern Morning)
     $todayMorning = $pdo->prepare("SELECT status, COUNT(*) as count FROM attendance WHERE date = ? GROUP BY status");
@@ -23,20 +23,22 @@ try {
     // 4. Quick Recent Activity (Last 5 marks)
     // Combine from both tables? Or just "attendance" for morning.
     // Let's do a UNION to see the latest 5 regardless of type.
-    $recentActivity = $pdo->query("
+    $recentActivity = $pdo->prepare("
         SELECT u.name, a.status, a.time, 'Daily' as type 
          FROM attendance a 
          JOIN users u ON a.qr_code = u.qr_code 
-         WHERE a.date = '$today'
+         WHERE a.date = ?
         UNION ALL
         SELECT u.name, sa.status, sa.time, s.name as type 
          FROM subject_attendance sa 
          JOIN users u ON sa.qr_code = u.qr_code 
          JOIN subjects s ON sa.subject_id = s.id
-         WHERE sa.date = '$today'
+         WHERE sa.date = ?
         ORDER BY time DESC 
         LIMIT 5
-    ")->fetchAll(PDO::FETCH_ASSOC);
+    ");
+    $recentActivity->execute([$today, $today]);
+    $recentActivity = $recentActivity->fetchAll(PDO::FETCH_ASSOC);
 
     // Format times for recent activity
     foreach ($recentActivity as &$act) {

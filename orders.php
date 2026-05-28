@@ -59,7 +59,7 @@ require_once 'includes/db.php';
                 <p style="color: var(--text-muted); font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;">Transaction Log & Fulfillment</p>
             </div>
             <a href="manage_products.php" class="btn btn-primary" style="padding: 0.75rem 1.5rem; border-radius: 12px; font-weight: 800; font-size: 0.85rem;">
-                <i class="bi bi-gear-fill"></i> Manage Inventory
+                <i class="bi bi-gear"></i> Manage Inventory
             </a>
         </div>
 

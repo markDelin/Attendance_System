@@ -236,7 +236,7 @@ require_once 'includes/db.php';
 
     <div class="action-bar animate-fade-up" style="animation-delay: 0.3s;">
         <button id="print-btn" onclick="printReport()" class="btn btn-primary" style="padding: 1.25rem 2.5rem; border-radius: 50px; font-size: 1rem; box-shadow: 0 15px 35px rgba(92, 107, 192, 0.3);">
-            <i class="bi bi-printer-fill"></i> Print / Export Report
+            <i class="bi bi-printer"></i> Print / Export Report
         </button>
     </div>
 

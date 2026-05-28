@@ -25,7 +25,7 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($subject['name']) ?> | Records</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
@@ -150,11 +150,11 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <?php 
     $navbar_actions = '
-        <button onclick="exportSubjectRange()" class="btn btn-ghost btn-sm" style="border-radius: 50px;">
-            <i class="bi bi-file-earmark-spreadsheet"></i> <span class="hide-mobile">Matrix Export</span>
+        <button onclick="exportSubjectRange()" class="btn btn-ghost" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Matrix Export">
+            <i class="bi bi-file-earmark-spreadsheet" style="font-size: 0.95rem; color: var(--text-muted);"></i>
         </button>
-        <button onclick="window.open(\'api/export_all_subjects.php?format=xls\', \'_blank\')" class="btn btn-ghost btn-sm" style="border-radius: 50px;">
-            <i class="bi bi-collection"></i> <span class="hide-mobile">Bulk Export</span>
+        <button onclick="window.open(\'api/export_all_subjects.php?format=xls\', \'_blank\')" class="btn btn-ghost" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card);" title="Bulk Export">
+            <i class="bi bi-collection" style="font-size: 0.95rem; color: var(--text-muted);"></i>
         </button>
     ';
     include 'includes/navbar.php'; 
@@ -338,8 +338,12 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         .then(r => r.json())
                         .then(d => {
                             if(d.status === 'success') {
-                                document.getElementById('rec-' + id).style.opacity = '0';
-                                setTimeout(() => location.reload(), 300);
+                                Swal.fire({
+                                    title: 'Deleted!',
+                                    text: 'Attendance record removed.',
+                                    icon: 'success',
+                                    confirmButtonColor: 'var(--primary)'
+                                }).then(() => location.reload());
                             } else Toast.fire({ icon: 'error', title: d.message });
                         });
                 }
@@ -364,8 +368,14 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     fetch('api/delete_subject.php', { method: 'POST', body: formData })
                         .then(r => r.json())
                         .then(d => {
-                            if(d.status === 'success') location.reload();
-                            else Toast.fire({ icon: 'error', title: d.message });
+                            if(d.status === 'success') {
+                                Swal.fire({
+                                    title: 'Cleared!',
+                                    text: 'All records for this day have been removed.',
+                                    icon: 'success',
+                                    confirmButtonColor: 'var(--primary)'
+                                }).then(() => location.reload());
+                            } else Toast.fire({ icon: 'error', title: d.message });
                         });
                 }
             })

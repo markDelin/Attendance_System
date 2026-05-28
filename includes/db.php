@@ -27,26 +27,7 @@ try {
         // Ignore "duplicate column" error
     }
 
-    // Auto-Migration for 'student_type' column in users
-    try {
-        $pdo->exec("ALTER TABLE users ADD COLUMN student_type TEXT DEFAULT 'regular'");
-    } catch (PDOException $e) {}
-
-    // Auto-Migration for 'course' and 'section'
-    try {
-        $pdo->exec("ALTER TABLE users ADD COLUMN course TEXT");
-    } catch (PDOException $e) {}
-    try {
-        $pdo->exec("ALTER TABLE users ADD COLUMN section TEXT");
-    } catch (PDOException $e) {}
-
-    // Auto-Migration for 'deleted_at' (Soft Delete)
-    try {
-        $pdo->exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME DEFAULT NULL");
-    } catch (PDOException $e) {}
-    try {
-        $pdo->exec("ALTER TABLE attendance ADD COLUMN deleted_at DATETIME DEFAULT NULL");
-    } catch (PDOException $e) {}
+    // Note: Other column migrations are handled in the consolidated migration section below
 
     // 2. Table Definitions
     $tables = [
@@ -198,6 +179,14 @@ try {
             type TEXT NOT NULL,
             content TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+        
+        "wifi_networks" => "CREATE TABLE IF NOT EXISTS wifi_networks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ssid TEXT NOT NULL,
+            password TEXT,
+            encryption TEXT DEFAULT 'WPA',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )"
     ];
 
@@ -240,7 +229,9 @@ try {
     if (!in_array('first_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN first_name TEXT"); } catch (Exception $e) {} }
     if (!in_array('last_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN last_name TEXT"); } catch (Exception $e) {} }
     if (!in_array('middle_initial', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN middle_initial TEXT"); } catch (Exception $e) {} }
+    if (!in_array('student_type', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN student_type TEXT DEFAULT 'regular'"); } catch (Exception $e) {} }
     if (!in_array('course', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN course TEXT"); } catch (Exception $e) {} }
+    if (!in_array('section', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN section TEXT"); } catch (Exception $e) {} }
     if (!in_array('place_of_birth', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN place_of_birth TEXT"); } catch (Exception $e) {} }
     if (!in_array('sex', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN sex TEXT"); } catch (Exception $e) {} }
     if (!in_array('civil_status', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN civil_status TEXT"); } catch (Exception $e) {} }
@@ -249,6 +240,21 @@ try {
     if (!in_array('contact_number', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN contact_number TEXT"); } catch (Exception $e) {} }
     if (!in_array('year_level', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN year_level TEXT DEFAULT '1st'"); } catch (Exception $e) {} }
     if (!in_array('birthday_image', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN birthday_image TEXT DEFAULT NULL"); } catch (Exception $e) {} }
+    if (!in_array('deleted_at', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN deleted_at DATETIME DEFAULT NULL"); } catch (Exception $e) {} }
+    if (!in_array('home_address', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN home_address TEXT"); } catch (Exception $e) {} }
+    if (!in_array('guardian_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN guardian_name TEXT"); } catch (Exception $e) {} }
+    if (!in_array('guardian_contact', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN guardian_contact TEXT"); } catch (Exception $e) {} }
+    if (!in_array('blood_type', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN blood_type TEXT"); } catch (Exception $e) {} }
+    if (!in_array('lrn', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN lrn TEXT"); } catch (Exception $e) {} }
+    if (!in_array('mother_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN mother_name TEXT"); } catch (Exception $e) {} }
+    if (!in_array('father_name', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN father_name TEXT"); } catch (Exception $e) {} }
+    if (!in_array('guardian_relationship', $uCols)) { try { $pdo->exec("ALTER TABLE users ADD COLUMN guardian_relationship TEXT"); } catch (Exception $e) {} }
+
+    // Attendance soft delete migration
+    $attColNames = array_column($pdo->query("PRAGMA table_info(attendance)")->fetchAll(PDO::FETCH_ASSOC), 'name');
+    if (!in_array('deleted_at', $attColNames)) {
+        try { $pdo->exec("ALTER TABLE attendance ADD COLUMN deleted_at DATETIME DEFAULT NULL"); } catch (Exception $e) {}
+    }
 
     if (!in_array('registration_lock', $cols)) {
         $pdo->exec("ALTER TABLE settings ADD COLUMN registration_lock INTEGER NOT NULL DEFAULT 0");
@@ -473,9 +479,10 @@ try {
 
     
 } catch (PDOException $e) {
-    // DEBUG: Showing actual error to fix connection issue
-    die("Database Error: " . $e->getMessage() . " <br>Path: " . $database);
+    error_log("Database Error: " . $e->getMessage() . " | Path: " . $database, 3, $errorLog);
+    die("Database connection error. Please check the server configuration.");
 } catch (Exception $e) {
-    die("Configuration error: " . htmlspecialchars($e->getMessage()));
+    error_log("Configuration error: " . $e->getMessage(), 3, $errorLog);
+    die("Configuration error. Please contact the administrator.");
 }
 ?>

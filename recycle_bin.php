@@ -9,8 +9,8 @@ $deletedUsers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Define Navbar Actions
 $navbar_actions = '
-    <a href="admin_restore.php" class="btn btn-ghost" style="width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0;" title="Advanced Recovery">
-        <i class="bi bi-hdd-network"></i>
+    <a href="admin_restore.php" class="btn-icon" title="Advanced Recovery">
+        <i class="bi bi-hdd-network" style="font-size: 0.95rem;"></i>
     </a>
 ';
 ?>
@@ -21,7 +21,7 @@ $navbar_actions = '
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recycle Bin | QR Tools</title>
-    <link href="assets/css/style.css" rel="stylesheet">
+    <link href="assets/css/style.css?v=1.3" rel="stylesheet">
     <link rel="stylesheet" href="assets/vendor/bootstrap-icons/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <?php include 'includes/theme_loader.php'; ?>
@@ -34,12 +34,58 @@ $navbar_actions = '
             padding-bottom: 4rem;
         }
         .recycle-card {
-            background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.75rem;
-            position: relative; transition: all 0.2s;
+            background: var(--bg-card); 
+            border: 1px solid var(--border); 
+            border-radius: 20px; 
+            padding: 1.75rem;
+            position: relative; 
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: var(--shadow-neu-out-sm);
         }
-        .recycle-card:hover { transform: translateY(-2px); border-color: var(--danger); box-shadow: 0 10px 20px -10px rgba(239, 68, 68, 0.1); }
+        .recycle-card:hover { 
+            transform: translateY(-3px); 
+            border-color: #ef4444; 
+            box-shadow: 0 15px 30px rgba(239, 68, 68, 0.08); 
+        }
         .recycle-card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: #ef4444; opacity: 0.1;
+            content: ''; 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 5px; 
+            background: linear-gradient(to right, #ef4444, #f43f5e);
+            opacity: 0.85;
+        }
+        .btn-restore-glass {
+            flex: 1; 
+            justify-content: center; 
+            border-radius: 12px; 
+            font-weight: 800; 
+            border: 1px solid #10b981 !important; 
+            color: #10b981 !important;
+            background: transparent !important;
+            transition: all 0.2s;
+        }
+        .btn-restore-glass:hover {
+            background: #10b981 !important;
+            color: white !important;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            transform: translateY(-1px);
+        }
+        .btn-purge-danger {
+            flex: 1; 
+            justify-content: center; 
+            border-radius: 12px; 
+            background: #ef4444 !important; 
+            border: none !important; 
+            font-weight: 800;
+            color: white !important;
+            transition: all 0.2s;
+        }
+        .btn-purge-danger:hover {
+            background: #dc2626 !important;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+            transform: translateY(-1px);
         }
     </style>
 </head>
@@ -48,42 +94,47 @@ $navbar_actions = '
     <?php include 'includes/navbar.php'; ?>
 
     <main class="container" style="padding-top: 3rem;">
-        <div class="mobile-force-stack" style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
+        <div class="mobile-force-stack animate-fade-up" style="margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem;">
             <div>
-                <h1 style="margin: 0; font-weight: 800; letter-spacing: -0.05em; color: var(--danger);">Recycle Bin</h1>
-                <p style="color: var(--text-muted); font-size: 0.9rem; font-weight: 500; margin-top: 4px;">Review and restore recently deleted student records.</p>
+                <h1 style="margin: 0; font-weight: 900; letter-spacing: -0.05em; color: var(--danger); font-family: 'Outfit', sans-serif;">Recycle Bin</h1>
+                <p style="color: var(--text-muted); font-size: 0.95rem; font-weight: 500; margin-top: 4px;">Review and restore recently deleted student dossiers.</p>
             </div>
-            <div style="font-size: 0.75rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; background: var(--bg-main); padding: 6px 12px; border-radius: 50px; border: 1px solid var(--border); white-space: nowrap; width: fit-content;">
-                <?= count($deletedUsers) ?> DELETED RECORDS
+            <div style="font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; background: var(--bg-card); padding: 8px 16px; border-radius: 50px; border: 1px solid var(--border); white-space: nowrap; width: fit-content; box-shadow: var(--shadow-neu-out-sm);">
+                <?= count($deletedUsers) ?> DELETED Dossiers
             </div>
         </div>
 
         <?php if(empty($deletedUsers)): ?>
-            <div class="card flex-center animate-fade-up" style="padding: 6rem 2rem; border-style: dashed; border-radius: 20px; color: var(--text-muted);">
-                <i class="bi bi-trash3" style="font-size: 4rem; opacity: 0.1; margin-bottom: 1.5rem;"></i>
-                <h3 style="color: var(--text-muted); font-weight: 800; margin-bottom: 0.5rem; letter-spacing: -0.02em;">Archive is Empty</h3>
-                <p>Deleted students will appear here for 30 days before permanent removal.</p>
+            <div class="glass-panel flex-center animate-fade-up" style="padding: 6rem 2rem; border-style: dashed; border-radius: 24px; color: var(--text-muted); border-width: 2px;">
+                <i class="bi bi-trash" style="font-size: 4rem; opacity: 0.15; margin-bottom: 1.5rem; color: var(--danger);"></i>
+                <h3 style="color: var(--text-main); font-weight: 900; margin-bottom: 0.5rem; letter-spacing: -0.02em; font-family:'Outfit', sans-serif;">Archive is Empty</h3>
+                <p style="font-weight: 500; font-size: 0.85rem;">Deleted student profiles will appear here for temporary storage.</p>
             </div>
         <?php else: ?>
-            <div class="recycle-grid animate-fade-up">
-                <?php foreach($deletedUsers as $user): ?>
-                    <div class="recycle-card">
+            <div class="recycle-grid">
+                <?php 
+                $idx = 0;
+                foreach($deletedUsers as $user): 
+                    $staggerClass = 'stagger-' . (($idx % 8) + 1);
+                    $idx++;
+                ?>
+                    <div class="recycle-card interactive-glow <?= $staggerClass ?> animate-fade-up">
                         <div style="margin-bottom: 1.5rem;">
-                            <h4 style="margin: 0 0 8px; font-weight: 800; letter-spacing: -0.02em;"><?= htmlspecialchars($user['name']) ?></h4>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <span style="font-family: monospace; font-size: 0.8rem; color: var(--text-muted);">ID: <?= htmlspecialchars($user['qr_code']) ?></span>
-                                <span style="font-size: 0.75rem; font-weight: 700; color: var(--danger); text-transform: uppercase; letter-spacing: 0.05em;">
+                            <h4 style="margin: 0 0 8px; font-weight: 800; letter-spacing: -0.02em; font-family:'Outfit', sans-serif;"><?= htmlspecialchars($user['name']) ?></h4>
+                            <div style="display: flex; flex-direction: column; gap: 6px;">
+                                <span style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted);">QR Code: <?= htmlspecialchars($user['qr_code']) ?></span>
+                                <span style="font-size: 0.72rem; font-weight: 800; color: #f43f5e; text-transform: uppercase; letter-spacing: 0.05em; display: inline-flex; align-items: center; gap: 4px;">
                                     <i class="bi bi-calendar-x"></i> Deleted <?= date('M d, Y', strtotime($user['deleted_at'])) ?>
                                 </span>
                             </div>
                         </div>
                         <div style="display: flex; gap: 0.75rem;">
                             <button onclick="restoreUser('<?= $user['qr_code'] ?>', '<?= htmlspecialchars($user['name']) ?>')" 
-                                    class="btn btn-ghost" style="flex:1; justify-content: center; border-radius: 12px; font-weight: 700; border-color: #10b981; color: #166534;">
+                                    class="btn btn-restore-glass">
                                 <i class="bi bi-arrow-counterclockwise"></i> Restore
                             </button>
                             <button onclick="permDelete('<?= $user['qr_code'] ?>', '<?= htmlspecialchars($user['name']) ?>')" 
-                                    class="btn btn-danger" style="flex:1; justify-content: center; border-radius: 12px; background: #ef4444; border: none; font-weight: 700;">
+                                    class="btn btn-purge-danger">
                                 <i class="bi bi-x-circle"></i> Purge
                             </button>
                         </div>
@@ -121,8 +172,12 @@ $navbar_actions = '
             .then(r => r.json())
             .then(data => {
                 if(data.status === 'success') {
-                    Toast.fire({ icon: 'success', title: data.message });
-                    setTimeout(() => location.reload(), 1000);
+                    Swal.fire({
+                        title: action === 'restore' ? 'Restored!' : 'Purged!',
+                        text: data.message,
+                        icon: 'success',
+                        confirmButtonColor: 'var(--primary)'
+                    }).then(() => location.reload());
                 } else {
                     Swal.fire('Error', data.message, 'error');
                 }

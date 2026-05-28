@@ -7,11 +7,10 @@ require_once "../includes/telegram.php";
 
 if ($_SERVER["REQUEST_METHOD"] !== "POST") exit(json_encode(["status" => "error", "message" => "Invalid request method"]));
 
-if (!isset($_POST["subject_id"])) exit(json_encode(["status" => "error", "message" => "Subject ID is required"]));
-
-$subjectId = intval($_POST["subject_id"]);
+// subject_id is optional: 0 or empty = Daily Mode, > 0 = Subject/Event Mode
+$subjectId = isset($_POST["subject_id"]) && $_POST["subject_id"] !== "" ? intval($_POST["subject_id"]) : 0;
 $date = $_POST["date"] ?? date("Y-m-d");
-$settings = $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$settings = $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 $schoolYear = $settings['active_school_year'] ?? 'SY 2024-2025';
 
 // subject_id 0 = Daily Attendance (Allowed)

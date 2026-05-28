@@ -3,7 +3,7 @@
 date_default_timezone_set('Asia/Manila');
 require_once 'includes/db.php';
 
-$settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC);
+$settings = $pdo->query("SELECT * FROM settings LIMIT 1")->fetch(PDO::FETCH_ASSOC) ?: [];
 $isMaintenance = ($settings['maintenance_mode'] ?? 0) == 1;
 
 if ($isMaintenance) {
@@ -57,30 +57,204 @@ if ($subjectId > 0) {
     <?php include 'includes/theme_loader.php'; ?>
     <style>
         .page-header { background: var(--bg-card); padding: 1.5rem 0; border-bottom: 1px solid var(--border); margin-bottom: 1.5rem; }
-        .date-container { display: flex; align-items: center; gap: 12px; background: var(--bg-main); padding: 0.75rem 1rem; border-radius: 12px; border: 1px solid var(--border); max-width: 400px; margin: 0 auto 1.5rem; }
-        .date-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-        .date-control { border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem; font-size: 0.9rem; color: var(--text-main); outline: none; background: var(--bg-main); flex: 1; }
+        
+        /* Glassmorphic Date Panel */
+        .date-container-glass {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background: var(--bg-card);
+            padding: 1.25rem 2rem;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            max-width: 480px;
+            margin: 0 auto 2rem;
+            box-shadow: var(--shadow-neu-out-sm);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .date-container-glass:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-neu-out);
+        }
+        .date-label { font-size: 0.72rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+        .date-control-glass {
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.6rem 1rem;
+            font-size: 0.92rem;
+            color: var(--text-main);
+            outline: none;
+            background: var(--bg-main);
+            box-shadow: var(--shadow-neu-in-sm);
+            font-weight: 700;
+            transition: all 0.25s;
+        }
+        .date-control-glass:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 25%, transparent);
+        }
+
         .toolbar-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; margin-bottom: 1.5rem; }
         .search-area { position: sticky; top: 0; z-index: 90; background: var(--bg-main); padding: 1rem 0; margin-bottom: 1.25rem; }
+        
+        /* Interactive Search Input */
         .search-container { position: relative; max-width: 600px; margin: 0 auto; }
-        .search-input { width: 100%; padding: 0.75rem 1rem 0.75rem 3rem; border-radius: 14px; border: none; background: var(--bg-main); font-size: 0.88rem; color: var(--text-main); box-shadow: var(--shadow-neu-in-sm); font-weight: 600; }
-        .search-input:focus { outline: none; box-shadow: var(--shadow-neu-in); }
-        .search-icon { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); }
-        .student-row { background: var(--bg-card); border: none; border-radius: 14px; padding: 1rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); border-left: 4px solid transparent; box-shadow: var(--shadow-neu-out-sm); }
-        .student-row:hover { transform: translateX(3px); box-shadow: var(--shadow-neu-out); }
-        .student-name { font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.92rem; margin: 0; color: var(--text-main); }
-        .student-id { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--text-muted); background: var(--bg-main); padding: 2px 6px; border-radius: 4px; font-weight: 600; }
+        .search-input-glass {
+            width: 100%;
+            padding: 0.9rem 1.25rem 0.9rem 3.2rem;
+            border-radius: 16px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            font-size: 0.92rem;
+            color: var(--text-main);
+            box-shadow: var(--shadow-neu-out-sm);
+            font-weight: 600;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .search-input-glass:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 20%, transparent);
+            transform: scale(0.995);
+        }
+        .search-icon { position: absolute; left: 1.25rem; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.05rem; }
+        
+        /* Premium Student Row Styling */
+        .student-row {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 1.1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border-left: 5px solid transparent;
+            box-shadow: var(--shadow-neu-out-sm);
+        }
+        .student-row:hover {
+            transform: translateX(4px) translateY(-1px);
+            box-shadow: var(--shadow-neu-out);
+            border-color: color-mix(in srgb, var(--text-muted) 15%, transparent);
+        }
+        .student-name {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 0.98rem;
+            margin: 0;
+            color: var(--text-main);
+            transition: color 0.2s;
+        }
+        .student-name:hover {
+            color: var(--primary);
+        }
+        .student-id {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            background: var(--bg-main);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-weight: 600;
+            border: 1px solid var(--border);
+        }
+        
         .action-group { display: flex; gap: 6px; }
-        .btn-status { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 10px; border: none; background: var(--bg-main); cursor: pointer; transition: all 0.2s; font-weight: 800; font-size: 0.8rem; color: var(--text-muted); box-shadow: var(--shadow-neu-out-sm); }
-        .btn-status:hover { transform: scale(1.08); box-shadow: var(--shadow-neu-in-sm); }
-        .student-row.present { border-left-color: #10b981; background: rgba(16, 185, 129, 0.04); }
-        .student-row.present .btn-present { background: #10b981; color: white; box-shadow: 0 3px 10px rgba(16, 185, 129, 0.3); }
-        .student-row.late { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.04); }
-        .student-row.late .btn-late { background: #f59e0b; color: white; box-shadow: 0 3px 10px rgba(245, 158, 11, 0.3); }
-        .student-row.absent { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.04); }
-        .student-row.absent .btn-absent { background: #ef4444; color: white; box-shadow: 0 3px 10px rgba(239, 68, 68, 0.3); }
-        .time-stamp { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--primary); font-weight: 800; display: inline-flex; align-items: center; gap: 3px; }
-        .stat-badge { flex: 1; padding: 0.65rem; border-radius: 12px; text-align: center; background: var(--bg-card); box-shadow: var(--shadow-neu-out-sm); transition: all 0.3s; }
+        
+        /* Premium Toggle Capsule Buttons */
+        .compact-actions {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .btn-stat-entry {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.76rem;
+            font-weight: 800;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+            background: var(--bg-main);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            cursor: pointer;
+            box-shadow: var(--shadow-neu-out-sm);
+        }
+        .btn-stat-entry:hover {
+            transform: translateY(-2px) scale(1.05);
+            color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: var(--shadow-neu-out);
+        }
+        
+        /* Active Status Animations */
+        .student-row.present { border-left-color: #10b981; background: rgba(16, 185, 129, 0.02); }
+        .student-row.present .btn-stat-entry.p {
+            background: #10b981;
+            color: white;
+            border-color: #10b981;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
+        
+        .student-row.late { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.02); }
+        .student-row.late .btn-stat-entry.l {
+            background: #f59e0b;
+            color: white;
+            border-color: #f59e0b;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
+        
+        .student-row.absent { border-left-color: #ef4444; background: rgba(239, 68, 68, 0.02); }
+        .student-row.absent .btn-stat-entry.a {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.35);
+            transform: scale(1.08) translateY(-1px);
+        }
+
+        .time-stamp {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--primary);
+            font-weight: 800;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        /* High-fidelity Glass Stats Cards */
+        .stat-badge {
+            flex: 1;
+            padding: 1rem 0.75rem;
+            border-radius: 16px;
+            text-align: center;
+            background: var(--bg-card);
+            box-shadow: var(--shadow-neu-out-sm);
+            border: 1px solid var(--border);
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .stat-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-neu-out);
+        }
+        .stat-badge span {
+            font-family: 'Outfit', sans-serif;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
         @media (max-width: 600px) { 
             .mobile-stack { flex-direction: column; align-items: stretch !important; } 
             .student-row { 
@@ -90,34 +264,36 @@ if ($subjectId > 0) {
                 gap: 12px;
             } 
             .student-name { font-size: 1rem; } 
-            .action-group {
+            .compact-actions {
                 justify-content: space-between;
-                border-top: 1px solid rgba(0,0,0,0.05);
-                padding-top: 8px;
+                border-top: 1px solid var(--border);
+                padding-top: 10px;
+                width: 100%;
             }
-            .btn-status {
+            .btn-stat-entry {
                 flex: 1;
-                height: 44px;
+                height: 40px;
             }
         }
 
         /* Subject Toolbar Icons */
         .action-btn {
-            width: 32px;
-            height: 32px;
+            width: 38px;
+            height: 38px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--border);
             background: var(--bg-main);
             color: var(--text-muted);
             cursor: pointer;
             transition: all 0.2s;
             padding: 0;
+            box-shadow: var(--shadow-neu-out-sm);
         }
-        .action-btn i { font-size: 0.9rem; }
-        .action-btn:hover { background: var(--bg-hover); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); }
+        .action-btn i { font-size: 0.95rem; }
+        .action-btn:hover { background: var(--bg-hover); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-neu-out); }
         .action-btn.delete-btn:hover { color: var(--danger); border-color: var(--danger); }
     </style>
 </head>
@@ -125,105 +301,111 @@ if ($subjectId > 0) {
 
     <?php 
     $navbar_actions = '
-        <div class="nav-tabs" style="margin-bottom:0; background: rgba(0,0,0,0.05);">
-            <button onclick="setMode(\'daily\')" id="btnDaily" class="nav-link">Daily</button>
-            <button onclick="setMode(\'subject\')" id="btnSubject" class="nav-link">Subject</button>
-        </div>
+        <button onclick="setMode(\'daily\')" id="btnDaily" class="btn-icon active" title="Daily Mode">
+            <i class="bi bi-calendar-check" style="font-size: 0.95rem;"></i>
+        </button>
+        <button onclick="setMode(\'subject\')" id="btnSubject" class="btn-icon" title="Subject Mode">
+            <i class="bi bi-book" style="font-size: 0.95rem;"></i>
+        </button>
     ';
     include 'includes/navbar.php'; 
     ?>
 
     <main class="container animate-fade-up" style="max-width: 800px; margin-top: 2rem; padding-top: 1rem;">
         
-        <div class="glass-panel" style="padding: 1.5rem; border-radius: 20px; margin-bottom: 2rem;">
-            <div style="display: flex; align-items: center; justify-content: center; gap: 15px;">
-                <span class="date-label">Session Date</span>
-                <input type="date" id="attendanceDate" class="form-control" style="max-width: 200px; border-radius: 12px;" value="<?= date('Y-m-d', strtotime($currentDate)) ?>" onchange="refreshData()">
-            </div>
+        <!-- Glassmorphic Date Control -->
+        <div class="date-container-glass stagger-1">
+            <span class="date-label">Session Date</span>
+            <input type="date" id="attendanceDate" class="date-control-glass" value="<?= date('Y-m-d', strtotime($currentDate)) ?>" onchange="refreshData()">
         </div>
 
         <!-- Subject Selection Area -->
-        <div id="subjectControls" style="display:none; margin-bottom: 2rem;">
-            <div class="card" style="padding: 1.25rem; border-radius: 20px; border: 1px solid var(--border); background: white; box-shadow: var(--glass-shadow);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                    <h6 style="margin:0; font-weight:800; color:var(--text-muted); font-size:0.7rem; text-transform:uppercase; letter-spacing:0.1em;">Subject Access</h6>
-                    <div id="subjectActions" style="display:none; gap:12px;">
-                       <button onclick="editCurrentSubject()" class="action-btn edit-btn"><i class="bi bi-pencil"></i></button>
-                       <button onclick="manageSchedule()" class="action-btn"><i class="bi bi-calendar3"></i></button>
-                       <button onclick="deleteCurrentSubject()" class="action-btn delete-btn"><i class="bi bi-trash"></i></button>
+        <div id="subjectControls" style="display:none; margin-bottom: 2rem;" class="stagger-2">
+            <div class="glass-panel interactive-glow" style="padding: 1.5rem; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-neu-out);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+                    <h6 style="margin:0; font-weight:800; color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.12em;">Subject Portal</h6>
+                    <div id="subjectActions" style="display:none; gap:10px;">
+                       <button onclick="editCurrentSubject()" class="action-btn edit-btn" title="Rename Subject"><i class="bi bi-pencil"></i></button>
+                       <button onclick="manageSchedule()" class="action-btn" title="Schedule Settings"><i class="bi bi-calendar3"></i></button>
+                       <button onclick="deleteCurrentSubject()" class="action-btn delete-btn" title="Delete Subject"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
                 
                 <div style="display:grid; grid-template-columns: 1fr auto; gap:12px;" class="mobile-stack">
-                    <select id="subjectSelect" class="form-control" onchange="handleSubjectChange()" style="border-radius:12px;">
+                    <select id="subjectSelect" class="form-control" onchange="handleSubjectChange()" style="border-radius:14px; padding:0.75rem 1rem; font-weight:700; background:var(--bg-main); border:1px solid var(--border); box-shadow:var(--shadow-neu-in-sm);">
                         <option value="">Select Subject...</option>
                     </select>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="goToScan()" class="btn btn-slate" id="btnScanSubject" style="display:none; border-radius:12px; height:45px; width:45px; padding:0; justify-content:center;"><i class="bi bi-qr-code-scan"></i></button>
-                        <button onclick="openAddSubject()" class="btn btn-primary" style="border-radius:12px; height:45px; width:45px; padding:0; justify-content:center;"><i class="bi bi-plus-lg"></i></button>
+                        <button onclick="goToScan()" class="btn btn-slate" id="btnScanSubject" style="display:none; border-radius:14px; height:46px; width:46px; padding:0; justify-content:center; border:1px solid var(--border); box-shadow:var(--shadow-neu-out-sm);"><i class="bi bi-qr-code-scan"></i></button>
+                        <button onclick="openAddSubject()" class="btn btn-primary" style="border-radius:14px; height:46px; width:46px; padding:0; justify-content:center; box-shadow:0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);"><i class="bi bi-plus-lg"></i></button>
                     </div>
                 </div>
 
-                <div id="subjectQuickTools" style="display:none; margin-top:1.25rem; padding-top:1rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+                <div id="subjectQuickTools" style="display:none; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
                     <div style="display:flex; gap:8px;">
-                        <button onclick="markAllPresent()" class="btn btn-ghost btn-sm"><i class="bi bi-check-all"></i> Mark All</button>
-                        <button onclick="resetSubjectAttendance()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-                        <button onclick="cancelSubject()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-slash-circle"></i> Cancel Class</button>
+                        <button onclick="markAllPresent()" class="btn btn-ghost btn-sm" style="font-weight:700; border-radius:10px;"><i class="bi bi-check-all"></i> Mark All</button>
+                        <button onclick="resetSubjectAttendance()" class="btn btn-ghost btn-sm" style="color:var(--danger); font-weight:700; border-radius:10px;"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                        <button onclick="cancelSubject()" class="btn btn-ghost btn-sm" style="color:var(--danger); font-weight:700; border-radius:10px;"><i class="bi bi-slash-circle"></i> Cancel Class</button>
                     </div>
-                    <button onclick="exportSubject()" class="btn btn-ghost btn-sm"><i class="bi bi-download"></i> Export</button>
+                    <button onclick="exportSubject()" class="btn btn-ghost btn-sm" style="font-weight:700; border-radius:10px;"><i class="bi bi-download"></i> Export</button>
                 </div>
             </div>
 
             <!-- Stats Grid -->
             <div id="subjectStats" style="display:none; margin-top: 1.5rem; margin-bottom: 2rem;">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem;">
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem;">
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.1rem; font-weight: 800; color: var(--success);" id="count-present">0</span>
-                        <small style="font-size:0.6rem; font-weight:700; color:var(--text-muted);">P</small>
+                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #10b981;" id="count-present">0</span>
+                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Present</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.1rem; font-weight: 800; color: var(--warning);" id="count-late">0</span>
-                        <small style="font-size:0.6rem; font-weight:700; color:var(--text-muted);">L</small>
+                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #f59e0b;" id="count-late">0</span>
+                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Late</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.1rem; font-weight: 800; color: var(--danger);" id="count-absent">0</span>
-                        <small style="font-size:0.6rem; font-weight:700; color:var(--text-muted);">A</small>
+                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #ef4444;" id="count-absent">0</span>
+                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Absent</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.1rem; font-weight: 800; color: var(--primary);" id="count-none">0</span>
-                        <small style="font-size:0.6rem; font-weight:700; color:var(--text-muted);">LEFT</small>
+                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: var(--primary);" id="count-none">0</span>
+                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Remaining</small>
                     </div>
                 </div>
             </div>
         </div>
 
         <!-- Search Area -->
-        <div class="search-container" style="margin-bottom: 2rem;">
+        <div class="search-container stagger-3" style="margin-bottom: 2.25rem;">
             <i class="bi bi-search search-icon"></i>
-            <input type="text" id="searchInput" class="form-control" placeholder="Search entries..." autocomplete="off" style="padding-left: 3rem; border-radius: 12px; box-shadow: var(--glass-shadow);">
+            <input type="text" id="searchInput" class="search-input-glass" placeholder="Search by student name..." autocomplete="off">
         </div>
 
         <!-- Context Header -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
+        <div class="stagger-4" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem;">
             <div>
-                <p id="manualContextIndicator" style="font-size: 0.7rem; color: var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.1em; margin:0; line-height:1.5;">Daily Attendance</p>
-                <h5 style="color: var(--text-main); font-weight: 800; margin: 0; font-size:1.4rem; letter-spacing:-0.03em;">Attendance List</h5>
+                <p id="manualContextIndicator" style="font-size: 0.72rem; color: var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.12em; margin:0 0 4px; line-height:1.5;">Daily Attendance</p>
+                <h5 style="color: var(--text-main); font-weight: 900; margin: 0; font-size:1.45rem; letter-spacing:-0.03em;">Attendance Dossier</h5>
             </div>
-            <button id="btnNotify" onclick="finishAndNotifySubject()" class="btn btn-primary" style="border-radius:12px; padding: 0.6rem 1.5rem; display: flex; align-items: center; gap: 8px;">
+            <button id="btnNotify" onclick="finishAndNotifySubject()" class="btn btn-primary" style="border-radius:14px; padding: 0.65rem 1.5rem; display: flex; align-items: center; gap: 8px; font-weight:800; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);">
                 <i class="bi bi-send-check"></i> <span class="btn-text">Notify</span>
             </button>
         </div>
 
         <!-- Student List -->
         <div id="studentList" class="student-list">
-            <?php foreach ($users as $user): ?>
-                <div class="student-row" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
+            <?php 
+            $idx = 0;
+            foreach ($users as $user): 
+                $staggerClass = 'stagger-' . (($idx % 8) + 1);
+                $idx++;
+            ?>
+                <div class="student-row <?= $staggerClass ?> animated-item interactive-glow" id="row-<?= $user['qr_code'] ?>" data-name="<?= htmlspecialchars($user['name']) ?>">
                     <div style="flex: 1; min-width: 0;">
-                        <h5 class="student-name" onclick="window.location.href='profile.php?qr=<?= urlencode($user['qr_code']) ?>'" style="cursor:pointer; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><?= htmlspecialchars($user['name']) ?></h5>
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <span class="student-id" style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700;"><?= $user['qr_code'] ?></span>
-                            <div class="time-stamp" style="display: none; font-size: 0.7rem; color: var(--primary); font-weight: 800;">
-                                <i class="bi bi-clock-fill"></i> <span class="time-val"></span>
+                        <h5 class="student-name" onclick="window.location.href='profile.php?qr=<?= urlencode($user['qr_code']) ?>'" style="cursor:pointer; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family:'Outfit', sans-serif;"><?= htmlspecialchars($user['name']) ?></h5>
+                        <div style="display: flex; align-items: center; gap: 10px; margin-top: 4px;">
+                            <span class="student-id"><?= $user['qr_code'] ?></span>
+                            <div class="time-stamp" style="display: none;">
+                                <i class="bi bi-clock"></i> <span class="time-val"></span>
                             </div>
                         </div>
                     </div>
@@ -232,6 +414,7 @@ if ($subjectId > 0) {
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'present')" class="btn-stat-entry p" title="Present">P</button>
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'late')" class="btn-stat-entry l" title="Late">L</button>
                         <button onclick="setStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>', 'absent')" class="btn-stat-entry a" title="Absent">A</button>
+                        <button onclick="clearStatus('<?= $user['qr_code'] ?>', '<?= $user['name'] ?>')" class="btn-stat-entry" title="Clear Record" style="color:var(--text-muted); font-size: 0.72rem;"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -252,11 +435,20 @@ if ($subjectId > 0) {
 
         function setMode(mode) {
             currentMode = mode;
-            
-            // UI Toggle
-            document.getElementById('btnDaily').className = mode === 'daily' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
-            document.getElementById('btnSubject').className = mode === 'subject' ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm';
+            const bD = document.getElementById('btnDaily');
+            const bS = document.getElementById('btnSubject');
+             
+            if (bD && bS) {
+                if(mode === 'daily') {
+                    bD.className = 'btn-icon active';
+                    bS.className = 'btn-icon';
+                } else {
+                    bS.className = 'btn-icon active';
+                    bD.className = 'btn-icon';
+                }
+            }
             document.getElementById('subjectControls').style.display = mode === 'subject' ? 'block' : 'none';
+
             
             if (mode === 'daily') {
                 if (currentSubjectId !== "") {
@@ -292,26 +484,32 @@ if ($subjectId > 0) {
             fetch('api/subject_process.php', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: new URLSearchParams({ action: 'get_subjects' })
+                body: new URLSearchParams({ action: 'get_subjects_active' })
             })
             .then(r => r.json())
             .then(res => {
                 const sel = document.getElementById('subjectSelect');
                 sel.innerHTML = '<option value="">Select Subject...</option>';
                 if (res.data) {
-                    for (const [sy, semData] of Object.entries(res.data)) {
-                        let syGroup = document.createElement('optgroup');
-                        syGroup.label = sy;
-                        for (const [sem, subs] of Object.entries(semData)) {
-                            subs.forEach(s => {
-                                let opt = document.createElement('option');
-                                opt.value = s.id;
-                                opt.innerText = `[${sem}] ${s.name}`;
-                                if (s.id == currentSubjectId) opt.selected = true;
-                                syGroup.appendChild(opt);
-                            });
-                        }
-                        sel.appendChild(syGroup);
+                    // Label shows active SY if available
+                    const activeSY = res.active_sy ? ` (${res.active_sy})` : '';
+                    for (const [sem, subs] of Object.entries(res.data)) {
+                        let grp = document.createElement('optgroup');
+                        grp.label = sem + activeSY;
+                        subs.forEach(s => {
+                            let opt = document.createElement('option');
+                            opt.value = s.id;
+                            opt.innerText = s.name;
+                            if (s.id == currentSubjectId) opt.selected = true;
+                            grp.appendChild(opt);
+                        });
+                        sel.appendChild(grp);
+                    }
+                    if (sel.options.length <= 1) {
+                        let noOpt = document.createElement('option');
+                        noOpt.disabled = true;
+                        noOpt.innerText = '— No subjects for current school year —';
+                        sel.appendChild(noOpt);
                     }
                 }
                 updateSubjectUIState();
@@ -400,6 +598,62 @@ if ($subjectId > 0) {
             document.getElementById('count-none').innerText = n;
         }
 
+        function clearStatus(qr, name) {
+            const date = document.getElementById('attendanceDate').value;
+            const row = document.getElementById('row-' + qr);
+            
+            Swal.fire({
+                title: 'Clear Record?',
+                text: `Remove attendance for ${name}?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                confirmButtonText: 'Yes, clear'
+            }).then((res) => {
+                if (res.isConfirmed) {
+                    row.style.opacity = '0.7';
+                    
+                    let api = 'api/delete.php';
+                    let formData = new FormData();
+                    
+                    if (currentMode === 'subject') {
+                        api = 'api/delete_subject.php';
+                        formData.append('type', 'subject_record_by_qr'); // I need to add this handler
+                        formData.append('qr_code', qr);
+                        formData.append('subject_id', currentSubjectId);
+                        formData.append('date', date);
+                    } else {
+                        formData.append('qr_code', qr);
+                        formData.append('date', date);
+                        formData.append('action', 'delete_by_qr'); // I need to add this handler
+                    }
+
+                    fetch(api, { method: 'POST', body: formData })
+                    .then(r => r.json())
+                    .then(d => {
+                        row.style.opacity = '1';
+                        if (d.status === 'success') {
+                            row.classList.remove('present', 'late', 'absent', 'no-class');
+                            const ts = row.querySelector('.time-stamp');
+                            const sid = row.querySelector('.student-id');
+                            if(ts) ts.style.display = 'none';
+                            if(sid) sid.style.display = 'block';
+                            
+                            Swal.fire({
+                                title: 'Cleared!',
+                                text: 'Attendance record removed.',
+                                icon: 'success',
+                                confirmButtonColor: 'var(--primary)'
+                            });
+                            updateStatsCounts();
+                        } else {
+                            Swal.fire('Error', d.message, 'error');
+                        }
+                    });
+                }
+            });
+        }
+
         function setStatus(qr, name, status) {
             const date = document.getElementById('attendanceDate').value;
             const row = document.getElementById('row-' + qr);
@@ -451,38 +705,7 @@ if ($subjectId > 0) {
 
         // --- Toolbar Actions ---
         function openAddSubject() {
-             Swal.fire({
-                title: 'New Subject',
-                html: `
-                    <div style="text-align:left;">
-                        <input id="swal-sy" class="swal2-input" placeholder="School Year (e.g. 2024-2025)">
-                        <input id="swal-sem" class="swal2-input" placeholder="Semester (e.g. 1st Semester)">
-                        <input id="swal-name" class="swal2-input" placeholder="Subject Name">
-                    </div>
-                `,
-                showCancelButton: true,
-                confirmButtonColor: 'var(--primary)',
-                preConfirm: () => {
-                    return {
-                        sy: document.getElementById('swal-sy').value,
-                        sem: document.getElementById('swal-sem').value,
-                        name: document.getElementById('swal-name').value
-                    }
-                }
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    fetch('api/subject_process.php', {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                        body: new URLSearchParams({ 
-                            action: 'add_subject', 
-                            name: result.value.name, 
-                            semester: result.value.sem, 
-                            school_year: result.value.sy 
-                        })
-                    }).then(() => loadSubjects());
-                }
-            });
+            window.location.href = 'subjects.php';
         }
 
         function finishAndNotifySubject() {
@@ -620,7 +843,7 @@ if ($subjectId > 0) {
                             subject_id: currentSubjectId, 
                             name: result.value 
                         })
-                    }).then(() => loadSubjects());
+                    }).then(() => window.location.reload());
                 }
             });
         }
@@ -641,7 +864,7 @@ if ($subjectId > 0) {
                         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                         body: new URLSearchParams({ 
                             action: 'delete_subject', 
-                            subject_id: currentSubjectId 
+                            id: currentSubjectId 
                         })
                     }).then(() => window.location.href = 'manual.php');
                 }

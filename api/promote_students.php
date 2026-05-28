@@ -30,12 +30,15 @@ try {
             
     $stmt = $pdo->prepare($sql);
     $stmt->execute();
-    
     $affectedCount = $stmt->rowCount();
+    // 2. Clear attendance performance matrix (daily attendance, subjects with cascade, and notified contexts)
+    $pdo->exec("DELETE FROM attendance");
+    $pdo->exec("DELETE FROM subjects"); // Cascades to schedules, subject_attendance, and student_subjects
+    $pdo->exec("DELETE FROM notified_contexts"); // Clear notified state for Telegram bot
     
     echo json_encode([
         'success' => true, 
-        'message' => "Successfully promoted $affectedCount regular students.",
+        'message' => "Successfully transitioned to new school year, promoted $affectedCount regular classmates, and reset attendance matrix.",
         'count' => $affectedCount
     ]);
 } catch (PDOException $e) {

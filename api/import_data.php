@@ -84,6 +84,7 @@ try {
                 $row['time'],
                 $row['status'] ?? 'present'
             ]);
+            $imported++;
 
         } elseif ($type === 'auto') {
             // AUTO-ASSIGN (Schedule Based)
@@ -122,11 +123,10 @@ try {
                         $row['time'],
                         $row['status'] ?? 'present'
                     ]);
-                    $imported++; // Count as success
+                    $imported++;
                 }
             } else {
                 // No schedule found for this time -> Unassigned
-                // We could count this as 'skipped' or a new 'unassigned' metric
                 $skipped++; 
             }
 
@@ -155,8 +155,8 @@ try {
                 $row['status'] ?? 'present',
                 $session
             ]);
+            $imported++;
         }
-        $imported++;
     }
 
     $pdo->commit();
