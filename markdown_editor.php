@@ -203,7 +203,7 @@ require_once 'includes/db.php';
     <main class="container">
         <div style="margin-top: 2.5rem; display: flex; justify-content: space-between; align-items: center;">
             <div class="header-text">
-                <h1 style="margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em;">Report Maker</h1>
+            <h1 style="margin: 0; font-size: 2.5rem; font-weight: 800; letter-spacing: -0.05em;">Markdown to Pdf</h1>
                 <p style="color: var(--text-muted); font-size: 1.1rem; font-weight: 500;">Draft or academic reports with professional print-ready layouts.</p>
             </div>
             <div class="toolbar">

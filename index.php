@@ -525,7 +525,7 @@ require_once 'includes/db.php';
             <div class="action-grid" style="grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));">
                 <a href="markdown_editor.php" class="action-btn interactive-glow animate-fade-up stagger-4 hover-lift">
                     <i class="bi bi-journal-richtext"></i>
-                    <span>Medical Reports</span>
+                    <span>Markdown to Pdf</span>
                 </a>
                 <a href="groups.php" class="action-btn interactive-glow animate-fade-up stagger-5 hover-lift">
                     <i class="bi bi-diagram-3"></i>
