@@ -107,4 +107,4 @@ Attendance_System/
 This project is licensed under the **MIT License**. Contributions for UI/UX improvements or new API integrations are welcome via Pull Requests.
 
 ---
-*Built with ❤️ for Modern Educators.*
+*Made with ❤️ by MCK.*
