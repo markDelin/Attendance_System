@@ -16,9 +16,9 @@ echo Please look at the implementation plan for manual fix instructions.
 echo.
 
 if exist "C:\php\php.exe" (
-    "C:\php\php.exe" -S 0.0.0.0:8000 -c config\php.ini
+    "C:\php\php.exe" -S 0.0.0.0:8000 -c config\php.ini router.php
 ) else (
-    php -S 0.0.0.0:8000 -c config\php.ini
+    php -S 0.0.0.0:8000 -c config\php.ini router.php
 )
 
 pause

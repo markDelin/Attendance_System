@@ -41,7 +41,7 @@ def get_student_data(qr_code):
     # Retrieve active school year and normalize
     cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
     setting_row = cursor.fetchone()
-    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
+    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2024-2025"
     normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
     
     # 2. General Stats (Aggregated from Subjects/Events, Filtered by active school year)

@@ -216,6 +216,7 @@ require_once 'includes/db.php';
                 font-size: 0.9rem !important;
             }
         }
+        .notif-btn {
             padding: 0.75rem 2.25rem;
             border-radius: 50px;
             border: none;
@@ -469,7 +470,7 @@ require_once 'includes/db.php';
                                 <span class="date-badge">
                                     <?= date('F d', strtotime($bday['birthday'])) ?>
                                     <?php if($isToday): ?>
-                                        <span style="color: var(--accent); margin-left: 6px; font-weight: 800;">🎂 TODAY</span>
+                                        <span style="color: var(--accent); margin-left: 6px; font-weight: 800;"><i class="bi bi-gift"></i> TODAY</span>
                                     <?php endif; ?>
                                 </span>
                             </div>
@@ -558,7 +559,7 @@ require_once 'includes/db.php';
                 const distance = targetDate - now;
 
                 if (distance < 0) {
-                    timer.innerHTML = '<div style="width: 100%; text-align: center; color: var(--accent); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.05em;">🎉 CELEBRATING TODAY! 🎂</div>';
+                    timer.innerHTML = '<div style="width: 100%; text-align: center; color: var(--accent); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.05em;"><i class="bi bi-balloon-heart"></i> CELEBRATING TODAY! <i class="bi bi-gift"></i></div>';
                     return;
                 }
 

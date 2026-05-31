@@ -197,7 +197,6 @@ try {
     // 3. Check and add columns if missing
     $columns = $pdo->query("PRAGMA table_info(attendance)")->fetchAll(PDO::FETCH_ASSOC);
     $sessionColumnExists = false;
-    $remarksColumnExists = false;
     
     foreach ($columns as $column) {
         if ($column['name'] === 'session') $sessionColumnExists = true;

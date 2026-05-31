@@ -1,9 +1,13 @@
 import json
 import os
 
-logs_dir = r"C:\Users\MCK\.gemini\antigravity-ide\brain\2ea1f5c1-c54d-47af-b144-45d03ae464f4\.system_generated\logs"
+logs_dir = os.path.join(os.path.dirname(__file__), "..", "scratch", "logs")
 transcript_path = os.path.join(logs_dir, "transcript.jsonl")
-scratch_dir = r"C:\Users\MCK\.gemini\antigravity-ide\brain\2ea1f5c1-c54d-47af-b144-45d03ae464f4\scratch"
+scratch_dir = os.path.join(os.path.dirname(__file__), "..", "scratch")
+
+if not os.path.exists(transcript_path):
+    print(f"Transcript not found at {transcript_path}")
+    exit(1)
 
 with open(transcript_path, 'r', encoding='utf-8') as f:
     for i, line in enumerate(f):

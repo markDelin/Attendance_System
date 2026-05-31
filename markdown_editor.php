@@ -249,7 +249,7 @@ require_once 'includes/db.php';
 
         // Initial content if empty
         if (!editor.value) {
-            editor.value = "# ACADEMIC / MEDICAL REPORT\n\n**Subject:** Student Performance Evaluation\n**Date:** " + new Date().toLocaleDateString() + "\n\n---\n\n## 1. EXECUTIVE SUMMARY\nThe student has demonstrated exceptional participation in recent laboratory sessions. Overall attendance remains stable at 95%.\n\n## 2. DETAILED OBSERVATIONS\n| Attribute | Rating | Notes |\n| :--- | :--- | :--- |\n| Technical Skill | Advanced | Excellent use of QR tools |\n| Punctuality | Consistent | Always on time |\n| Collaboration | High | Leads study groups |\n\n## 3. RECOMMENDATIONS\n- Continue existing study plan.\n- Consider advanced certification in system management.";
+            editor.value = "# ACADEMIC REPORT\n\n**Subject:** Student Performance Evaluation\n**Date:** " + new Date().toLocaleDateString() + "\n\n---\n\n## 1. EXECUTIVE SUMMARY\nThe student has demonstrated exceptional participation in recent laboratory sessions. Overall attendance remains stable at 95%.\n\n## 2. DETAILED OBSERVATIONS\n| Attribute | Rating | Notes |\n| :--- | :--- | :--- |\n| Technical Skill | Advanced | Excellent use of QR tools |\n| Punctuality | Consistent | Always on time |\n| Collaboration | High | Leads study groups |\n\n## 3. RECOMMENDATIONS\n- Continue existing study plan.\n- Consider advanced certification in system management.";
         }
 
         function updatePreview() {

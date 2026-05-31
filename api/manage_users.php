@@ -143,7 +143,7 @@ try {
         $noticeContent = "<b>$studentName</b> has been removed from the records (Status: $reason).";
         $pdo->prepare("INSERT INTO system_notices (type, content) VALUES ('removal', ?)")->execute([$noticeContent]);
 
-        $telegramMsg = "<b>🗑️ SYSTEM NOTICE: RECORD REMOVAL</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\n" .
+        $telegramMsg = "<b>SYSTEM NOTICE: RECORD REMOVAL</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\n" .
                       "<i>A student has been removed from the logs.</i>\n\n" .
                       "Student: <b>$studentName</b>\n" .
                       "Status: <b>$reason</b>\n\n" .

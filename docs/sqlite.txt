@@ -1,36 +1,196 @@
-CREATE TABLE users (
-        qr_code TEXT PRIMARY KEY,
-        name TEXT NOT NULL
-    );
-CREATE TABLE attendance (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        qr_code TEXT NOT NULL,
-        date TEXT NOT NULL,
-        time TEXT NOT NULL, status VARCHAR(10) DEFAULT 'present',
-        FOREIGN KEY(qr_code) REFERENCES users(qr_code)
-    );
-CREATE TABLE sqlite_sequence(name,seq);
-CREATE TABLE android_metadata (locale TEXT);
-CREATE TABLE settings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  call_time VARCHAR(5) NOT NULL DEFAULT '08:00',
-  grace_period INT NOT NULL DEFAULT 20,
-  absent_after INT NOT NULL DEFAULT 30,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Current Database Schema (auto-migrated)
+-- Generated from includes/db.php table definitions
+
+CREATE TABLE IF NOT EXISTS users (
+    qr_code TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    birthday DATE,
+    email TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    middle_initial TEXT,
+    student_type TEXT DEFAULT 'regular',
+    course TEXT,
+    section TEXT,
+    place_of_birth TEXT,
+    sex TEXT,
+    civil_status TEXT,
+    religion TEXT,
+    citizenship TEXT,
+    contact_number TEXT,
+    year_level TEXT DEFAULT '1st',
+    birthday_image TEXT DEFAULT NULL,
+    deleted_at DATETIME DEFAULT NULL,
+    home_address TEXT,
+    guardian_name TEXT,
+    guardian_contact TEXT,
+    blood_type TEXT,
+    lrn TEXT,
+    mother_name TEXT,
+    father_name TEXT,
+    guardian_relationship TEXT
 );
 
-CREATE TABLE billing (
+CREATE TABLE IF NOT EXISTS attendance (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     qr_code TEXT NOT NULL,
-    amount REAL NOT NULL,
-    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(qr_code) REFERENCES users(qr_code)
+    date TEXT NOT NULL,
+    time TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('present', 'late', 'absent')),
+    session TEXT CHECK(session IN ('morning', 'afternoon')),
+    school_year TEXT,
+    deleted_at DATETIME DEFAULT NULL,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
 );
 
-CREATE TABLE billing_history (
+CREATE TABLE IF NOT EXISTS settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    call_time TEXT NOT NULL DEFAULT '08:00',
+    grace_period INTEGER NOT NULL DEFAULT 20,
+    absent_after INTEGER NOT NULL DEFAULT 30,
+    time_in_out_enabled INTEGER NOT NULL DEFAULT 0,
+    registration_lock INTEGER NOT NULL DEFAULT 0,
+    billing_quota REAL NOT NULL DEFAULT 1000.00,
+    billing_target_date TEXT,
+    active_school_year TEXT DEFAULT 'SY 2024-2025',
+    sy_start_date TEXT,
+    sy_end_date TEXT,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    am_in VARCHAR(5) DEFAULT '08:00',
+    am_out VARCHAR(5) DEFAULT '11:00',
+    pm_in VARCHAR(5) DEFAULT '13:00',
+    pm_out VARCHAR(5) DEFAULT '16:00',
+    billing_mode TEXT DEFAULT 'fixed',
+    maintenance_mode INTEGER DEFAULT 0,
+    telegram_bot_token TEXT DEFAULT '',
+    telegram_group_id TEXT DEFAULT '',
+    admin_telegram_id TEXT DEFAULT '',
+    birthday_image TEXT DEFAULT NULL
+);
+
+CREATE TABLE IF NOT EXISTS billing_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    amount REAL NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS saved_groups (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    members TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS subjects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    code TEXT,
+    room TEXT,
+    lecturer TEXT,
+    semester TEXT NOT NULL,
+    school_year TEXT,
+    category TEXT DEFAULT 'subject',
+    is_active INTEGER DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS subject_attendance (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    qr_code TEXT NOT NULL,
+    date TEXT NOT NULL,
+    time TEXT,
+    status TEXT NOT NULL,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    day_of_week TEXT NOT NULL,
+    start_time TEXT NOT NULL,
+    end_time TEXT NOT NULL,
+    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS billing (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     qr_code TEXT NOT NULL,
+    event_id INTEGER DEFAULT 1,
     amount REAL NOT NULL,
-    payment_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    description TEXT
+    payment_date TEXT NOT NULL,
+    school_year TEXT,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE,
+    FOREIGN KEY(event_id) REFERENCES billing_events(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS billing_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qr_code TEXT NOT NULL,
+    event_id INTEGER DEFAULT 1,
+    amount REAL NOT NULL,
+    payment_date TEXT NOT NULL,
+    description TEXT,
+    school_year TEXT,
+    recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS student_subjects (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qr_code TEXT NOT NULL,
+    subject_id INTEGER NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(qr_code) REFERENCES users(qr_code) ON DELETE CASCADE,
+    FOREIGN KEY(subject_id) REFERENCES subjects(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS schedule_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS notified_contexts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    subject_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    notified_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(subject_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS telegram_queue (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS birthday_greetings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    qr_code TEXT NOT NULL,
+    year TEXT NOT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(qr_code, year)
+);
+
+CREATE TABLE IF NOT EXISTS system_notices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    type TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS wifi_networks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ssid TEXT NOT NULL,
+    password TEXT,
+    encryption TEXT DEFAULT 'WPA',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

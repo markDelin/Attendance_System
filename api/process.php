@@ -82,26 +82,26 @@ try {
       );
   }
 
-  // 3a. Subject Attendance Handling
-  if ($subjectId) {
-      // STRICT ENROLLMENT CHECK (Modified)
-      // Regular students: ALLOW (Skip check)
-      // Irregular students: MUST be in student_subjects
-      
-      $type = $user['student_type'] ?? 'regular'; // Default to regular if null
-      
-      if ($type === 'irregular') {
-          $checkEnrollment = $pdo->prepare("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?");
-          $checkEnrollment->execute([$qr, $subjectId]);
-          if (!$checkEnrollment->fetch()) {
-              echo json_encode([
-                  "status" => "error", 
-                  "message" => "Student NOT enrolled in this subject.",
-                  "user_name" => $user["name"] ?? "Unknown"
-              ]);
-              exit();
+      // 3a. Subject Attendance Handling
+      if ($subjectId) {
+          // STRICT ENROLLMENT CHECK
+          // Irregular students: MUST be in student_subjects
+          // Regular students: ALWAYS allowed (auto-enrolled)
+          
+          $type = $user['student_type'] ?? 'regular';
+          
+          if ($type === 'irregular') {
+              $checkEnrollment = $pdo->prepare("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?");
+              $checkEnrollment->execute([$qr, $subjectId]);
+              if (!$checkEnrollment->fetch()) {
+                  echo json_encode([
+                      "status" => "error", 
+                      "message" => "Student NOT enrolled in this subject.",
+                      "user_name" => $user["name"] ?? "Unknown"
+                  ]);
+                  exit();
+              }
           }
-      }
 
       // Check Existing Subject Record
       $stmt = $pdo->prepare("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?");
@@ -184,13 +184,13 @@ try {
   error_log("Database Error: " . $e->getMessage());
   echo json_encode([
     "status" => "error",
-    "message" => "Database Error: " . $e->getMessage(),
+    "message" => "A database error occurred. Please check the server logs.",
   ]);
 } catch (Exception $e) {
   error_log("Application Error: " . $e->getMessage());
   echo json_encode([
     "status" => "error",
-    "message" => $e->getMessage(),
+    "message" => "An unexpected error occurred. Please check the server logs.",
   ]);
 }
 

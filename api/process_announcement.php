@@ -30,10 +30,10 @@ try {
         $stmt->execute(["%$setName%"]);
         $regularCount = $stmt->fetchColumn();
 
-        $message = "<b>🎓 SET $setName STATUS UPDATE</b>\n";
+        $message = "<b>SET $setName STATUS UPDATE</b>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━┳═─\n\n";
         $message .= "Active Regular Students: <b>$regularCount</b>\n\n";
-        $message .= "Keep going, class! 🚀" . $footer;
+        $message .= "Keep going, class!" . $footer;
     } elseif ($type === 'system_refresh') {
         // Fetch settings for active school year
         $settingsStmt = $pdo->query("SELECT active_school_year FROM settings LIMIT 1");
@@ -43,18 +43,18 @@ try {
         $f = function($p, $m) {
             $filled = $p / 10;
             $bar = str_repeat("█", $filled) . str_repeat("░", 10 - $filled);
-            return "🔄 <b>SYSTEM REFRESHING</b>\n<code>[$bar] $p%</code>\n\n<i>$m...</i>";
+            return "<b>SYSTEM REFRESHING</b>\n<code>[$bar] $p%</code>\n\n<i>$m...</i>";
         };
 
         $step1 = $f(20, "Initializing protocols");
         $step2 = $f(60, "Clearing subject cache");
         $step3 = $f(90, "Importing new curriculum");
-        $step4 = "✅ <b>SYSTEM REFRESH COMPLETED</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nAcademic Year: <b>$sy</b>\n\nSystem is now ready for use! 📖" . $footer;
+        $step4 = "<b>SYSTEM REFRESH COMPLETED</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nAcademic Year: <b>$sy</b>\n\nSystem is now ready for use!" . $footer;
 
         $message = "[ANIMATE]" . $step1 . "[STEP]" . $step2 . "[STEP]" . $step3 . "[STEP]" . $step4;
     } elseif ($type === 'new_student') {
         $name = !empty($content) ? htmlspecialchars($content) : "Unknown";
-        $message = "<b>🎉 NEW STUDENT NOTICE</b>\n";
+        $message = "<b>NEW STUDENT NOTICE</b>\n";
         $message .= "━━━━━━━━━━━━━━━━━━━━┳═─\n\n";
         $message .= "New student notice = <b>$name</b>\n";
         $message .= "Coming soon" . $footer;

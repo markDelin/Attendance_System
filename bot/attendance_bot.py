@@ -90,7 +90,7 @@ def get_student_stats(qr_code):
     # Retrieve active school year and normalize
     cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
     setting_row = cursor.fetchone()
-    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
+    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2024-2025"
     normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
     
     # Aggregated Stats for Overall Summary
@@ -240,7 +240,7 @@ def get_today_stats():
 
     today_display = datetime.now().strftime("%b %d, %Y")
     
-    msg = f"<b>📊 TODAY'S SUMMARY</b>\n"
+    msg = f"<b>[STATS] TODAY'S SUMMARY</b>\n"
     msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
     msg += f"Date: {today_display}\n\n"
     
@@ -323,7 +323,7 @@ def get_student_markdown(qr_code):
     # Retrieve active school year and normalize
     cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
     setting_row = cursor.fetchone()
-    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2026-2027"
+    active_sy = setting_row[0].strip() if (setting_row and setting_row[0]) else "SY 2024-2025"
     normalized_sy = active_sy.replace("SY ", "").replace("sy ", "").strip()
     
     # Aggregated Stats
@@ -510,7 +510,7 @@ def birthday_check_worker():
     print("Birthday Greeting Worker initialized.")
     while True:
         try:
-            _, chat_id, _, _, _ = get_settings()
+            _, chat_id, _, _, global_bday_img = get_settings()
             if not chat_id:
                 time.sleep(60)
                 continue
@@ -550,14 +550,14 @@ def birthday_check_worker():
             if birthdays:
                 try:
                     # Animated Progress Sweep - Only once per batch
-                    sweep_msg = bot.send_message(chat_id, "🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                    sweep_msg = bot.send_message(chat_id, "[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
                     
                     for i in range(1, 6):
                         time.sleep(0.4)
                         filled = i * 2
                         bar = "█" * filled + "░" * (10 - filled)
                         bot.edit_message_text(
-                            f"🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
+                            f"[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
                             chat_id,
                             sweep_msg.message_id,
                             parse_mode='HTML'
@@ -581,7 +581,7 @@ def birthday_check_worker():
 
                         # Ultra-Minimalist 'Pure Data' UI (No Labels, Full Date)
                         msg = (
-                            "<b>🎂 BIRTHDAY NOTICE</b>\n"
+                            "<b>[BDAY] BIRTHDAY NOTICE</b>\n"
                             "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
                             f"Date: {today_full}\n\n"
                             f"<b>{f_name} {l_name}</b>\n"
@@ -875,10 +875,10 @@ while True:
             count = len(msg_ids)
             
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("✅ Confirm Broadcast", callback_data="ann_confirm"), 
-                      InlineKeyboardButton("❌ Cancel", callback_data="ann_cancel"))
+            markup.row(InlineKeyboardButton("[OK] Confirm Broadcast", callback_data="ann_confirm"), 
+                      InlineKeyboardButton("[X] Cancel", callback_data="ann_cancel"))
             
-            msg = f"📦 <b>ANNOUNCEMENT READY</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffer Stable</b>\nItems: <b>{count} total</b>\n\nReady to deliver these items to the group chat?"
+            msg = f"[BOX] <b>ANNOUNCEMENT READY</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffer Stable</b>\nItems: <b>{count} total</b>\n\nReady to deliver these items to the group chat?"
             try:
                 bot.edit_message_text(msg, chat_id, draft_id, parse_mode='HTML', reply_markup=markup)
             except: pass
@@ -926,16 +926,16 @@ while True:
                 if state and state.get('timer'):
                     state['timer'].cancel()
                 user_states[message.from_user.id] = {'state': 'idle'}
-            bot.reply_to(message, "❌ <b>Announcement cancelled.</b> Returning to normal mode.", reply_markup=get_admin_main_keyboard())
+            bot.reply_to(message, "[X] <b>Announcement cancelled.</b> Returning to normal mode.", reply_markup=get_admin_main_keyboard())
             return
             
         with user_states_lock:
             # Start drafting session
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("✅ Broadcast Now", callback_data="ann_confirm"), 
-                      InlineKeyboardButton("❌ Discard", callback_data="ann_cancel"))
+            markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                      InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
             
-            draft_msg = bot.send_message(message.chat.id, "📣 <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Ready for Input</b>\nItems: <code>[0]</code>\n\n<i>Send text, photos, or files to add them to your draft.</i>", parse_mode='HTML', reply_markup=markup)
+            draft_msg = bot.send_message(message.chat.id, "[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Ready for Input</b>\nItems: <code>[0]</code>\n\n<i>Send text, photos, or files to add them to your draft.</i>", parse_mode='HTML', reply_markup=markup)
             
             user_states[message.from_user.id] = {
                 'state': 'announcing', 
@@ -954,7 +954,7 @@ while True:
             stats = get_today_stats()
             bot.reply_to(message, stats)
         except Exception as e:
-            bot.reply_to(message, f"❌ <b>Command Error:</b>\n<code>{str(e)}</code>")
+            bot.reply_to(message, f"[X] <b>Command Error:</b>\n<code>{str(e)}</code>")
 
     @bot.message_handler(commands=['export'])
     def handle_export(message):
@@ -965,19 +965,19 @@ while True:
         try:
             path = export_attendance_csv()
             with open(path, 'rb') as f:
-                bot.send_document(message.chat.id, f, caption="📊 Full Attendance Export (CSV)")
+                bot.send_document(message.chat.id, f, caption="[STATS] Full Attendance Export (CSV)")
             os.remove(path)
         except Exception as e:
-            bot.reply_to(message, f"❌ Export failed: {e}")
+            bot.reply_to(message, f"[X] Export failed: {e}")
 
     def animate_loading(chat_id, title="GENERATING DOSSIER", speed=0.3, message_id=None):
         """Standardized loading animation. Can send a new message or edit an existing one."""
         try:
             if message_id:
-                bot.edit_message_text(f"🔄 <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id, message_id, parse_mode='HTML')
+                bot.edit_message_text(f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id, message_id, parse_mode='HTML')
                 working_id = message_id
             else:
-                msg = bot.send_message(chat_id, f"🔄 <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                msg = bot.send_message(chat_id, f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
                 working_id = msg.message_id
                 
             for i in range(1, 6):
@@ -985,7 +985,7 @@ while True:
                 filled = i * 2
                 bar = "█" * filled + "░" * (10 - filled)
                 bot.edit_message_text(
-                    f"🔄 <b>{title}</b>\n<code>[{bar}] {i*20}%</code>",
+                    f"[SYNC] <b>{title}</b>\n<code>[{bar}] {i*20}%</code>",
                     chat_id, working_id, parse_mode='HTML'
                 )
             return working_id
@@ -995,7 +995,7 @@ while True:
     def handle_pdf_export(message):
         args = message.text.split(maxsplit=1)
         if len(args) < 2:
-            bot.reply_to(message, "<b>📄 PDF Export</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a student ID.\n\nExample: <code>/pdf 12345</code>")
+            bot.reply_to(message, "<b>[DOC] PDF Export</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a student ID.\n\nExample: <code>/pdf 12345</code>")
             return
             
         qr_code = args[1].strip()
@@ -1006,15 +1006,15 @@ while True:
             pdf_path = generate_pdf_dossier(qr_code)
             if pdf_path and os.path.exists(pdf_path):
                 with open(pdf_path, 'rb') as f:
-                    bot.send_document(message.chat.id, f, caption=f"📄 Attendance Dossier")
+                    bot.send_document(message.chat.id, f, caption=f"[DOC] Attendance Dossier")
                 os.remove(pdf_path) # Cleanup
                 if loading_id: bot.delete_message(message.chat.id, loading_id)
             else:
                 if loading_id: bot.delete_message(message.chat.id, loading_id)
-                bot.reply_to(message, "❌ Failed to generate PDF. Ensure ID is correct.")
+                bot.reply_to(message, "[X] Failed to generate PDF. Ensure ID is correct.")
         except Exception as e:
             if loading_id: bot.delete_message(message.chat.id, loading_id)
-            bot.reply_to(message, f"❌ Error: {e}")
+            bot.reply_to(message, f"[X] Error: {e}")
             
     # --- NEW: Upcoming Birthdays Command ---
     @bot.message_handler(commands=['birthdays'])
@@ -1060,7 +1060,7 @@ while True:
                 bot.reply_to(message, "<i>No upcoming birthdays detected.</i>", parse_mode='HTML')
                 return
                 
-            msg_body = "<b>📅 UPCOMING BIRTHDAYS</b>\n"
+            msg_body = "<b>[DATE] UPCOMING BIRTHDAYS</b>\n"
             msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
             msg_body += f"Date: {datetime.now().strftime('%b %d, %Y')}\n\n"
             
@@ -1080,7 +1080,7 @@ while True:
     def handle_birthday_search(message):
         args = message.text.split(maxsplit=1)
         if len(args) < 2:
-            bot.reply_to(message, "<b>🔍 BIRTHDAY SEARCH</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or student ID.\n\nExample: <code>/bdaysearch delin</code>")
+            bot.reply_to(message, "<b>[SEARCH] BIRTHDAY SEARCH</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or student ID.\n\nExample: <code>/bdaysearch delin</code>")
             return
             
         query = args[1].strip()
@@ -1088,14 +1088,14 @@ while True:
         
         try:
             # 1. Animated Progress Sweep
-            sweep_msg = bot.send_message(message.chat.id, "🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+            sweep_msg = bot.send_message(message.chat.id, "[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
             
             for i in range(1, 6):
                 time.sleep(0.3)
                 filled = i * 2
                 bar = "█" * filled + "░" * (10 - filled)
                 bot.edit_message_text(
-                    f"🔍 <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
+                    f"[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
                     message.chat.id,
                     sweep_msg.message_id,
                     parse_mode='HTML'
@@ -1123,7 +1123,7 @@ while True:
                 bot.send_message(message.chat.id, f"<i>No birthday records found for: '{query}'</i>", parse_mode='HTML')
                 return
 
-            msg_body = "<b>🔍 BIRTHDAY SEARCH RESULTS</b>\n"
+            msg_body = "<b>[SEARCH] BIRTHDAY SEARCH RESULTS</b>\n"
             msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
             msg_body += f"Query: '{query}'\n\n"
             
@@ -1151,18 +1151,18 @@ while True:
         """Starts the ordering process with a frame-animated UI."""
         products = get_products()
         if not products:
-            bot.reply_to(message, "📦 <b>ORDER SYSTEM</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>Currently, no products are available for order.</i>")
+            bot.reply_to(message, "[BOX] <b>ORDER SYSTEM</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>Currently, no products are available for order.</i>")
             return
             
         _, _, _, store_name, _ = get_settings()
         markup = InlineKeyboardMarkup(row_width=1)
         for p_id, p_name, p_price, p_stock, _, _ in products:
             markup.add(InlineKeyboardButton(f"{p_name} - ₱{p_price}", callback_data=f"ord_sel_{p_id}"))
-        markup.add(InlineKeyboardButton("❌ Cancel", callback_data="ord_cancel"))
+        markup.add(InlineKeyboardButton("[X] Cancel", callback_data="ord_cancel"))
         
         frame_msg = bot.send_message(
             message.chat.id, 
-            f"📦 <b>{store_name}</b>\n━━━━━━━━━━━━━━━━━━━━\nSelect a product you wish to order from the list below.\n\n<i>All orders are subject to stock availability and validation.</i>",
+            f"[BOX] <b>{store_name}</b>\n━━━━━━━━━━━━━━━━━━━━\nSelect a product you wish to order from the list below.\n\n<i>All orders are subject to stock availability and validation.</i>",
             reply_markup=markup
         )
         # Initialize state
@@ -1182,7 +1182,7 @@ while True:
 
         if call.data == 'ord_cancel':
             bot.edit_message_text(
-                "❌ <b>Order Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe ordering process was terminated. Feel free to browse again anytime.",
+                "[X] <b>Order Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe ordering process was terminated. Feel free to browse again anytime.",
                 chat_id=call.message.chat.id,
                 message_id=call.message.message_id
             )
@@ -1205,7 +1205,7 @@ while True:
             is_even_only = product[5]
             
             msg = (
-                f"🛒 <b>ORDERING: {p_name}</b>\n"
+                f"[CART] <b>ORDERING: {p_name}</b>\n"
                 f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
                 f"Price: <b>₱{p_price}</b>\n"
                 f"Stock: <b>{p_stock} pcs</b>\n\n"
@@ -1213,10 +1213,10 @@ while True:
                 f"Please type the quantity you wish to order.\n"
             )
             if is_even_only:
-                msg += f"⚠️ <i>Note: Must be an <b>even number</b>.</i>"
+                msg += f"[WARN] <i>Note: Must be an <b>even number</b>.</i>"
             
             markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("❌ Abort", callback_data="ord_cancel"))
+            markup.add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
             
             bot.edit_message_text(msg, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
             bot.answer_callback_query(call.id)
@@ -1235,7 +1235,7 @@ while True:
                 current_stock = cursor.fetchone()[0]
                 
                 if current_stock < qty:
-                    bot.edit_message_text("❌ <b>Stock Error</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nSomeone else might have ordered. Low stock alert.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+                    bot.edit_message_text("[X] <b>Stock Error</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nSomeone else might have ordered. Low stock alert.", chat_id=call.message.chat.id, message_id=call.message.message_id)
                     conn.close()
                     return
                     
@@ -1252,7 +1252,7 @@ while True:
                 conn.close()
                 
                 bot.edit_message_text(
-                    f"✅ <b>ORDER PLACED!</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                    f"[OK] <b>ORDER PLACED!</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
                     f"<b>Product:</b> {p_name}\n"
                     f"<b>Quantity:</b> {qty} pcs\n"
                     f"<b>Total:</b> ₱{total}\n\n"
@@ -1265,7 +1265,7 @@ while True:
                 _, _, ADMIN_ID, _, _ = get_settings()
                 if ADMIN_ID:
                     admin_msg = (
-                        f"🛍️ <b>NEW ORDER RECEIVED</b>\n"
+                        f"[CART] <b>NEW ORDER RECEIVED</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
                         f"<b>Item:</b> {p_name}\n"
                         f"<b>Qty:</b> {qty}\n"
@@ -1276,7 +1276,7 @@ while True:
                 
             except Exception as e:
                 print(f"Order error: {e}")
-                bot.edit_message_text("❌ <b>Order Failed</b>\nSystem error. Try again later.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+                bot.edit_message_text("[X] <b>Order Failed</b>\nSystem error. Try again later.", chat_id=call.message.chat.id, message_id=call.message.message_id)
             
             user_states[call.from_user.id] = {'state': 'idle'}
             bot.answer_callback_query(call.id)
@@ -1300,15 +1300,15 @@ while True:
             conn.close()
             
             if not orders:
-                bot.reply_to(message, "📋 <b>ORDER LOG</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>No orders recorded in the system.</i>")
+                bot.reply_to(message, "[LIST] <b>ORDER LOG</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>No orders recorded in the system.</i>")
                 return
                 
-            msg = "📋 <b>LATEST ORDERS (15)</b>\n"
+            msg = "[LIST] <b>LATEST ORDERS (15)</b>\n"
             msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
             
             for cust, item, qty, total, status, date in orders:
                 # Status prefix
-                status_icon = "⏳" if status == 'pending' else "✅"
+                status_icon = "[WAIT]" if status == 'pending' else "[OK]"
                 date_str = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').strftime('%b %d, %H:%M')
                 
                 msg += f"<b>{cust}</b> · <i>{date_str}</i>\n"
@@ -1321,13 +1321,13 @@ while True:
             
         except Exception as e:
             print(f"Orders view error: {e}")
-            bot.reply_to(message, "❌ System error retrieving orders.")
+            bot.reply_to(message, "[X] System error retrieving orders.")
 
     @bot.message_handler(commands=['search'])
     def handle_search(message):
         args = message.text.split(maxsplit=1)
         if len(args) < 2:
-            bot.reply_to(message, "<b>🔍 Search Required</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or ID.\n\nExample: <code>/search John</code>")
+            bot.reply_to(message, "<b>[SEARCH] Search Required</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or ID.\n\nExample: <code>/search John</code>")
             return
         
         query = args[1].strip()
@@ -1360,25 +1360,25 @@ while True:
         if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
             return
             
-        bot.send_message(message.chat.id, "🔄 <b>BATCH PROCESSING</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nInitializing mass dossier generation...")
+        bot.send_message(message.chat.id, "[SYNC] <b>BATCH PROCESSING</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nInitializing mass dossier generation...")
         students = get_all_active_students()
         total = len(students)
         
         if total == 0:
-            bot.send_message(message.chat.id, "❌ No active students found.")
+            bot.send_message(message.chat.id, "[X] No active students found.")
             return
 
-        status_msg = bot.send_message(message.chat.id, f"📊 <b>Dossier Batch (0/{total})</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+        status_msg = bot.send_message(message.chat.id, f"[STATS] <b>Dossier Batch (0/{total})</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
         
         for i, (qr_code, name) in enumerate(students, 1):
             try:
                 # Individual Animation for 'Data Retrieval' feel
-                load_msg = bot.send_message(message.chat.id, f"🔄 <b>FETCHING:</b> {name}\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                load_msg = bot.send_message(message.chat.id, f"[SYNC] <b>FETCHING:</b> {name}\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
                 for step in range(1, 4):
                     time.sleep(0.2)
                     filled = step * 3
                     bar = "█" * filled + "░" * (10 - filled)
-                    try: bot.edit_message_text(f"🔄 <b>FETCHING:</b> {name}\n<code>[{bar}] {step*33}%</code>", message.chat.id, load_msg.message_id, parse_mode='HTML')
+                    try: bot.edit_message_text(f"[SYNC] <b>FETCHING:</b> {name}\n<code>[{bar}] {step*33}%</code>", message.chat.id, load_msg.message_id, parse_mode='HTML')
                     except: pass
                 
                 stats = get_student_stats(qr_code)
@@ -1395,7 +1395,7 @@ while True:
                     bar = "█" * filled + "░" * (10 - filled)
                     percent = int((i / total) * 100)
                     bot.edit_message_text(
-                        f"📊 <b>Dossier Batch ({i}/{total})</b>\n<code>[{bar}] {percent}%</code>",
+                        f"[STATS] <b>Dossier Batch ({i}/{total})</b>\n<code>[{bar}] {percent}%</code>",
                         message.chat.id, status_msg.message_id, parse_mode='HTML'
                     )
                 
@@ -1403,7 +1403,7 @@ while True:
             except Exception as e:
                 print(f"Error sending dossier for {name}: {e}")
                 
-        bot.send_message(message.chat.id, f"✅ <b>BATCH COMPLETED</b>\nSent {total} dossiers successfully.")
+        bot.send_message(message.chat.id, f"[OK] <b>BATCH COMPLETED</b>\nSent {total} dossiers successfully.")
 
     @bot.callback_query_handler(func=lambda call: call.data.startswith('view_'))
     def handle_selection(call):
@@ -1415,8 +1415,8 @@ while True:
         if stats:
             # Edit the message with stats
             markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("📄 Export PDF Dossier", callback_data=f"pdf_exp_{qr_code}"))
-            markup.row(InlineKeyboardButton("🔄 New Search", switch_inline_query_current_chat=""))
+            markup.row(InlineKeyboardButton("[DOC] Export PDF Dossier", callback_data=f"pdf_exp_{qr_code}"))
+            markup.row(InlineKeyboardButton("[SYNC] New Search", switch_inline_query_current_chat=""))
             bot.edit_message_text(stats, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML', reply_markup=markup)
         else:
             bot.answer_callback_query(call.id, "Student not found.")
@@ -1433,12 +1433,12 @@ while True:
             pdf_path = generate_pdf_dossier(qr_code)
             if pdf_path and os.path.exists(pdf_path):
                 with open(pdf_path, 'rb') as f:
-                    bot.send_document(call.message.chat.id, f, caption=f"📄 Attendance Dossier")
+                    bot.send_document(call.message.chat.id, f, caption=f"[DOC] Attendance Dossier")
                 os.remove(pdf_path)
             else:
-                bot.send_message(call.message.chat.id, "❌ Failed to generate PDF.")
+                bot.send_message(call.message.chat.id, "[X] Failed to generate PDF.")
         except Exception as e:
-            bot.send_message(call.message.chat.id, f"❌ Error: {e}")
+            bot.send_message(call.message.chat.id, f"[X] Error: {e}")
         finally:
             if loading_id: bot.delete_message(call.message.chat.id, loading_id)
 
@@ -1462,7 +1462,7 @@ while True:
                 draft_id = state.get('draft_msg_id')
                 if msg_ids:
                     # Broadcasting Animation
-                    bot.edit_message_text("🚀 <b>BROADCASTING...</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                    bot.edit_message_text("[UP] <b>BROADCASTING...</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
                     
                     try:
                         step = 100 / len(msg_ids)
@@ -1472,21 +1472,21 @@ while True:
                             progress = int(i * step)
                             filled = int(progress / 10)
                             bar = "█" * filled + "░" * (10 - filled)
-                            bot.edit_message_text(f"🚀 <b>BROADCASTING...</b>\n<code>[{bar}] {progress}%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                            bot.edit_message_text(f"[UP] <b>BROADCASTING...</b>\n<code>[{bar}] {progress}%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
                             time.sleep(0.5)
                         
-                        bot.edit_message_text("✅ <b>Broadcast Successful!</b>\nAll items delivered to the group.", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                        bot.edit_message_text("[OK] <b>Broadcast Successful!</b>\nAll items delivered to the group.", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
                         time.sleep(2)
                         bot.delete_message(call.message.chat.id, draft_id)
                         bot.send_message(call.message.chat.id, "Main menu restored.", reply_markup=get_admin_main_keyboard())
                     except Exception as e:
-                        bot.edit_message_text(f"❌ <b>Broadcast Failed:</b> {e}", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                        bot.edit_message_text(f"[X] <b>Broadcast Failed:</b> {e}", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
                 else:
                     bot.answer_callback_query(call.id, "No items to send.")
             else:
                 draft_id = state.get('draft_msg_id')
                 if draft_id: bot.delete_message(call.message.chat.id, draft_id)
-                bot.send_message(call.message.chat.id, "❌ Announcement discarded.", reply_markup=get_admin_main_keyboard())
+                bot.send_message(call.message.chat.id, "[X] Announcement discarded.", reply_markup=get_admin_main_keyboard())
             
             # Cleanup timer and reset state
             if state.get('timer'):
@@ -1688,7 +1688,7 @@ while True:
                 else:
                     cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
                     setting_row = cursor.fetchone()
-                    active_sy = setting_row[0] if (setting_row and setting_row[0]) else "SY 2026-2027"
+                    active_sy = setting_row[0] if (setting_row and setting_row[0]) else "SY 2024-2025"
                     
                     cursor.execute("SELECT id FROM attendance WHERE qr_code = ? AND date = ?", 
                                    (student_qr, date_val))
@@ -1786,9 +1786,9 @@ while True:
                     is_even_only = state_data['selected_product'][5]
                     if is_even_only and qty % 2 != 0:
                         bot.edit_message_text(
-                            f"❌ <b>Invalid Quantity</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nOrders for <b>{state_data['selected_product'][1]}</b> must be in <b>even numbers</b>.\n\nPlease type an even number (e.g. 10, 50, 100):",
+                            f"[X] <b>Invalid Quantity</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nOrders for <b>{state_data['selected_product'][1]}</b> must be in <b>even numbers</b>.\n\nPlease type an even number (e.g. 10, 50, 100):",
                             chat_id=message.chat.id, message_id=frame_id,
-                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("❌ Abort", callback_data="ord_cancel"))
+                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
                         )
                         return
                     
@@ -1796,9 +1796,9 @@ while True:
                     stock = state_data['selected_product'][3]
                     if qty > stock:
                         bot.edit_message_text(
-                            f"❌ <b>Low Stock</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nRequested: {qty} pcs\nAvailable: <b>{stock} pcs</b>\n\nPlease enter a lower quantity:",
+                            f"[X] <b>Low Stock</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nRequested: {qty} pcs\nAvailable: <b>{stock} pcs</b>\n\nPlease enter a lower quantity:",
                             chat_id=message.chat.id, message_id=frame_id,
-                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("❌ Abort", callback_data="ord_cancel"))
+                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
                         )
                         return
                     
@@ -1807,20 +1807,20 @@ while True:
                     state_data['state'] = 'ordering_name'
                     
                     bot.edit_message_text(
-                        f"🛒 <b>ORDERING: {state_data['selected_product'][1]}</b>\n"
+                        f"[CART] <b>ORDERING: {state_data['selected_product'][1]}</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
                         f"Quantity: <b>{qty} pcs</b>\n"
                         f"Total: <b>₱{state_data['total_price']}</b>\n\n"
                         f"<b>STEP: Full Name</b>\n"
                         f"Please type your full name for the record:",
                         chat_id=message.chat.id, message_id=frame_id,
-                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("❌ Abort", callback_data="ord_cancel"))
+                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
                     )
                 except ValueError:
                     bot.edit_message_text(
-                        "❌ <b>Invalid Input</b>\nPlease enter a valid whole number for quantity:",
+                        "[X] <b>Invalid Input</b>\nPlease enter a valid whole number for quantity:",
                         chat_id=message.chat.id, message_id=frame_id,
-                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("❌ Abort", callback_data="ord_cancel"))
+                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
                     )
                 return
 
@@ -1833,7 +1833,7 @@ while True:
                 total = state_data['total_price']
                 
                 msg = (
-                    f"📝 <b>VERIFY ORDER SUMMARY</b>\n"
+                    f"[EDIT] <b>VERIFY ORDER SUMMARY</b>\n"
                     f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
                     f"<b>Product:</b> {p_name}\n"
                     f"<b>Quantity:</b> {qty} pcs\n"
@@ -1843,8 +1843,8 @@ while True:
                 )
                 
                 markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("✅ Confirm Order", callback_data="ord_confirm"), 
-                          InlineKeyboardButton("❌ Discard", callback_data="ord_cancel"))
+                markup.row(InlineKeyboardButton("[OK] Confirm Order", callback_data="ord_confirm"), 
+                          InlineKeyboardButton("[X] Discard", callback_data="ord_cancel"))
                 
                 bot.edit_message_text(msg, chat_id=message.chat.id, message_id=frame_id, reply_markup=markup)
                 return
@@ -1860,9 +1860,9 @@ while True:
                 # Update Draft UI immediately
                 try:
                     markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("✅ Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("❌ Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"📣 <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffering Input...</b>\nItems: <b>[{count}]</b>\n\n<i>Sending more items? I'm listening...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffering Input...</b>\nItems: <b>[{count}]</b>\n\n<i>Sending more items? I'm listening...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
                 except: pass
 
                 if state_data.get('timer'):
@@ -1910,9 +1910,9 @@ while True:
                 # Update Draft UI immediately
                 try:
                     markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("✅ Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("❌ Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"📣 <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Receiving Media...</b>\nItems: <b>[{count}]</b>\n\n<i>Processing your file(s)...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Receiving Media...</b>\nItems: <b>[{count}]</b>\n\n<i>Processing your file(s)...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
                 except: pass
 
                 if state_data.get('timer'):
@@ -1926,14 +1926,14 @@ while True:
     def handle_getdb(message):
         _, _, ADMIN_ID, _, _ = get_settings()
         if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            bot.reply_to(message, "❌ Unauthorized or invalid chat type.")
+            bot.reply_to(message, "[X] Unauthorized or invalid chat type.")
             return
         
         if os.path.exists(DB_PATH):
             with open(DB_PATH, 'rb') as db_file:
-                bot.send_document(message.chat.id, db_file, caption="📁 Here is the current attendance database.")
+                bot.send_document(message.chat.id, db_file, caption="[FILE] Here is the current attendance database.")
         else:
-            bot.reply_to(message, "❌ Database file not found.")
+            bot.reply_to(message, "[X] Database file not found.")
 
     @bot.message_handler(content_types=['document'])
     def handle_document(message):
@@ -1955,9 +1955,9 @@ while True:
                 # Update Draft UI immediately
                 try:
                     markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("✅ Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("❌ Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"📣 <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>File Ingested</b>\nItems: <b>[{count}]</b>\n\n<i>Waiting for more or confirm below.</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>File Ingested</b>\nItems: <b>[{count}]</b>\n\n<i>Waiting for more or confirm below.</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
                 except: pass
 
                 if state_data.get('timer'):
@@ -1971,7 +1971,7 @@ while True:
         # Fallback: Database Sync
         if message.document.file_name.endswith('.db') or message.document.file_name.endswith('.sqlite'):
             try:
-                msg = bot.reply_to(message, "⏳ Downloading and syncing database...")
+                msg = bot.reply_to(message, "[WAIT] Downloading and syncing database...")
                 file_info = bot.get_file(message.document.file_id)
                 downloaded_file = bot.download_file(file_info.file_path)
                 
@@ -1990,9 +1990,9 @@ while True:
                 with open(DB_PATH, 'wb') as new_file:
                     new_file.write(downloaded_file)
                     
-                bot.edit_message_text(f"✅ Database synchronized successfully!\nPrevious database backed up as: `{os.path.basename(backup_path)}`", chat_id=msg.chat.id, message_id=msg.message_id, parse_mode='Markdown')
+                bot.edit_message_text(f"[OK] Database synchronized successfully!\nPrevious database backed up as: `{os.path.basename(backup_path)}`", chat_id=msg.chat.id, message_id=msg.message_id, parse_mode='Markdown')
             except Exception as e:
-                bot.reply_to(message, f"❌ Failed to sync: {e}")
+                bot.reply_to(message, f"[X] Failed to sync: {e}")
 
     if __name__ == "__main__":
         # Re-use existing threads if already running
@@ -2014,7 +2014,7 @@ while True:
             bot.polling(none_stop=True, timeout=60)
         except telebot.apihelper.ApiTelegramException as e:
             if e.error_code == 409:
-                print("\n❌ 409 CONFLICT ERROR:")
+                print("\n[X] 409 CONFLICT ERROR:")
                 print("Another instance of this bot is already running!")
                 print("Please close any other hidden terminal windows or scripts running the bot.")
             else:

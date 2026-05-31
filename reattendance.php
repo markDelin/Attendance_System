@@ -268,6 +268,39 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 height: 40px;
             }
         }
+        /* ─── Layout Classes ─── */
+        .container-sm {
+            max-width: 800px;
+            margin-top: 2rem;
+            padding-top: 1rem;
+        }
+        .subject-select-styled {
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-neu-in-sm);
+            color: var(--text-main);
+            width: 100%;
+        }
+        .reattend-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        .reattend-stat-value {
+            display: block;
+            font-size: 1.45rem;
+            font-weight: 900;
+        }
+        .reattend-stat-label {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
     </style>
 </head>
 <body>
@@ -285,7 +318,7 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
     include 'includes/navbar.php'; 
     ?>
     
-    <div class="container animate-fade-up" style="max-width: 800px; margin-top: 2rem; padding-top: 1rem;">
+    <div class="container animate-fade-up container-sm">
         
         <!-- Glassmorphic Date Control -->
         <div class="date-container-glass stagger-1">
@@ -295,25 +328,25 @@ $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         <!-- Subject Selection Area -->
         <div id="subjectControls" class="stagger-2" style="display:none; margin-bottom: 2rem;">
-             <select id="subjectSelect" class="form-control" onchange="refreshData()" style="border-radius: 14px; padding: 0.75rem 1rem; font-weight: 700; background: var(--bg-main); border: 1px solid var(--border); box-shadow: var(--shadow-neu-in-sm);">
+             <select id="subjectSelect" class="subject-select-styled" onchange="refreshData()">
                 <option value="">Loading Subjects...</option>
             </select>
         </div>
         
         <!-- Stats Grid -->
          <div id="subjectStats" class="stagger-3" style="display:none; margin-bottom: 2.25rem;">
-            <div class="mobile-force-stack" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+            <div class="reattend-stats-grid">
                 <div class="stat-badge-glass" style="border-top: 3px solid #10b981;">
-                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #10b981;" id="count-present">0</span>
-                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Present</small>
+                    <span class="reattend-stat-value" style="color: #10b981;" id="count-present">0</span>
+                    <small class="reattend-stat-label">Present</small>
                 </div>
                 <div class="stat-badge-glass" style="border-top: 3px solid #f59e0b;">
-                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #f59e0b;" id="count-late">0</span>
-                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Late</small>
+                    <span class="reattend-stat-value" style="color: #f59e0b;" id="count-late">0</span>
+                    <small class="reattend-stat-label">Late</small>
                 </div>
                 <div class="stat-badge-glass" style="border-top: 3px solid #ef4444;">
-                    <span style="display:block; font-size: 1.45rem; font-weight: 900; color: #ef4444;" id="count-absent">0</span>
-                    <small style="color: var(--text-muted); font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Absent</small>
+                    <span class="reattend-stat-value" style="color: #ef4444;" id="count-absent">0</span>
+                    <small class="reattend-stat-label">Absent</small>
                 </div>
             </div>
         </div>

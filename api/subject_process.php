@@ -29,9 +29,11 @@ try {
         
         echo json_encode(['status' => 'success', 'message' => ucfirst($category) . ' added.', 'id' => $pdo->lastInsertId()]);
 
-    // 2. Get Subjects
+    // 2. Get Subjects (current school year only)
     } elseif ($action === 'get_subjects') {
-        $stmt = $pdo->query("SELECT * FROM subjects ORDER BY school_year DESC, semester DESC, name ASC");
+        $activeSY = $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+        $stmt = $pdo->prepare("SELECT * FROM subjects WHERE school_year = ? ORDER BY semester DESC, name ASC");
+        $stmt->execute([$activeSY ?: 'SY 2024-2025']);
         $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
         // Group by School Year -> Semester
@@ -51,13 +53,11 @@ try {
         $status = $_POST['status'] ?? 'present';
         $date = $_POST['custom_date'] ?? date('Y-m-d');
 
-        // ENROLLMENT CHECK (Modified)
-        // 1. Get User Type
+        // ENROLLMENT CHECK
         $uStmt = $pdo->prepare("SELECT student_type FROM users WHERE qr_code = ?");
         $uStmt->execute([$qr_code]);
         $uType = $uStmt->fetchColumn() ?: 'regular';
 
-        // 2. If Irregular, Check Enrollment
         if ($uType === 'irregular') {
              $check = $pdo->prepare("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?");
              $check->execute([$qr_code, $subject_id]);

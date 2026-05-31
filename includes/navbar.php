@@ -102,7 +102,7 @@ switch($currentPage) {
     case 'manage_students.php': $title = 'Classmate Database'; break;
     case 'calendar.php': $title = 'Attendance Calendar'; break;
     case 'groups.php': $title = 'Group Randomizer'; break;
-    case 'markdown_editor.php': $title = 'Report Maker'; break;
+    case 'markdown_editor.php': $title = 'Markdown Editor'; break;
     case 'reattendance.php': $title = 'Re-attendance'; break;
     case 'settings.php': $title = 'System Settings'; break;
     case 'subjects.php': $title = 'Subject Portal'; break;
@@ -264,5 +264,6 @@ $explicitBackUrl = $backUrl . (strpos($backUrl, '?') !== false ? '&' : '?') . 'n
     });
 </script>
 <script src="assets/js/swal_custom.js"></script>
+<script src="assets/js/toast.js"></script>
 
 <?php include 'includes/search_overlay.php'; ?>

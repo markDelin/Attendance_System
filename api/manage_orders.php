@@ -152,7 +152,7 @@ if ($action === 'add_order') {
         $settings = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if ($settings && $settings['admin_telegram_id'] && $settings['telegram_bot_token']) {
-            $admin_msg = "🛍️ <b>NEW WEB ORDER</b>\n━━━━━━━━━━━━━━━━━━━━\n" .
+            $admin_msg = "<b>NEW WEB ORDER</b>\n━━━━━━━━━━━━━━━━━━━━\n" .
                          "<b>Item:</b> " . $product['name'] . "\n" .
                          "<b>Qty:</b> " . $quantity . "\n" .
                          "<b>Total:</b> ₱" . $total_price . "\n" .

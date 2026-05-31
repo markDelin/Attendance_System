@@ -1,6 +1,6 @@
 @echo off
 title Attendance System - PUBLIC HTTPS (Localtunnel)
-echo 🚀 Attempting to start a Secure Public HTTPS tunnel...
+echo Attempting to start a Secure Public HTTPS tunnel...
 echo.
 echo [IMPORTANT]: 
 echo 1. Keep your PHP server running in the other window.

@@ -32,8 +32,10 @@ $todaysRecords = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 $totalToday = count($todaysRecords);
 
-// Fetch Subjects & Events
-$stmt = $pdo->query("SELECT id, name, semester, category FROM subjects WHERE is_active = 1 ORDER BY category ASC, semester DESC, name ASC");
+// Fetch Subjects & Events (current school year only)
+$activeSY = $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+$stmt = $pdo->prepare("SELECT id, name, semester, category FROM subjects WHERE is_active = 1 AND school_year = ? ORDER BY category ASC, semester DESC, name ASC");
+$stmt->execute([$activeSY]);
 $subjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 $groupedContexts = ['subject' => [], 'event' => []];
 foreach ($subjects as $s) {
@@ -138,6 +140,216 @@ foreach ($subjects as $s) {
                 min-height: 250px;
             }
         }
+
+        /* ─── Layout Classes (replacing inline styles) ─── */
+        .scan-hero-wrapper {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .scan-hero-inner {
+            padding: 2rem 1.5rem;
+            border-radius: 24px;
+            margin-bottom: 1.5rem;
+        }
+        .scan-hero-icon {
+            width: 70px; height: 70px;
+            background: color-mix(in srgb, var(--primary) 10%, transparent);
+            color: var(--primary);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin-bottom: 0.25rem;
+        }
+        .scan-hero-icon i {
+            font-size: 2rem;
+        }
+        .scan-hero-hint {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            margin: 0;
+        }
+        .context-label {
+            font-size: 0.65rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: block;
+            margin-bottom: 0.6rem;
+        }
+        .context-select {
+            width: 100%;
+            border-radius: 12px;
+            height: 44px;
+            box-shadow: var(--shadow-neu-in-sm);
+            border: none;
+            background: var(--bg-main);
+            font-weight: 600;
+            font-size: 0.88rem;
+            padding: 0 12px;
+        }
+        .scans-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+        .scans-header h5 {
+            color: var(--text-main);
+            font-weight: 800;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+        .scans-header .subject-indicator {
+            font-size: 0.75em;
+            color: var(--text-muted);
+            font-weight: 600;
+            display: block;
+            margin-top: 4px;
+        }
+        .scans-actions {
+            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-notify-scan {
+            color: var(--primary);
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 50px;
+            font-weight: 700;
+        }
+        .count-badge-scan {
+            background: var(--bg-main);
+            color: var(--primary);
+            padding: 4px 12px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+        .records-link {
+            color: var(--primary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 700;
+            border-bottom: 2px solid var(--primary);
+            white-space: nowrap;
+        }
+        .attendance-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .scanner-modal-header {
+            padding: 0 0 1.25rem 0;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 12%, transparent);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .scanner-header-left {
+            display: flex;
+            align-items: center;
+            gap: 0.85rem;
+        }
+        .scanner-header-icon {
+            width: 42px; height: 42px;
+            border-radius: 12px;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);
+        }
+        .scanner-header-text h3 {
+            margin: 0;
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+            color: var(--text-main);
+        }
+        .scanner-header-text small {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            display: block;
+        }
+        .scanner-reader {
+            width: 100%;
+            overflow: hidden;
+        }
+        .scan-feedback-overlay {
+            display: none;
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        .scan-feedback-icon {
+            font-size: 4.5rem;
+            margin-bottom: 10px;
+        }
+        .scan-feedback-text {
+            color: white;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            text-align: center;
+            padding: 0 1.25rem;
+            font-family: 'Outfit', sans-serif;
+            line-height: 1.2;
+        }
+        .manual-qr-input {
+            flex: 1;
+            height: 40px;
+            border-radius: 10px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            padding: 0 12px;
+            color: var(--text-main);
+        }
+        .manual-qr-btn {
+            height: 40px;
+            border-radius: 10px;
+            padding: 0 18px;
+            font-weight: 700;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .manual-qr-hint {
+            display: block;
+            margin-top: 6px;
+            color: var(--text-muted);
+            font-size: 0.65rem;
+            text-align: center;
+        }
+
+        @media (max-width: 600px) {
+            .scans-header { flex-direction: column; align-items: flex-start; }
+            .scans-actions { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+            .hide-scans-mobile { display: none; }
+            .scan-hero-inner { padding: 1.5rem 1rem; }
+        }
         
     </style>
 </head>
@@ -152,22 +364,22 @@ foreach ($subjects as $s) {
     <main class="container" style="padding-top: 1rem;">
         
         <!-- Main Actions -->
-        <div style="text-align: center; margin-bottom: 2rem;" class="animate-fade-up">
-            <div class="glass-panel" style="padding: 2rem 1.5rem; border-radius: 24px; margin-bottom: 1.5rem;">
+        <div class="scan-hero-wrapper animate-fade-up">
+            <div class="glass-panel scan-hero-inner">
                 <div class="flex-center" style="flex-direction: column; gap: 12px;">
-                    <div style="width: 70px; height: 70px; background: color-mix(in srgb, var(--primary) 10%, transparent); color: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.25rem;">
-                        <i class="bi bi-qr-code-scan" style="font-size: 2rem;"></i>
+                    <div class="scan-hero-icon">
+                        <i class="bi bi-qr-code-scan"></i>
                     </div>
                     <button onclick="toggleScanner()" class="btn btn-primary scan-hero-btn">
                         Scan Now
                     </button>
-                    <p style="font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin: 0;">Tap to begin capturing student QR codes</p>
+                    <p class="scan-hero-hint">Tap to begin capturing student QR codes</p>
                 </div>
             </div>
 
             <div class="context-card">
-                <label for="scanSubject" style="font-size: 0.65rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 0.6rem;">Active Context</label>
-                <select id="scanSubject" class="form-control" style="width: 100%; border-radius: 12px; height: 44px; box-shadow: var(--shadow-neu-in-sm); border: none; background: var(--bg-main); font-weight: 600; font-size: 0.88rem;">
+                <label for="scanSubject" class="context-label">Active Context</label>
+                <select id="scanSubject" class="context-select">
                     <option value="">-- Daily Attendance --</option>
                     
                     <?php if (!empty($groupedContexts['subject'])): ?>
@@ -195,23 +407,23 @@ foreach ($subjects as $s) {
 
         <!-- Recent Scans List -->
         <div class="animate-fade-up delay-1">
-            <div class="mobile-stack" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1rem; gap: 1rem;">
+            <div class="mobile-stack scans-header">
                 <div>
-                    <h5 style="color: var(--text-main); font-weight: 800; margin: 0; letter-spacing: -0.02em;">
+                    <h5>
                         Recent Scans 
-                        <span id="subjectIndicator" style="font-size: 0.75em; color: var(--text-muted); font-weight: 600; display: block; margin-top: 4px;">(Daily Mode)</span>
+                        <span id="subjectIndicator" class="subject-indicator">(Daily Mode)</span>
                     </h5>
                 </div>
-                <div style="text-align:right; display: flex; align-items: center; gap: 10px;">
-                      <button id="btnNotify" onclick="finishAndNotify()" class="btn btn-ghost btn-sm" style="color: var(--primary); padding: 0.5rem 1rem; display: flex; align-items: center; gap: 6px; border-radius: 50px; font-weight: 700;">
-                        <i class="bi bi-bell"></i> <span class="hide-mobile">Notify</span>
+                <div class="scans-actions">
+                      <button id="btnNotify" onclick="finishAndNotify()" class="btn btn-ghost btn-sm btn-notify-scan">
+                        <i class="bi bi-bell"></i> <span class="hide-scans-mobile">Notify</span>
                       </button>
-                     <span id="countBadge" style="background:var(--bg-main); color:var(--primary); padding:4px 12px; border: 1px solid var(--border); border-radius:12px; font-size:0.8rem; font-weight:800;">0</span>
-                     <a href="view_attendance.php" style="color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 700; border-bottom: 2px solid var(--primary);">Records</a>
+                     <span id="countBadge" class="count-badge-scan">0</span>
+                     <a href="view_attendance.php" class="records-link">Records</a>
                 </div>
             </div>
 
-            <div id="attendanceList" class="attendance-list" style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div id="attendanceList" class="attendance-list">
                 <!-- Content injected via JS -->
                 <div style="padding: 2rem; text-align: center;">
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Loading...
@@ -224,14 +436,14 @@ foreach ($subjects as $s) {
     <!-- Scanner Modal -->
     <div id="scannerModal">
         <div class="scanner-content animate-fade-up" style="padding: 1.5rem 1.75rem 1.75rem;">
-            <div class="modal-header-pro" style="padding: 0 0 1.25rem 0; margin-bottom: 1.25rem; border-bottom: 1px solid color-mix(in srgb, var(--text-muted) 12%, transparent); display: flex; align-items: center; justify-content: space-between;">
-                <div class="header-left" style="display: flex; align-items: center; gap: 0.85rem;">
-                    <div class="header-icon" style="width: 42px; height: 42px; border-radius: 12px; background: var(--primary); color: white; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 35%, transparent);">
+            <div class="scanner-modal-header">
+                <div class="scanner-header-left">
+                    <div class="scanner-header-icon">
                         <i class="bi bi-qr-code-scan"></i>
                     </div>
-                    <div class="header-text">
-                        <h3 style="margin: 0; font-family: 'Outfit', sans-serif; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.2; color: var(--text-main);">Live Attendance Scanner</h3>
-                        <small style="font-size: 0.7rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; display: block;">Personal Attendance Scanner</small>
+                    <div class="scanner-header-text">
+                        <h3>Live Attendance Scanner</h3>
+                        <small>Personal Attendance Scanner</small>
                     </div>
                 </div>
                 <button onclick="toggleScanner()" class="modal-close-btn" title="Close">
@@ -248,18 +460,24 @@ foreach ($subjects as $s) {
                 <div class="reticle-corner reticle-bl"></div>
                 <div class="reticle-corner reticle-br"></div>
                 
-                <div id="reader" style="width: 100%; overflow: hidden;"></div>
+                <div id="reader" class="scanner-reader"></div>
                 
                 <!-- Scan Result Overlay -->
-                <div id="scanFeedback" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); flex-direction:column; align-items:center; justify-content:center; z-index:10; transition: all 0.3s ease;">
-                    <div id="feedbackIcon" style="font-size: 4.5rem; margin-bottom: 10px;"></div>
-                    <div id="feedbackText" style="color:white; font-weight:800; text-transform:uppercase; letter-spacing:0.05em; text-align:center; padding: 0 1.25rem; font-family: 'Outfit', sans-serif; line-height: 1.2;"></div>
+                <div id="scanFeedback" class="scan-feedback-overlay">
+                    <div id="feedbackIcon" class="scan-feedback-icon"></div>
+                    <div id="feedbackText" class="scan-feedback-text"></div>
                 </div>
             </div>
 
-            <p style="text-align: center; margin-top: 1rem; color: var(--text-muted); font-size: 0.82rem; font-weight: 500; margin-bottom: 0;">
-                Align student QR code within targeting indicators.
-            </p>
+            <div class="manual-qr-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border);">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="text" id="manualQRInput" class="manual-qr-input" placeholder="Or type/paste QR code...">
+                    <button onclick="submitManualQR()" class="btn btn-primary manual-qr-btn">
+                        <i class="bi bi-send"></i> Go
+                    </button>
+                </div>
+                <small class="manual-qr-hint">Manually enter the student's QR ID if the camera cannot scan.</small>
+            </div>
         </div>
     </div>
 
@@ -393,6 +611,23 @@ foreach ($subjects as $s) {
                 showConfirmButton: true
             });
         }
+
+        function submitManualQR() {
+            const input = document.getElementById('manualQRInput');
+            const qrCode = input.value.trim();
+            if (!qrCode) {
+                input.focus();
+                input.style.borderColor = 'var(--danger)';
+                setTimeout(() => input.style.borderColor = '', 1500);
+                return;
+            }
+            processScan(qrCode);
+            input.value = '';
+        }
+
+        document.getElementById('manualQRInput').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') submitManualQR();
+        });
 
         function processScan(qrCode) {
             if (qrCode === lastScanned || isProcessing) return;

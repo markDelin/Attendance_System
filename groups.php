@@ -84,7 +84,7 @@ $navbar_actions = '
             font-family: 'Outfit', sans-serif;
         }
 
-        /* 🎰 Shuffler Roulette & Celebration Styles */
+        /* Shuffler Roulette & Celebration Styles */
         .shuffler-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -202,7 +202,7 @@ $navbar_actions = '
             display: none;
         }
 
-        /* 🖨️ Responsive Printable PDF grid styling */
+        /* Responsive Printable PDF grid styling */
         @media print {
             body {
                 background: white !important;
@@ -259,7 +259,7 @@ $navbar_actions = '
 </head>
 <body>
 
-    <!-- 🎰 Shuffler Roulette Overlay & Confetti Canvas -->
+    <!-- Shuffler Roulette Overlay & Confetti Canvas -->
     <div id="shufflerOverlay" class="shuffler-overlay">
         <div class="shuffler-box">
             <div class="shuffler-glow-circle"></div>
@@ -447,7 +447,7 @@ $navbar_actions = '
             randomize();
         }
 
-        // 🎰 synthesized Sound FX
+        // Synthesized Sound FX
         let audioCtx = null;
         function playTickSound(frequency = 700, duration = 0.015) {
             try {
@@ -508,7 +508,7 @@ $navbar_actions = '
             }
         }
 
-        // 🎇 Confetti Canvas Burst Implementation
+        // Confetti Canvas Burst Implementation
         const canvas = document.getElementById('confettiCanvas');
         const ctx = canvas.getContext('2d');
         let confetti = [];
@@ -580,7 +580,7 @@ $navbar_actions = '
         let nextPreCalculatedGroups = null;
         let isRandomizing = false;
 
-        // 🎰 Slot-Machine Shuffler Animations (Extremely Realistic Mechanics per Group)
+        // Slot-Machine Shuffler Animations (Extremely Realistic Mechanics per Group)
         function randomize() {
             if (isRandomizing) return;
             if (activeClassmates.length === 0) {
@@ -704,7 +704,7 @@ $navbar_actions = '
 
             playTickSound(450, 0.025); // Deep mechanical click sound for card load
 
-            // 🎰 Build shuffler reel inside card
+            // Build shuffler reel inside card
             const ribbon = document.getElementById(`group-slot-ribbon-${groupIdx}`);
             
             // Build continuous scrolling tape of names using activeClassmates

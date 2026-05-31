@@ -72,8 +72,10 @@ echo '<!DOCTYPE html>
 <div class="container">';
 
 try {
-    // 1. Get Subjects
-    $stmt = $pdo->query("SELECT * FROM subjects ORDER BY semester DESC, name ASC");
+    // 1. Get Subjects (current school year only)
+    $activeSY = $pdo->query("SELECT active_school_year FROM settings LIMIT 1")->fetchColumn();
+    $stmt = $pdo->prepare("SELECT * FROM subjects WHERE school_year = ? ORDER BY semester DESC, name ASC");
+    $stmt->execute([$activeSY ?: 'SY 2024-2025']);
     $allSubjects = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     if ($filterScheduled) {

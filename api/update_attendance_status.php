@@ -63,15 +63,15 @@ try {
         $notifContext = "Daily Attendance ($session)";
     }
     
-    $statusEmoji = '✅';
-    if ($newStatus === 'late') $statusEmoji = '⚠️';
-    if ($newStatus === 'absent') $statusEmoji = '❌';
+    $statusIcon = '[OK]';
+    if ($newStatus === 'late') $statusIcon = '[!]';
+    if ($newStatus === 'absent') $statusIcon = '[X]';
     
-    $message = "🔄 <b>Attendance Updated</b>\n\n";
-    $message .= "👤 <b>Student:</b> $studentName\n";
-    $message .= "📅 <b>Date:</b> $dateStr\n";
-    $message .= "🏫 <b>Context:</b> $notifContext\n";
-    $message .= "📊 <b>Status:</b> $statusEmoji " . ucfirst($newStatus);
+    $message = "<b>ATTENDANCE UPDATED</b>\n\n";
+    $message .= "<b>Student:</b> $studentName\n";
+    $message .= "<b>Date:</b> $dateStr\n";
+    $message .= "<b>Context:</b> $notifContext\n";
+    $message .= "<b>Status:</b> $statusIcon " . ucfirst($newStatus);
     
     send_telegram_notification($message);
     

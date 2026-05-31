@@ -175,10 +175,15 @@ usort($other, $sortByTime);
         
         /* Theme Preview Circle */
         .theme-preview-color { 
-            width: 32px; 
-            height: 32px; 
-            background: var(--bg-card); border-radius: 20px; box-shadow: 0 40px 100px -20px rgba(0,0,0,0.2); 
-            padding: 4rem; position: relative; width: 100%; max-width: 100%;
+            width: 100%; 
+            height: 100px; 
+            background: var(--bg-card); 
+            border-radius: 20px; 
+            box-shadow: 0 40px 100px -20px rgba(0,0,0,0.2); 
+            padding: 1.5rem; 
+            position: relative; 
+            max-width: 100%;
+            box-sizing: border-box;
         }
 
         /* Adjust Mobile grid */

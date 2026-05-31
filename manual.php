@@ -255,46 +255,125 @@ if ($subjectId > 0) {
             text-shadow: 0 2px 10px rgba(0,0,0,0.05);
         }
 
-        @media (max-width: 600px) { 
-            .mobile-stack { flex-direction: column; align-items: stretch !important; } 
-            .student-row { 
-                padding: 1.25rem 1rem; 
-                flex-direction: column; 
-                align-items: stretch;
-                gap: 12px;
-            } 
-            .student-name { font-size: 1rem; } 
-            .compact-actions {
-                justify-content: space-between;
-                border-top: 1px solid var(--border);
-                padding-top: 10px;
-                width: 100%;
-            }
-            .btn-stat-entry {
-                flex: 1;
-                height: 40px;
-            }
+        @media (max-width: 600px) {
+            .date-container-glass { max-width: 95%; padding: 1rem 1.25rem; gap: 10px; }
+            .student-row { flex-direction: column; align-items: stretch; padding: 1rem 1.1rem; }
+            .compact-actions { justify-content: space-between; padding-top: 0.85rem; border-top: 1px solid var(--border); }
+            .compact-actions .btn, .compact-actions button { flex: 1; }
+            .student-info { margin-bottom: 0; }
+            .page-header { padding: 0.75rem 0; }
+            .mobile-stack { grid-template-columns: 1fr !important; }
         }
 
-        /* Subject Toolbar Icons */
-        .action-btn {
-            width: 38px;
-            height: 38px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
+        /* ─── Layout Classes ─── */
+        .container-sm {
+            max-width: 800px;
+            margin-top: 2rem;
+            padding-top: 1rem;
+        }
+        .subject-panel {
+            padding: 1.5rem;
+            border-radius: 24px;
             border: 1px solid var(--border);
-            background: var(--bg-main);
+            box-shadow: var(--shadow-neu-out);
+        }
+        .subject-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+        }
+        .subject-panel-header h6 {
+            margin: 0;
+            font-weight: 800;
             color: var(--text-muted);
-            cursor: pointer;
-            transition: all 0.2s;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+        }
+        .subject-panel-actions {
+            display: none;
+            gap: 10px;
+        }
+        .subject-select-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+        }
+        .subject-select-styled {
+            border-radius: 14px;
+            padding: 0.75rem 1rem;
+            font-weight: 700;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow-neu-in-sm);
+            color: var(--text-main);
+            width: 100%;
+        }
+        .btn-subj-action {
+            border-radius: 14px;
+            height: 46px;
+            width: 46px;
             padding: 0;
+            justify-content: center;
+        }
+        .btn-subj-scan {
+            border: 1px solid var(--border);
             box-shadow: var(--shadow-neu-out-sm);
         }
-        .action-btn i { font-size: 0.95rem; }
-        .action-btn:hover { background: var(--bg-hover); color: var(--primary); border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-neu-out); }
-        .action-btn.delete-btn:hover { color: var(--danger); border-color: var(--danger); }
+        .btn-subj-add {
+            box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
+        }
+        .subject-quick-tools {
+            margin-top: 1.5rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .subject-tools-left {
+            display: flex;
+            gap: 8px;
+        }
+        .subject-tools-left .btn,
+        .subject-tools-left button {
+            font-weight: 700;
+            border-radius: 10px;
+        }
+        .btn-export-subj {
+            font-weight: 700;
+            border-radius: 10px;
+        }
+        .stats-subject-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.85rem;
+        }
+        .stat-value {
+            display: block;
+            font-size: 1.35rem;
+            font-weight: 900;
+        }
+        .stat-value.present { color: #10b981; }
+        .stat-value.late { color: #f59e0b; }
+        .stat-value.absent { color: #ef4444; }
+        .stat-value.remaining { color: var(--primary); }
+        .stat-label-sm {
+            font-size: 0.62rem;
+            font-weight: 800;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        .context-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 1.75rem;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 1.25rem;
+        }
     </style>
 </head>
 <body>
@@ -311,7 +390,7 @@ if ($subjectId > 0) {
     include 'includes/navbar.php'; 
     ?>
 
-    <main class="container animate-fade-up" style="max-width: 800px; margin-top: 2rem; padding-top: 1rem;">
+    <main class="container animate-fade-up container-sm">
         
         <!-- Glassmorphic Date Control -->
         <div class="date-container-glass stagger-1">
@@ -321,54 +400,54 @@ if ($subjectId > 0) {
 
         <!-- Subject Selection Area -->
         <div id="subjectControls" style="display:none; margin-bottom: 2rem;" class="stagger-2">
-            <div class="glass-panel interactive-glow" style="padding: 1.5rem; border-radius: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-neu-out);">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
-                    <h6 style="margin:0; font-weight:800; color:var(--text-muted); font-size:0.72rem; text-transform:uppercase; letter-spacing:0.12em;">Subject Portal</h6>
-                    <div id="subjectActions" style="display:none; gap:10px;">
+            <div class="subject-panel">
+                <div class="subject-panel-header">
+                    <h6>Subject Portal</h6>
+                    <div id="subjectActions" class="subject-panel-actions">
                        <button onclick="editCurrentSubject()" class="action-btn edit-btn" title="Rename Subject"><i class="bi bi-pencil"></i></button>
                        <button onclick="manageSchedule()" class="action-btn" title="Schedule Settings"><i class="bi bi-calendar3"></i></button>
                        <button onclick="deleteCurrentSubject()" class="action-btn delete-btn" title="Delete Subject"><i class="bi bi-trash"></i></button>
                     </div>
                 </div>
                 
-                <div style="display:grid; grid-template-columns: 1fr auto; gap:12px;" class="mobile-stack">
-                    <select id="subjectSelect" class="form-control" onchange="handleSubjectChange()" style="border-radius:14px; padding:0.75rem 1rem; font-weight:700; background:var(--bg-main); border:1px solid var(--border); box-shadow:var(--shadow-neu-in-sm);">
+                <div class="subject-select-grid mobile-stack">
+                    <select id="subjectSelect" class="subject-select-styled" onchange="handleSubjectChange()">
                         <option value="">Select Subject...</option>
                     </select>
                     <div style="display:flex; gap:8px;">
-                        <button onclick="goToScan()" class="btn btn-slate" id="btnScanSubject" style="display:none; border-radius:14px; height:46px; width:46px; padding:0; justify-content:center; border:1px solid var(--border); box-shadow:var(--shadow-neu-out-sm);"><i class="bi bi-qr-code-scan"></i></button>
-                        <button onclick="openAddSubject()" class="btn btn-primary" style="border-radius:14px; height:46px; width:46px; padding:0; justify-content:center; box-shadow:0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);"><i class="bi bi-plus-lg"></i></button>
+                        <button onclick="goToScan()" class="btn btn-slate btn-subj-action btn-subj-scan" id="btnScanSubject" style="display:none;"><i class="bi bi-qr-code-scan"></i></button>
+                        <button onclick="openAddSubject()" class="btn btn-primary btn-subj-action btn-subj-add"><i class="bi bi-plus-lg"></i></button>
                     </div>
                 </div>
 
-                <div id="subjectQuickTools" style="display:none; margin-top:1.5rem; padding-top:1.25rem; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; gap:8px;">
-                        <button onclick="markAllPresent()" class="btn btn-ghost btn-sm" style="font-weight:700; border-radius:10px;"><i class="bi bi-check-all"></i> Mark All</button>
-                        <button onclick="resetSubjectAttendance()" class="btn btn-ghost btn-sm" style="color:var(--danger); font-weight:700; border-radius:10px;"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
-                        <button onclick="cancelSubject()" class="btn btn-ghost btn-sm" style="color:var(--danger); font-weight:700; border-radius:10px;"><i class="bi bi-slash-circle"></i> Cancel Class</button>
+                <div id="subjectQuickTools" class="subject-quick-tools" style="display:none;">
+                    <div class="subject-tools-left">
+                        <button onclick="markAllPresent()" class="btn btn-ghost btn-sm"><i class="bi bi-check-all"></i> Mark All</button>
+                        <button onclick="resetSubjectAttendance()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+                        <button onclick="cancelSubject()" class="btn btn-ghost btn-sm" style="color:var(--danger);"><i class="bi bi-slash-circle"></i> Cancel Class</button>
                     </div>
-                    <button onclick="exportSubject()" class="btn btn-ghost btn-sm" style="font-weight:700; border-radius:10px;"><i class="bi bi-download"></i> Export</button>
+                    <button onclick="exportSubject()" class="btn btn-ghost btn-sm btn-export-subj"><i class="bi bi-download"></i> Export</button>
                 </div>
             </div>
 
             <!-- Stats Grid -->
             <div id="subjectStats" style="display:none; margin-top: 1.5rem; margin-bottom: 2rem;">
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.85rem;">
+                <div class="stats-subject-grid">
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #10b981;" id="count-present">0</span>
-                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Present</small>
+                        <span class="stat-value present" id="count-present">0</span>
+                        <small class="stat-label-sm">Present</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #f59e0b;" id="count-late">0</span>
-                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Late</small>
+                        <span class="stat-value late" id="count-late">0</span>
+                        <small class="stat-label-sm">Late</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: #ef4444;" id="count-absent">0</span>
-                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Absent</small>
+                        <span class="stat-value absent" id="count-absent">0</span>
+                        <small class="stat-label-sm">Absent</small>
                     </div>
                     <div class="stat-badge glass-panel">
-                        <span style="display:block; font-size: 1.35rem; font-weight: 900; color: var(--primary);" id="count-none">0</span>
-                        <small style="font-size:0.62rem; font-weight:800; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Remaining</small>
+                        <span class="stat-value remaining" id="count-none">0</span>
+                        <small class="stat-label-sm">Remaining</small>
                     </div>
                 </div>
             </div>
@@ -381,7 +460,7 @@ if ($subjectId > 0) {
         </div>
 
         <!-- Context Header -->
-        <div class="stagger-4" style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 1.75rem; border-bottom: 1px solid var(--border); padding-bottom: 1.25rem;">
+        <div class="context-header stagger-4">
             <div>
                 <p id="manualContextIndicator" style="font-size: 0.72rem; color: var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.12em; margin:0 0 4px; line-height:1.5;">Daily Attendance</p>
                 <h5 style="color: var(--text-main); font-weight: 900; margin: 0; font-size:1.45rem; letter-spacing:-0.03em;">Attendance Dossier</h5>

@@ -299,6 +299,62 @@ $irregularUsers = array_filter($allUsers, function($u) {
                 max-width: 100%;
             }
         }
+
+        /* ─── Layout Classes ─── */
+        .btn-nav-icon {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-main);
+        }
+        .btn-nav-icon i {
+            display: inline-block !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 0 !important;
+            opacity: 1 !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+        .btn-nav-add {
+            width: 36px; height: 36px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0;
+            border: none;
+        }
+        .btn-nav-add i {
+            display: inline-block !important;
+            font-size: 0.95rem !important;
+            margin-bottom: 0 !important;
+            opacity: 1 !important;
+            line-height: 1 !important;
+            vertical-align: middle !important;
+        }
+        .btn-auto-enroll {
+            font-size: 0.7rem;
+            padding: 6px 14px;
+            border-radius: 50px;
+            border: 1px solid var(--border);
+            font-weight: 700;
+        }
+        .student-row {
+            margin-bottom: 0;
+        }
+        .actions-group {
+            display: flex;
+            gap: 6px;
+            justify-content: flex-end;
+        }
+        .btn-manage-subj {
+            color: var(--warning);
+        }
     </style>
 </head>
 <body>
@@ -306,11 +362,11 @@ $irregularUsers = array_filter($allUsers, function($u) {
     <!-- Nav (Standardized) -->
     <?php 
     $navbar_actions = '
-        <button onclick="openScanModal()" class="btn-icon hover-press" style="margin-right: 6px; width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-main);" title="Upload & Scan Classmate QR">
-            <i class="bi bi-qr-code-scan" style="display: inline-block !important; font-size: 0.95rem !important; margin-bottom: 0 !important; opacity: 1 !important; line-height: 1 !important; vertical-align: middle !important;"></i>
+        <button onclick="openScanModal()" class="btn-nav-icon" title="Upload & Scan Classmate QR">
+            <i class="bi bi-qr-code-scan"></i>
         </button>
-        <button onclick="addStudent()" class="btn btn-primary" style="width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: none;" title="Add Student">
-            <i class="bi bi-person-plus" style="display: inline-block !important; font-size: 0.95rem !important; margin-bottom: 0 !important; opacity: 1 !important; line-height: 1 !important; vertical-align: middle !important;"></i>
+        <button onclick="addStudent()" class="btn btn-primary btn-nav-add" title="Add Student">
+            <i class="bi bi-person-plus"></i>
         </button>
     ';
     include 'includes/navbar.php'; 
@@ -325,6 +381,9 @@ $irregularUsers = array_filter($allUsers, function($u) {
             </div>
             <div class="list-meta">
                 <span class="student-count"><strong><?= count($allUsers) ?></strong> classmates enrolled</span>
+                <button onclick="autoEnrollRegular()" class="btn btn-ghost btn-auto-enroll" title="Auto-enroll all regular students in current SY subjects">
+                    <i class="bi bi-lightning-charge"></i> Auto-Enroll Regular
+                </button>
             </div>
         </div>
     </div>
@@ -360,7 +419,6 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                     data-name="<?= htmlspecialchars($user['name']) ?>"
                                     data-qr="<?= htmlspecialchars($user['qr_code']) ?>"
                                     id="row-<?= htmlspecialchars($user['qr_code']) ?>"
-                                    style="margin-bottom: 0;"
                             <?php 
                                 $bday = !empty($user['birthday']) ? date('Y-m-d', strtotime($user['birthday'])) : '';
                                 echo ' data-firstname="'.htmlspecialchars($user['first_name']??'').'"';
@@ -414,12 +472,12 @@ $irregularUsers = array_filter($allUsers, function($u) {
                                 <span class="type-badge <?= $typeClass ?>"><?= ($user['student_type'] ?? 'regular') ?></span>
                             </td>
                             <td data-label="Actions" class="column-actions">
-                                <div style="display:flex; gap:6px; justify-content:flex-end;">
+                                <div class="actions-group">
                                     <button onclick="editUser(this)" class="btn-action hover-press" title="Edit Profile">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
                                     <?php if(($user['student_type'] ?? 'regular') === 'irregular'): ?>
-                                        <button onclick="manageSubjects(this)" class="btn-action hover-press" style="color:var(--warning)" title="Manage Subjects">
+                                        <button onclick="manageSubjects(this)" class="btn-action hover-press btn-manage-subj" title="Manage Subjects">
                                             <i class="bi bi-journal-text"></i>
                                         </button>
                                     <?php endif; ?>
@@ -1054,6 +1112,44 @@ $irregularUsers = array_filter($allUsers, function($u) {
                 });
             }
         });
+
+        // ─── Auto-Enroll Regular Students ───
+        async function autoEnrollRegular() {
+            const result = await Swal.fire({
+                title: 'Auto-Enroll Regular Students?',
+                html: 'This will enroll all <strong>Regular</strong> students in all subjects for the current school year (both semesters).<br><br>Already enrolled entries will be skipped.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Yes, Enroll All',
+                cancelButtonText: 'Cancel',
+                confirmButtonColor: 'var(--primary)'
+            });
+            if (!result.isConfirmed) return;
+
+            Swal.fire({ title: 'Enrolling...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+            try {
+                const res = await fetch('api/auto_enroll.php');
+                const data = await res.json();
+                Swal.close();
+                if (data.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Enrollment Complete',
+                        text: data.message,
+                        confirmButtonColor: 'var(--primary)'
+                    });
+                } else {
+                    throw new Error(data.message);
+                }
+            } catch (e) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Enrollment Failed',
+                    text: e.message,
+                    confirmButtonColor: 'var(--primary)'
+                });
+            }
+        }
     </script>
 </body>
 </html>
