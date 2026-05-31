@@ -1,10 +1,9 @@
 # 🎓 QR Tools: Advanced Academic & Attendance Ecosystem
 
 [![Version](https://img.shields.io/badge/version-2.6.0-blue.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
-[![UI](https://img.shields.io/badge/UI-Neumorphic-indigo.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
 [![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20Android-green.svg?style=for-the-badge)](https://github.com/markDelin/Attendance_System)
 
-A high-performance, enterprise-grade attendance tracking and student management ecosystem. Built with a sophisticated **Neumorphic UI** and optimized for both desktop and mobile displays, this system integrates QR technology, real-time analytics, subject-based attendance, automated Telegram communication, and a complete student dossier system.
+A high-performance, enterprise-grade attendance tracking and student management ecosystem. This system integrates QR technology, real-time analytics, subject-based attendance, automated Telegram communication, and a complete student dossier system.
 
 ---
 
@@ -172,7 +171,7 @@ Attendance_System/
 │   └── attendance.db             # Main Database
 ├── assets/                       # Frontend Assets
 │   ├── css/
-│   │   ├── style.css             # Main Neumorphic Styles
+│   │   ├── style.css             # Main Stylesheet
 │   │   └── AnimatedList.css       # List Animations
 │   ├── js/
 │   │   ├── toast.js              # Toast Notifications
@@ -206,7 +205,7 @@ Attendance_System/
 ## 🛠️ Technology Stack
 
 - **Core**: PHP 8.x (Backend), SQLite3 (Database)
-- **UI/UX**: Vanilla CSS3 (Neumorphic/Dark-Light Framework), Vanilla JS (ES6+)
+- **UI/UX**: Vanilla CSS3 (Dark/Light Mode), Vanilla JS (ES6+)
 - **QR**: html5-qrcode (Camera Scanning)
 - **Automation**: Python 3.10+ (Telegram Bot API)
 - **Charts**: Pure CSS3 Conic Gradients, Inline SVG
