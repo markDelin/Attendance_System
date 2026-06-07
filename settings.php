@@ -710,6 +710,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
 
+            <!-- Mobile App Data Export -->
+            <?php
+            $studentCount = $pdo->query("SELECT COUNT(*) FROM users WHERE deleted_at IS NULL")->fetchColumn();
+            $subjectCount = $pdo->query("SELECT COUNT(*) FROM subjects WHERE is_active = 1")->fetchColumn();
+            ?>
+            <div class="settings-card" style="border: 2px dashed color-mix(in srgb, var(--primary) 15%, transparent);">
+                <div class="settings-card-header">
+                    <i class="bi bi-phone" style="color: var(--primary); background: var(--primary-glass);"></i>
+                    <h4>Mobile App Data</h4>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+                    <div style="flex:1;min-width:200px">
+                        <label>Export for Mobile App</label>
+                        <small>Download JSON files to import into the mobile attendance app via Settings &rarr; Import JSON File.</small>
+                    </div>
+                    <div style="display:flex;gap:6px;flex-wrap:wrap">
+                        <a href="api/export_mobile_json.php?type=students" class="btn btn-ghost btn-sm"><i class="bi bi-people"></i> Students (<?= $studentCount ?>)</a>
+                        <a href="api/export_mobile_json.php?type=subjects" class="btn btn-ghost btn-sm"><i class="bi bi-book"></i> Subjects (<?= $subjectCount ?>)</a>
+                        <a href="api/export_mobile_json.php?type=schedules" class="btn btn-ghost btn-sm"><i class="bi bi-calendar-week"></i> Schedules</a>
+                        <a href="api/export_mobile_json.php" class="btn btn-primary btn-sm" style="border-radius:50px"><i class="bi bi-download"></i> All Data</a>
+                    </div>
+                </div>
+            </div><!-- /.settings-card Mobile App Data -->
+
             <!-- System Backup & Integrity -->
             <?php
             $backupFiles = glob('backups/*.{db,zip}', GLOB_BRACE);
