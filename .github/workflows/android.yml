@@ -1,5 +1,4 @@
 name: Build Android APK
-
 on:
   workflow_dispatch:
   push:
@@ -20,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java 17
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           java-version: '21'
@@ -43,12 +42,50 @@ jobs:
       - name: Sync web assets
         run: npx cap sync android
 
+      - name: Configure release signing
+        if: env.ANDROID_KEYSTORE != ''
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          echo "$ANDROID_KEYSTORE" | base64 -d > android/app/attendance-release.keystore
+          python3 -c "
+          import os
+          path = 'android/app/build.gradle'
+          with open(path, 'r') as f:
+              content = f.read()
+          content = content.replace(
+              'buildTypes {',
+              'signingConfigs {\n        release {\n            storeFile file(\"attendance-release.keystore\")\n            storePassword System.getenv(\"KEYSTORE_PASS\")\n            keyAlias System.getenv(\"KEY_ALIAS\")\n            keyPassword System.getenv(\"KEY_PASS\")\n        }\n    }\n    buildTypes {'
+          )
+          content = content.replace(
+              'release {\n            minifyEnabled false',
+              'release {\n            signingConfig signingConfigs.release\n            minifyEnabled false'
+          )
+          with open(path, 'w') as f:
+              f.write(content)
+          print('Signing configured')
+          "
+
       - name: Build APK
-        run: cd android && ./gradlew assembleDebug
+        env:
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASS }}
+        run: |
+          if [ -f android/app/attendance-release.keystore ]; then
+            cd android && ./gradlew assembleRelease
+          else
+            cd android && ./gradlew assembleDebug
+          fi
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: attendance-app-debug
-          path: mobile-app/android/app/build/outputs/apk/debug/app-debug.apk
+          name: attendance-app
+          path: |
+            mobile-app/android/app/build/outputs/apk/release/app-release.apk
+            mobile-app/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
