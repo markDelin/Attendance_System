@@ -84,10 +84,17 @@
   }
 
   function hideAllViews() {
-    $('homeView').classList.add('hidden');
-    $('recordView').classList.add('hidden');
-    $('queueView').classList.add('hidden');
-    $('historyView').classList.add('hidden');
+    var views = ['homeView', 'recordView', 'queueView', 'historyView'];
+    for (var i = 0; i < views.length; i++) {
+      var el = $(views[i]);
+      el.classList.add('hidden');
+      el.classList.remove('view-enter');
+    }
+  }
+
+  function showView(el) {
+    el.classList.remove('hidden');
+    el.classList.add('view-enter');
   }
 
   function setActiveNav(tab) {
@@ -106,7 +113,7 @@
       currentView = 'home';
       currentSubjectId = null;
       hideAllViews();
-      $('homeView').classList.remove('hidden');
+      showView($('homeView'));
       $('btnBack').classList.add('hidden');
       $('appTitle').textContent = 'Attendance';
       renderSchedule();
@@ -114,14 +121,14 @@
     } else if (tab === 'pending') {
       currentView = 'queue';
       hideAllViews();
-      $('queueView').classList.remove('hidden');
+      showView($('queueView'));
       $('btnBack').classList.add('hidden');
       $('appTitle').textContent = 'Pending Records';
       renderQueueList();
     } else if (tab === 'history') {
       currentView = 'history';
       hideAllViews();
-      $('historyView').classList.remove('hidden');
+      showView($('historyView'));
       $('btnBack').classList.add('hidden');
       $('appTitle').textContent = 'History';
       switchHistoryTab('synced');
@@ -136,7 +143,7 @@
   function showRecordView() {
     currentView = 'record';
     hideAllViews();
-    $('recordView').classList.remove('hidden');
+    showView($('recordView'));
     $('bottomNav').classList.add('hidden');
     $('btnBack').classList.remove('hidden');
     $('appFooter').classList.remove('hidden');
@@ -953,6 +960,14 @@
     var m = String(today.getMonth() + 1).padStart(2, '0');
     var d = String(today.getDate()).padStart(2, '0');
     $('attendanceDate').value = y + '-' + m + '-' + d;
+
+    // Auto-detect server URL if served from HTTP origin
+    var origin = window.location.origin || '';
+    if (origin && origin.indexOf('http') === 0 && !getServerUrl()) {
+      setVal('serverUrl', origin);
+      setConnectionStatus(true);
+      $('appStatusText').textContent = 'Auto';
+    }
 
     $('attendanceDate').addEventListener('change', function () {
       if (currentView === 'home') {
