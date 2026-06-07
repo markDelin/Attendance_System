@@ -12,5 +12,16 @@
       "keystoreAlias": null
     }
   },
-  "backgroundColor": "#0f172a"
+  "backgroundColor": "#0f172a",
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f172a",
+      "androidScaleType": "fitCenter",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    }
+  }
 }

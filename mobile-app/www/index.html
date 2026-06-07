@@ -9,79 +9,106 @@
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<div id="app">
+<div id="splashScreen" class="splash-screen">
+  <div class="splash-content">
+    <div class="splash-icon"><i class="bi bi-clipboard-data"></i></div>
+    <h1 class="splash-title">Attendance</h1>
+    <p class="splash-sub">Recorder</p>
+    <div class="splash-loader"><div class="splash-bar"></div></div>
+  </div>
+</div>
+
+<div id="app" class="hidden">
   <header class="app-header">
     <div class="header-top">
-      <i class="bi bi-clipboard-data header-icon"></i>
-      <h1>Attendance</h1>
-      <button id="btnSettings" class="btn-icon" onclick="toggleSettings()" title="Settings">
-        <i class="bi bi-gear"></i>
+      <button id="btnBack" class="btn-icon hidden" onclick="goHome()" title="Back">
+        <i class="bi bi-arrow-left"></i>
       </button>
+      <i class="bi bi-clipboard-data header-icon"></i>
+      <h1 id="appTitle">Attendance</h1>
+      <div class="header-actions">
+        <button id="btnSync" class="btn-icon" onclick="syncAll()" title="Sync">
+          <i class="bi bi-cloud-arrow-up"></i>
+          <span id="pendingBadge" class="badge-dot hidden"></span>
+        </button>
+        <button id="btnSettings" class="btn-icon" onclick="toggleSettings()" title="Settings">
+          <i class="bi bi-gear"></i>
+        </button>
+      </div>
     </div>
-    <div class="header-sub">
+    <div class="header-sub" id="headerSub">
       <span id="appStatus" class="status-dot status-offline"></span>
-      <span id="appStatusText">Disconnected</span>
+      <span id="appStatusText">Offline</span>
+      <span id="pendingInfo" class="pending-info hidden"></span>
     </div>
   </header>
 
   <div id="settingsPanel" class="settings-panel hidden">
     <div class="settings-content glass-card">
-      <h3><i class="bi bi-key"></i> API Configuration</h3>
+      <h3><i class="bi bi-key"></i> Server Setup</h3>
+      <p class="settings-note">Connect once to download students & subjects. Recording works offline.</p>
       <label>Server URL</label>
       <input type="url" id="serverUrl" class="input-glass" placeholder="https://your-server.com" autocomplete="off">
       <label>API Key (Bot Token)</label>
       <input type="password" id="apiKey" class="input-glass" placeholder="Telegram Bot Token" autocomplete="off">
       <div class="settings-actions">
-        <button onclick="saveSettings()" class="btn btn-primary"><i class="bi bi-check-lg"></i> Save</button>
+        <button onclick="saveSettings()" class="btn btn-primary"><i class="bi bi-cloud-download"></i> Connect & Download</button>
         <button onclick="toggleSettings()" class="btn btn-ghost">Cancel</button>
       </div>
     </div>
   </div>
 
   <main class="app-main">
-    <div class="date-section">
-      <label class="date-label"><i class="bi bi-calendar3"></i> Attendance Date</label>
-      <input type="date" id="attendanceDate" class="date-input-glass">
+    <div id="homeView">
+      <div class="date-section">
+        <label class="date-label"><i class="bi bi-calendar3"></i> Attendance Date</label>
+        <input type="date" id="attendanceDate" class="date-input-glass">
+      </div>
+
+      <h3 class="section-title"><i class="bi bi-book"></i> Subjects</h3>
+      <div id="subjectList" class="subject-list">
+        <div class="loading-state"><i class="bi bi-arrow-repeat spin"></i><p>Loading...</p></div>
+      </div>
+
+      <h3 class="section-title"><i class="bi bi-calendar-check"></i> Daily Attendance</h3>
+      <div id="dailyCard" class="daily-card glass-card" onclick="openDaily()">
+        <div class="daily-card-left">
+          <i class="bi bi-people"></i>
+          <div>
+            <div class="daily-card-title">General Attendance</div>
+            <div class="daily-card-sub">Record all students without a subject</div>
+          </div>
+        </div>
+        <i class="bi bi-chevron-right daily-arrow"></i>
+      </div>
     </div>
 
-    <div class="stats-row glass-card" id="statsRow">
-      <div class="stat-item">
-        <span class="stat-value present" id="statPresent">0</span>
-        <span class="stat-label">Present</span>
+    <div id="recordView" class="hidden">
+      <div class="record-header">
+        <div class="record-header-title" id="recordContextTitle">Subject</div>
+        <div class="stats-row-mini" id="statsRowMini">
+          <span><span class="stat-val present" id="miniPresent">0</span> P</span>
+          <span><span class="stat-val late" id="miniLate">0</span> L</span>
+          <span><span class="stat-val absent" id="miniAbsent">0</span> A</span>
+          <span><span class="stat-val remaining" id="miniRemaining">0</span> /</span>
+        </div>
       </div>
-      <div class="stat-item">
-        <span class="stat-value late" id="statLate">0</span>
-        <span class="stat-label">Late</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value absent" id="statAbsent">0</span>
-        <span class="stat-label">Absent</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value remaining" id="statRemaining">0</span>
-        <span class="stat-label">Remaining</span>
-      </div>
-    </div>
 
-    <div class="search-section">
-      <i class="bi bi-search search-icon"></i>
-      <input type="text" id="searchInput" class="search-input-glass" placeholder="Search student..." autocomplete="off">
-    </div>
-
-    <div id="studentList" class="student-list">
-      <div class="loading-state">
-        <i class="bi bi-arrow-repeat spin"></i>
-        <p>Loading students...</p>
+      <div class="search-section">
+        <i class="bi bi-search search-icon"></i>
+        <input type="text" id="searchInput" class="search-input-glass" placeholder="Search student..." autocomplete="off">
       </div>
+
+      <div id="studentList" class="student-list"></div>
     </div>
   </main>
 
-  <footer class="app-footer">
-    <div class="footer-info" id="footerInfo">
+  <footer class="app-footer" id="appFooter">
+    <div class="footer-info">
       <span id="recordCount"><i class="bi bi-journal"></i> 0 records</span>
     </div>
-    <button id="btnUpload" class="btn btn-primary btn-upload" onclick="uploadAttendance()" disabled>
-      <i class="bi bi-cloud-upload"></i> <span>Upload</span>
+    <button id="btnSave" class="btn btn-primary btn-upload" onclick="saveLocalRecords()" disabled>
+      <i class="bi bi-check-lg"></i> <span>Save</span>
     </button>
   </footer>
 
