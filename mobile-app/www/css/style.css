@@ -140,6 +140,14 @@ body {
 .settings-actions { display: flex; gap: 8px; margin-top: 12px; }
 .settings-actions .btn { flex: 1; }
 
+.import-section { margin-top: 6px; }
+.import-label { display: block; font-size: 0.72rem; color: var(--text-muted); font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 5px; }
+.import-buttons { display: flex; gap: 5px; }
+.import-buttons .btn { font-size: 0.72rem; padding: 7px 10px; flex: 1; }
+.btn-sm { font-size: 0.72rem !important; padding: 7px 10px !important; border-radius: 7px !important; }
+.paste-area { margin-top: 6px; animation: fadeIn 0.2s var(--ease-smooth); }
+.paste-area textarea { resize: vertical; min-height: 60px; max-height: 120px; font-family: 'SF Mono','Cascadia Code','Consolas',monospace; font-size: 0.75rem; }
+
 /* Toggle */
 .toggle-row { display: flex !important; align-items: center; justify-content: space-between; flex-direction: row !important; text-transform: none !important; letter-spacing: normal !important; font-size: 0.9rem !important; font-weight: 600 !important; margin: 0 !important; padding: 8px 0; }
 .toggle-row i { margin-right: 8px; }

@@ -14,6 +14,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="css/style.css">
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sql.js@1.11.0/dist/sql-wasm.js"></script>
 </head>
 <body>
 <div id="splashScreen" class="splash-screen">
@@ -65,6 +66,21 @@
         <button onclick="saveSettings()" class="btn btn-primary" style="flex:1;min-width:140px"><i class="bi bi-cloud-download"></i> Connect</button>
         <button onclick="testConnection()" class="btn btn-ghost" style="flex:1;min-width:100px"><i class="bi bi-plug"></i> Test</button>
         <button onclick="toggleSettings()" class="btn btn-ghost" style="flex:1;min-width:80px">Cancel</button>
+      </div>
+      <div class="settings-divider"></div>
+      <div class="import-section">
+        <span class="import-label"><i class="bi bi-database"></i> Data: <span id="dataStatus">0 students, 0 subjects</span></span>
+        <div class="import-buttons">
+          <button onclick="document.getElementById('fileInput').click()" class="btn btn-ghost btn-sm"><i class="bi bi-file-earmark-arrow-up"></i> File</button>
+          <button onclick="showPasteImport()" class="btn btn-ghost btn-sm"><i class="bi bi-clipboard"></i> Paste</button>
+          <button onclick="exportData()" class="btn btn-ghost btn-sm"><i class="bi bi-download"></i> Save</button>
+          <button onclick="clearLocalData()" class="btn btn-ghost btn-sm" style="color:var(--danger)"><i class="bi bi-trash"></i></button>
+        </div>
+        <div id="pasteArea" class="paste-area hidden">
+          <textarea id="pasteInput" class="input-glass" rows="4" placeholder='Paste JSON here: {"students":[...],"subjects":[...]}'></textarea>
+          <button onclick="importFromPaste()" class="btn btn-primary btn-sm" style="margin-top:4px"><i class="bi bi-check-lg"></i> Import</button>
+        </div>
+        <input type="file" id="fileInput" accept=".json,application/json" style="display:none" onchange="importFromFile(event)">
       </div>
     </div>
   </div>

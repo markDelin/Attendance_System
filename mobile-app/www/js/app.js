@@ -23,6 +23,67 @@
   let autoSyncTimer = null;
   let searchTimer = null;
 
+  // SQLite — loaded from actual database file via sql.js
+  let SQL = null;
+  let sqlDb = null;
+  let dbReady = false;
+
+  function dbQuery(sql, params) {
+    if (!sqlDb) return null;
+    try {
+      var stmt = sqlDb.prepare(sql);
+      if (params) for (var i = 0; i < params.length; i++) stmt.bind(params);
+      var rows = [];
+      while (stmt.step()) rows.push(stmt.getAsObject());
+      stmt.free();
+      return rows;
+    } catch (e) { return null; }
+  }
+
+  function dbGet(sql, params) {
+    var rows = dbQuery(sql, params);
+    return rows && rows.length > 0 ? rows[0] : null;
+  }
+
+  function getStudents() {
+    if (dbReady) { var r = dbQuery("SELECT qr_code, name, course, year_level FROM users WHERE deleted_at IS NULL ORDER BY name ASC"); if (r) return r; }
+    return getJson('students') || [];
+  }
+
+  function getSubjects() {
+    if (dbReady) { var r = dbQuery("SELECT id, name, code, room, lecturer, semester, category FROM subjects WHERE is_active = 1 ORDER BY name ASC"); if (r) return r; }
+    return getJson('subjects') || [];
+  }
+
+  function getSchedules() {
+    if (dbReady) { var r = dbQuery("SELECT sc.id, sc.subject_id, s.name as subject_name, s.code, s.room, s.lecturer, sc.day_of_week, sc.start_time, sc.end_time FROM schedules sc JOIN subjects s ON s.id = sc.subject_id WHERE s.is_active = 1 ORDER BY sc.start_time ASC"); if (r) return r; }
+    return getJson('schedules') || [];
+  }
+
+  function dayName(dateStr) {
+    var d = new Date(dateStr + 'T12:00:00');
+    return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+  }
+
+  async function downloadDatabase() {
+    var url = apiUrl('api/serve_db.php');
+    if (!url) return false;
+    try {
+      var res = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (!res.ok) return false;
+      var buf = await res.arrayBuffer();
+      if (typeof initSqlJs !== 'undefined') {
+        SQL = await initSqlJs();
+        sqlDb = new SQL.Database(new Uint8Array(buf));
+        dbReady = true;
+        renderSchedule();
+        renderSubjects();
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function getVal(k) { return localStorage.getItem(KEYS[k]) || ''; }
   function setVal(k, v) { localStorage.setItem(KEYS[k], v); }
 
@@ -176,12 +237,16 @@
   function renderSchedule() {
     var container = $('scheduleList');
     var section = $('scheduleSection');
-    var cached = getJson('schedules');
+    var data = getSchedules();
     var today = $('attendanceDate').value;
+    var todayName = dayName(today);
 
-    if (!cached || cached.length === 0) { section.classList.add('hidden'); return; }
+    if (!data || data.length === 0) { section.classList.add('hidden'); return; }
 
-    var filtered = cached.filter(function (s) { return s.date === today; });
+    var filtered = data.filter(function (s) {
+      var dow = (s.day_of_week || '').toLowerCase();
+      return dow === todayName.toLowerCase();
+    });
     if (filtered.length === 0) { section.classList.add('hidden'); return; }
 
     section.classList.remove('hidden');
@@ -207,7 +272,7 @@
 
   function renderSubjects() {
     var container = $('subjectList');
-    var data = getJson('subjects');
+    var data = getSubjects();
     var pending = getJson('pending') || [];
 
     if (!data || data.length === 0) {
@@ -244,7 +309,7 @@
 
   function renderStudentList() {
     var list = $('studentList');
-    var data = getJson('students');
+    var data = getStudents();
     if (!data || data.length === 0) {
       list.innerHTML = '<div class="empty-state"><i class="bi bi-people"></i><p>No students loaded. Sync with server first.</p></div>';
       return;
@@ -323,7 +388,7 @@
   };
 
   window.bulkSet = function (status) {
-    var data = getJson('students');
+    var data = getStudents();
     if (!data) return;
     var searchVal = ($('searchInput').value || '').toLowerCase().trim();
     for (var i = 0; i < data.length; i++) {
@@ -359,7 +424,7 @@
     $('miniPresent').textContent = p;
     $('miniLate').textContent = l;
     $('miniAbsent').textContent = a;
-    var data = getJson('students');
+    var data = getStudents();
     var total = (data || []).length;
     $('miniRemaining').textContent = total - p - l - a;
   }
@@ -447,7 +512,7 @@
 
   // Student Popup
   window.showStudentPopup = function (qr) {
-    var data = getJson('students');
+    var data = getStudents();
     if (!data) return;
     var student = null;
     for (var i = 0; i < data.length; i++) {
@@ -553,7 +618,7 @@
 
   function onScanSuccess(qrCode) {
     var feedback = $('scanFeedback');
-    var data = getJson('students');
+    var data = getStudents();
     var found = false;
 
     if (data) {
@@ -912,6 +977,8 @@
         if (overlay.parentElement) overlay.remove();
         toggleSettings();
         showToast('Data downloaded - you can now work offline', 'success');
+        // Also download the SQLite database for direct queries
+        downloadDatabase();
         return;
       }
       throw new Error('Server returned: ' + (data.message || 'invalid response'));
@@ -953,6 +1020,118 @@
 
   window.saveSettings = saveSettings;
 
+  function updateDataStatus() {
+    var s = getStudents().length;
+    var j = getSubjects().length;
+    var el = $('dataStatus');
+    if (el) el.textContent = s + ' students, ' + j + ' subjects';
+  }
+
+  function doImport(data) {
+    if (!data.students && !data.subjects) {
+      showToast('JSON must contain "students" or "subjects" array', 'error');
+      return false;
+    }
+    if (data.students) { students = data.students; setJson('students', data.students); }
+    if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
+    if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); }
+    setVal('lastSync', String(Date.now()));
+    setConnectionStatus(true);
+    dbReady = false; // imported JSON overrides SQLite
+    sqlDb = null;
+    renderSchedule();
+    renderSubjects();
+    updateDataStatus();
+    return true;
+  }
+
+  window.showPasteImport = function () {
+    var area = $('pasteArea');
+    area.classList.toggle('hidden');
+    if (!area.classList.contains('hidden')) $('pasteInput').focus();
+  };
+
+  window.importFromPaste = function () {
+    var raw = $('pasteInput').value.trim();
+    if (!raw) { showToast('Paste JSON data first', 'warning'); return; }
+    try {
+      var data = JSON.parse(raw);
+      if (doImport(data)) {
+        $('pasteArea').classList.add('hidden');
+        $('pasteInput').value = '';
+        toggleSettings();
+        showToast(dataPreviewCount(data), 'success');
+      }
+    } catch (err) {
+      showToast('Invalid JSON: ' + err.message, 'error');
+    }
+  };
+
+  window.clearLocalData = function () {
+    if (!confirm('Remove all local data (students, subjects, schedules)?')) return;
+    students = []; subjects = []; schedules = [];
+    setJson('students', []); setJson('subjects', []); setJson('schedules', []);
+    setVal('lastSync', '');
+    setConnectionStatus(false);
+    dbReady = false; sqlDb = null;
+    renderSchedule(); renderSubjects(); updateDataStatus();
+    showToast('Local data cleared', 'info');
+  };
+
+  function dataPreviewCount(data) {
+    var s = (data.students || []).length;
+    var j = (data.subjects || []).length;
+    var c = (data.schedules || []).length;
+    return 'Imported: ' + s + ' students, ' + j + ' subjects' + (c ? ', ' + c + ' schedules' : '');
+  }
+
+  window.importFromFile = function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      try {
+        var data = JSON.parse(ev.target.result);
+        if (!data.students && !data.subjects) {
+          showToast('File must contain "students" or "subjects" array', 'error');
+          return;
+        }
+        if (data.students) { students = data.students; setJson('students', data.students); }
+        if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
+        if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); }
+        setVal('lastSync', String(Date.now()));
+        setConnectionStatus(true);
+        renderSchedule();
+        renderSubjects();
+        toggleSettings();
+        showToast(dataPreviewCount(data), 'success');
+      } catch (err) {
+        showToast('Invalid JSON: ' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  window.exportData = function () {
+    var data = {
+      students: getStudents(),
+      subjects: getSubjects(),
+      schedules: getSchedules(),
+      exported_at: new Date().toISOString()
+    };
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'attendance-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(dataPreviewCount(data) + ' — file saved', 'success');
+  };
+
   function init() {
     // Set default date
     var today = new Date();
@@ -967,6 +1146,8 @@
       setVal('serverUrl', origin);
       setConnectionStatus(true);
       $('appStatusText').textContent = 'Auto';
+      // Try to load the actual SQLite database
+      downloadDatabase();
     }
 
     $('attendanceDate').addEventListener('change', function () {
@@ -1027,6 +1208,7 @@
             setVal('lastSync', String(Date.now()));
             setConnectionStatus(true);
             renderSubjects();
+            downloadDatabase();
           }
         }).catch(function () { setConnectionStatus(false); });
     } else {
