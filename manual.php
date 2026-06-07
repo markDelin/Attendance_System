@@ -22,9 +22,9 @@ if ($subjectId > 0) {
     $q = "SELECT u.* 
           FROM users u 
           LEFT JOIN student_subjects ss ON u.qr_code = ss.qr_code 
-          WHERE (u.student_type IS NULL OR u.student_type = 'regular') 
-             OR (u.student_type = 'irregular' AND ss.subject_id = ?)
-          AND u.deleted_at IS NULL
+          WHERE u.deleted_at IS NULL
+          AND ((u.student_type IS NULL OR u.student_type = 'regular')
+             OR (u.student_type = 'irregular' AND ss.subject_id = ?))
           GROUP BY u.qr_code 
           ORDER BY u.name";
     $stmt = $pdo->prepare($q);

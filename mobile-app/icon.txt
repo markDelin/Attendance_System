@@ -1,0 +1,2 @@
+# Icon placeholder for PWA manifest
+# Replace this with a proper 512x512 PNG icon for production

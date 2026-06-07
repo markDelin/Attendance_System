@@ -4,7 +4,7 @@ date_default_timezone_set('Asia/Manila');
 require_once 'includes/db.php';
 
 $qr = $_GET['qr'] ?? '';
-if (empty($qr)) header('Location: manage_students.php');
+if (empty($qr)) { header('Location: manage_students.php'); exit; }
 
 // Fetch User
 $stmt = $pdo->prepare("SELECT * FROM users WHERE qr_code = ?");

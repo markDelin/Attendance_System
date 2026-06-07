@@ -4,8 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // includes/navbar.php
-$currentPage = basename($_SERVER['PHP_SELF']);
-$currentUrl = $_SERVER['REQUEST_URI'];
+$currentPage = basename($_SERVER['PHP_SELF'] ?? '');
+$currentUrl = $_SERVER['REQUEST_URI'] ?? '';
 
 // 0. Explicit Back Navigation (Bypasses Strategy A/B to ENSURE no loops)
 if (isset($_GET['nav']) && $_GET['nav'] === 'back') {

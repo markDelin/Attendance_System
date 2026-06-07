@@ -2,6 +2,7 @@
 /**
  * router.php
  * Fixes MIME type issues for PHP Built-in Server in Termux/Android.
+ * Only handles static assets; lets PHP files be processed normally.
  */
 
 function decodeURI($uri) {
@@ -13,6 +14,12 @@ $file = __DIR__ . $uri;
 
 if (is_file($file)) {
     $extension = pathinfo($file, PATHINFO_EXTENSION);
+    
+    // Skip PHP files — let the built-in server process them
+    if ($extension === 'php') {
+        return false;
+    }
+    
     $mimetypes = [
         'css'  => 'text/css',
         'js'   => 'application/javascript',
@@ -37,5 +44,4 @@ if (is_file($file)) {
     return true;
 }
 
-// Fallback to index if file not found (standard PHP-S behavior if we return false)
 return false;

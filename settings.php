@@ -732,11 +732,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endif; ?>
                     </div>
                 </div>
-                  <div style="margin-top: 2.5rem; text-align: right; padding-bottom: 4rem;">
-                <button type="submit" class="btn btn-primary" style="padding: 0.9rem 2.5rem; border-radius: 50px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--primary) 30%, transparent);">
-                    <i class="bi bi-save"></i> Synchronize Settings
-                </button>
-            </div>
+                <div style="margin-top: 2.5rem; text-align: right; padding-bottom: 4rem;">
+                    <button type="submit" class="btn btn-primary" style="padding: 0.9rem 2.5rem; border-radius: 50px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 20px -4px color-mix(in srgb, var(--primary) 30%, transparent);">
+                        <i class="bi bi-save"></i> Synchronize Settings
+                    </button>
+                </div>
+            </div><!-- /.settings-card System Integrity -->
 
         </form>
     </main>

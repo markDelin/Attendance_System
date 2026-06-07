@@ -1,0 +1,16 @@
+{
+  "appId": "com.attendance.mobile",
+  "appName": "Attendance Recorder",
+  "webDir": "mobile-app",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": null,
+      "keystorePassword": null,
+      "keystoreAlias": null
+    }
+  },
+  "backgroundColor": "#0f172a"
+}

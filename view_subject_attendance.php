@@ -186,7 +186,9 @@ $dates = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <h3 class="date-title"><?= date('F j, Y', strtotime($row['date'])) ?></h3>
                             <span style="font-size: 0.75rem; color: var(--text-muted); weight: 700; background: var(--bg-main); padding: 2px 8px; border-radius: 4px;">
                                 <?php
-                                $count = $pdo->query("SELECT COUNT(*) FROM subject_attendance WHERE subject_id = $subjectId AND date = '{$row['date']}'")->fetchColumn();
+                                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM subject_attendance WHERE subject_id = ? AND date = ?");
+                                $countStmt->execute([$subjectId, $row['date']]);
+                                $count = $countStmt->fetchColumn();
                                 echo $count . " Entries";
                                 ?>
                             </span>

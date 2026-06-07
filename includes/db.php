@@ -174,6 +174,16 @@ try {
             UNIQUE(qr_code, year)
         )",
 
+        "scheduled_announcements" => "CREATE TABLE IF NOT EXISTS scheduled_announcements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            message TEXT NOT NULL,
+            scheduled_date TEXT NOT NULL,
+            scheduled_time TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            created_by TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )",
+
         "system_notices" => "CREATE TABLE IF NOT EXISTS system_notices (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT NOT NULL,
@@ -394,6 +404,7 @@ try {
     /**
      * Get Attendance Summary with Time In/Out Support
      */
+    if (!function_exists('getAttendanceSummary')) {
     function getAttendanceSummary($qr_code) {
         global $pdo;
         
@@ -475,6 +486,7 @@ try {
         
         return $summary;
     }
+    } // end function_exists check
 
     
 } catch (PDOException $e) {

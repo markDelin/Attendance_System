@@ -4,6 +4,7 @@ import sqlite3
 import os
 import time
 import threading
+import signal
 import shutil
 from datetime import datetime
 import markdown2
@@ -36,6 +37,7 @@ class PDF(FPDF, HTMLMixin):
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database', 'attendance.db')
 
 # State management for announcements and orders
+bot = None
 user_states_lock = threading.Lock()
 user_states = {} # {user_id: {'state': 'idle', 'msg_id': None, 'msg_ids': [], 'timer': None}}
 
@@ -433,6 +435,10 @@ def queue_worker():
     """Background thread to process pending messages from telegram_queue with anti-spam lock"""
     while True:
         try:
+            if not bot:
+                time.sleep(2)
+                continue
+                
             _, chat_id, _, _, global_bday_img = get_settings()
             if not chat_id:
                 time.sleep(10)
@@ -480,7 +486,8 @@ def queue_worker():
                         time.sleep(1.2)
                         try:
                             bot.delete_message(chat_id, sent_msg.message_id)
-                        except: pass
+                        except Exception:
+                            pass
                         
                         bot.send_message(chat_id, steps[-1], parse_mode='HTML')
                     else:
@@ -510,6 +517,10 @@ def birthday_check_worker():
     print("Birthday Greeting Worker initialized.")
     while True:
         try:
+            if not bot:
+                time.sleep(2)
+                continue
+                
             _, chat_id, _, _, global_bday_img = get_settings()
             if not chat_id:
                 time.sleep(60)
@@ -618,1396 +629,1660 @@ def birthday_check_worker():
         # Check every 4 hours to avoid heavy DB load but catch up if bot was down
         time.sleep(14400) 
 
-# Main Loop
-print("Starting up Attendance Web-Bot connector...")
-while True:
-    TOKEN, _, _, _, _ = get_settings()
-    if not TOKEN:
-        print("Waiting for Telegram Bot Token to be set in Settings...")
-        time.sleep(10)
-        continue
-    
-    print("Initialize Bot (with 90s timeout for stability)...")
-    bot = telebot.TeleBot(TOKEN, parse_mode='HTML', threaded=True)
-    # Global timeouts for all requests
-    telebot.apihelper.CONNECT_TIMEOUT = 30
-    telebot.apihelper.READ_TIMEOUT = 90
+def scheduled_announcement_worker():
+    """Background thread to send scheduled announcements at their set date/time."""
+    print("Scheduled Announcement Worker initialized.")
+    while True:
+        try:
+            if not bot:
+                time.sleep(2)
+                continue
 
-    def get_admin_main_keyboard():
-        markup = ReplyKeyboardMarkup(resize_keyboard=True)
-        markup.row(KeyboardButton("Search Student"), KeyboardButton("Record Attendance"))
-        markup.row(KeyboardButton("Today's Stats"), KeyboardButton("Announce"))
-        markup.row(KeyboardButton("Export CSV"), KeyboardButton("All Dossiers"), KeyboardButton("Get Database"))
-        return markup
+            _, chat_id, _, _, _ = get_settings()
+            if not chat_id:
+                time.sleep(30)
+                continue
 
-    def get_active_subjects():
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name FROM subjects WHERE is_active = 1 ORDER BY name ASC")
-        rows = cursor.fetchall()
-        conn.close()
-        return rows
-
-    def get_eligible_students(recording_type, subject_id=None):
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        if recording_type == 'daily':
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
             cursor.execute("""
-                SELECT qr_code, name, course, student_type 
-                FROM users 
-                WHERE deleted_at IS NULL 
-                ORDER BY name ASC
+                CREATE TABLE IF NOT EXISTS scheduled_announcements (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    message TEXT NOT NULL,
+                    scheduled_date TEXT NOT NULL,
+                    scheduled_time TEXT NOT NULL,
+                    status TEXT DEFAULT 'pending',
+                    created_by TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
             """)
-        else:
-            cursor.execute("""
-                SELECT qr_code, name, course, student_type 
-                FROM users 
-                WHERE deleted_at IS NULL 
-                  AND (
-                    student_type != 'irregular' 
-                    OR qr_code IN (SELECT qr_code FROM student_subjects WHERE subject_id = ?)
-                  )
-                ORDER BY name ASC
-            """, (subject_id,))
-        students = cursor.fetchall()
-        conn.close()
-        return students
-
-    def show_subject_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_subject_select'
-        subjects = get_active_subjects()
-        
-        markup = InlineKeyboardMarkup(row_width=1)
-        for sub_id, name in subjects:
-            markup.add(InlineKeyboardButton(name, callback_data=f"rec_subsel_{sub_id}"))
-            
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_mode"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                   
-        msg_text = (
-            "<b>RECORD ATTENDANCE: SELECT SUBJECT</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            "Select the active subject class:"
-        )
-        if not subjects:
-            msg_text += "\n\n<i>No active subjects found.</i>"
-            
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_date_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_date_select'
-        today_str = datetime.now().strftime("%Y-%m-%d")
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton(f"Today ({today_str})", callback_data="rec_date_today"),
-                   InlineKeyboardButton("Custom Date", callback_data="rec_date_custom"))
-        
-        back_callback = "rec_back_mode" if state_data['recording_type'] == 'daily' else "rec_back_subjects"
-        
-        markup.row(InlineKeyboardButton("Back", callback_data=back_callback),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: DATE</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n\n"
-            f"Select the target date for recording:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_custom_date_buttons_screen(chat_id, message_id, state_data):
-        import datetime as dt_mod
-        state_data['state'] = 'recording_date_custom_select'
-        
-        days = []
-        for i in range(1, 8):
-            d = datetime.now() - dt_mod.timedelta(days=i)
-            days.append(d)
-            
-        markup = InlineKeyboardMarkup()
-        row = []
-        for d in days:
-            date_str = d.strftime("%Y-%m-%d")
-            day_label = d.strftime("%Y-%m-%d (%a)")
-            row.append(InlineKeyboardButton(day_label, callback_data=f"rec_dateval_{date_str}"))
-            if len(row) == 2:
-                markup.row(*row)
-                row = []
-        if row:
-            markup.row(*row)
-            
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                   
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: SELECT DATE</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n\n"
-            f"Select one of the past 7 days to record attendance:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_student_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_student_select'
-        
-        recording_type = state_data['recording_type']
-        subject_id = state_data.get('subject_id')
-        students = get_eligible_students(recording_type, subject_id)
-        
-        total_students = len(students)
-        current_page = state_data.get('current_page', 0)
-        page_size = 5
-        max_pages = (total_students + page_size - 1) // page_size if total_students > 0 else 1
-        
-        # bounds check
-        if current_page < 0:
-            current_page = 0
-        elif current_page >= max_pages:
-            current_page = max_pages - 1
-        state_data['current_page'] = current_page
-        
-        start_idx = current_page * page_size
-        end_idx = min(start_idx + page_size, total_students)
-        page_students = students[start_idx:end_idx]
-        
-        markup = InlineKeyboardMarkup(row_width=1)
-        
-        for qr_code, name, course, student_type in page_students:
-            course_tag = f" ({course})" if course else ""
-            type_tag = " (Irregular)" if student_type == 'irregular' else ""
-            btn_text = f"{name}{course_tag}{type_tag}"
-            markup.add(InlineKeyboardButton(btn_text, callback_data=f"rec_stusel_{qr_code}"))
-            
-        nav_row = []
-        if current_page > 0:
-            nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_page_prev"))
-        else:
-            nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_noop"))
-            
-        nav_row.append(InlineKeyboardButton(f"Page {current_page + 1}/{max_pages}", callback_data="rec_noop"))
-        
-        if current_page + 1 < max_pages:
-            nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_page_next"))
-        else:
-            nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_noop"))
-            
-        markup.row(*nav_row)
-        
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if recording_type == 'daily' else state_data.get('subject_name', 'Subject')
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: SELECT STUDENT</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n"
-            f"Date: <b>{state_data['date']}</b>\n\n"
-            f"Select a student from the list below to record attendance:"
-        )
-        if not students:
-            msg_text += "\n\n<i>No eligible students found.</i>"
-            
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def show_status_select_screen(chat_id, message_id, state_data):
-        state_data['state'] = 'recording_status_select'
-        
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("Present", callback_data="rec_status_present"),
-                   InlineKeyboardButton("Late", callback_data="rec_status_late"),
-                   InlineKeyboardButton("Absent", callback_data="rec_status_absent"))
-        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
-                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
-        msg_text = (
-            f"<b>RECORD ATTENDANCE: STATUS</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            f"Context: <b>{context_name}</b>\n"
-            f"Date: <b>{state_data['date']}</b>\n"
-            f"Student: <b>{state_data['student_name']}</b>\n\n"
-            f"Choose attendance status for the student:"
-        )
-        
-        bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
-
-    def handle_record_attendance(message):
-        """Starts the attendance recording process."""
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-            
-        markup = InlineKeyboardMarkup()
-        markup.row(InlineKeyboardButton("Daily Attendance", callback_data="rec_mode_daily"),
-                   InlineKeyboardButton("Subject Attendance", callback_data="rec_mode_subject"))
-        markup.row(InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-        
-        msg_text = (
-            "<b>RECORD ATTENDANCE</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            "Select the type of attendance you wish to record:"
-        )
-        
-        frame_msg = bot.send_message(message.chat.id, msg_text, reply_markup=markup, parse_mode='HTML')
-        
-        with user_states_lock:
-            user_states[message.from_user.id] = {
-                'state': 'recording_mode_select',
-                'frame_msg_id': frame_msg.message_id
-            }
-
-    def trigger_announcement_confirmation(user_id, chat_id, content_type):
-        with user_states_lock:
-            state_data = user_states.get(user_id)
-            if not state_data or state_data.get('state') != 'announcing':
-                return
-            
-            msg_ids = state_data.get('msg_ids', [])
-            draft_id = state_data.get('draft_msg_id')
-            if not msg_ids or not draft_id:
-                return
-            
-            state_data['timer'] = None
-            count = len(msg_ids)
-            
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("[OK] Confirm Broadcast", callback_data="ann_confirm"), 
-                      InlineKeyboardButton("[X] Cancel", callback_data="ann_cancel"))
-            
-            msg = f"[BOX] <b>ANNOUNCEMENT READY</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffer Stable</b>\nItems: <b>{count} total</b>\n\nReady to deliver these items to the group chat?"
-            try:
-                bot.edit_message_text(msg, chat_id, draft_id, parse_mode='HTML', reply_markup=markup)
-            except: pass
-
-
-    @bot.message_handler(commands=['start', 'help'])
-    def send_welcome(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        is_admin = str(message.from_user.id) == str(ADMIN_ID).strip()
-        
-        welcome_text = (
-            "<b>ATTENDANCE INTERFACE</b>\n\n"
-            "Welcome. Available commands:\n"
-            "• <code>/search [Name/ID]</code>\n"
-            "• <code>/order</code> (Store/Products)\n"
-            "• <code>/pdf [ID]</code> (Export PDF)\n"
-            "• <code>/birthdays</code> (Upcoming)\n"
-            "• <code>/bdaysearch [Query]</code> (Search B-Day)\n"
-        )
-        
-        if is_admin:
-            welcome_text += (
-                "• <code>/today</code> (Daily Stats)\n"
-                "• <code>/export</code> (Export CSV)\n"
-                "• <code>/getdb</code> (Admin DB Access)\n\n"
-                "<i>Use the menu below for quick actions.</i>"
+            conn.commit()
+            now = datetime.now().strftime("%Y-%m-%d %H:%M")
+            cursor.execute(
+                "SELECT id, message FROM scheduled_announcements "
+                "WHERE status = 'pending' AND (scheduled_date || ' ' || scheduled_time) <= ?",
+                (now,)
             )
-        else:
-            welcome_text += "\n<i>Please contact an administrator for full access.</i>"
-            
-        bot.reply_to(message, welcome_text, reply_markup=get_admin_main_keyboard() if is_admin else None)
-
-    @bot.message_handler(commands=['announce', 'cancel'])
-    def handle_announce_command(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip():
-            return
-            
-        if message.chat.type != 'private':
-            return # Admin controls only valid in Private Chat
-            
-        if message.text.startswith('/cancel'):
-            with user_states_lock:
-                state = user_states.get(message.from_user.id)
-                if state and state.get('timer'):
-                    state['timer'].cancel()
-                user_states[message.from_user.id] = {'state': 'idle'}
-            bot.reply_to(message, "[X] <b>Announcement cancelled.</b> Returning to normal mode.", reply_markup=get_admin_main_keyboard())
-            return
-            
-        with user_states_lock:
-            # Start drafting session
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
-                      InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
-            
-            draft_msg = bot.send_message(message.chat.id, "[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Ready for Input</b>\nItems: <code>[0]</code>\n\n<i>Send text, photos, or files to add them to your draft.</i>", parse_mode='HTML', reply_markup=markup)
-            
-            user_states[message.from_user.id] = {
-                'state': 'announcing', 
-                'msg_ids': [], 
-                'timer': None,
-                'draft_msg_id': draft_msg.message_id
-            }
-
-    @bot.message_handler(commands=['today'])
-    def handle_today(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-        try:
-            bot.send_chat_action(message.chat.id, 'typing')
-            stats = get_today_stats()
-            bot.reply_to(message, stats)
+            rows = cursor.fetchall()
+            for row_id, msg in rows:
+                try:
+                    bot.send_message(chat_id, msg, parse_mode='HTML')
+                    cursor.execute("UPDATE scheduled_announcements SET status = 'sent' WHERE id = ?", (row_id,))
+                    conn.commit()
+                    print(f"Scheduled announcement #{row_id} sent.")
+                except Exception as e:
+                    print(f"Error sending scheduled announcement #{row_id}: {e}")
+                    cursor.execute("UPDATE scheduled_announcements SET status = 'failed' WHERE id = ?", (row_id,))
+                    conn.commit()
+            conn.close()
         except Exception as e:
-            bot.reply_to(message, f"[X] <b>Command Error:</b>\n<code>{str(e)}</code>")
+            print(f"Scheduled announcement worker error: {e}")
+        time.sleep(30)
 
-    @bot.message_handler(commands=['export'])
-    def handle_export(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-        bot.send_chat_action(message.chat.id, 'upload_document')
-        try:
-            path = export_attendance_csv()
-            with open(path, 'rb') as f:
-                bot.send_document(message.chat.id, f, caption="[STATS] Full Attendance Export (CSV)")
-            os.remove(path)
-        except Exception as e:
-            bot.reply_to(message, f"[X] Export failed: {e}")
+# Graceful shutdown
+shutdown_event = threading.Event()
 
-    def animate_loading(chat_id, title="GENERATING DOSSIER", speed=0.3, message_id=None):
-        """Standardized loading animation. Can send a new message or edit an existing one."""
-        try:
-            if message_id:
-                bot.edit_message_text(f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id, message_id, parse_mode='HTML')
-                working_id = message_id
-            else:
-                msg = bot.send_message(chat_id, f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
-                working_id = msg.message_id
-                
-            for i in range(1, 6):
-                time.sleep(speed)
-                filled = i * 2
-                bar = "█" * filled + "░" * (10 - filled)
-                bot.edit_message_text(
-                    f"[SYNC] <b>{title}</b>\n<code>[{bar}] {i*20}%</code>",
-                    chat_id, working_id, parse_mode='HTML'
-                )
-            return working_id
-        except: return message_id
+def signal_handler(signum, frame):
+    print("\nShutting down gracefully...")
+    shutdown_event.set()
 
-    @bot.message_handler(commands=['pdf'])
-    def handle_pdf_export(message):
-        args = message.text.split(maxsplit=1)
-        if len(args) < 2:
-            bot.reply_to(message, "<b>[DOC] PDF Export</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a student ID.\n\nExample: <code>/pdf 12345</code>")
-            return
-            
-        qr_code = args[1].strip()
-        loading_id = animate_loading(message.chat.id)
-        bot.send_chat_action(message.chat.id, 'upload_document')
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+def run_bot():
+    """Main bot execution loop with reconnection."""
+    global bot
+    while not shutdown_event.is_set():
+        TOKEN, _, _, _, _ = get_settings()
+        if not TOKEN:
+            print("Waiting for Telegram Bot Token to be set in Settings...")
+            shutdown_event.wait(10)
+            continue
         
-        try:
-            pdf_path = generate_pdf_dossier(qr_code)
-            if pdf_path and os.path.exists(pdf_path):
-                with open(pdf_path, 'rb') as f:
-                    bot.send_document(message.chat.id, f, caption=f"[DOC] Attendance Dossier")
-                os.remove(pdf_path) # Cleanup
-                if loading_id: bot.delete_message(message.chat.id, loading_id)
-            else:
-                if loading_id: bot.delete_message(message.chat.id, loading_id)
-                bot.reply_to(message, "[X] Failed to generate PDF. Ensure ID is correct.")
-        except Exception as e:
-            if loading_id: bot.delete_message(message.chat.id, loading_id)
-            bot.reply_to(message, f"[X] Error: {e}")
-            
-    # --- NEW: Upcoming Birthdays Command ---
-    @bot.message_handler(commands=['birthdays'])
-    def show_upcoming_birthdays(message):
-        try:
+        print("Initialize Bot (with 90s timeout for stability)...")
+        bot = telebot.TeleBot(TOKEN, parse_mode='HTML', threaded=True)
+        # Global timeouts for all requests
+        telebot.apihelper.CONNECT_TIMEOUT = 30
+        telebot.apihelper.READ_TIMEOUT = 90
+
+        def get_admin_main_keyboard():
+            markup = ReplyKeyboardMarkup(resize_keyboard=True)
+            markup.row(KeyboardButton("Search Student"), KeyboardButton("Record Attendance"))
+            markup.row(KeyboardButton("Today's Stats"), KeyboardButton("Announce"))
+            markup.row(KeyboardButton("Export CSV"), KeyboardButton("All Dossiers"), KeyboardButton("Get Database"))
+            return markup
+
+        def get_active_subjects():
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("SELECT first_name, last_name, birthday FROM users WHERE birthday IS NOT NULL AND deleted_at IS NULL")
+            cursor.execute("SELECT id, name FROM subjects WHERE is_active = 1 ORDER BY name ASC")
             rows = cursor.fetchall()
             conn.close()
-            
-            if not rows:
-                bot.reply_to(message, "<i>No student records found.</i>", parse_mode='HTML')
-                return
-                
-            today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-            upcoming = []
-            
-            for f_name, l_name, b_day_str in rows:
-                try:
-                    # Parse birthday (assumes YYYY-MM-DD)
-                    bday_dt = datetime.strptime(b_day_str, '%Y-%m-%d')
-                    # Find next occurrence
-                    this_year_bday = bday_dt.replace(year=today.year)
-                    if this_year_bday < today:
-                        next_bday = this_year_bday.replace(year=today.year + 1)
-                    else:
-                        next_bday = this_year_bday
-                        
-                    days_left = (next_bday - today).days
-                    upcoming.append({
-                        'name': f"{f_name} {l_name}",
-                        'date': next_bday.strftime("%B %d"),
-                        'days': days_left
-                    })
-                except: continue # Skip invalid dates
-                
-            # Sort by nearest
-            upcoming.sort(key=lambda x: x['days'])
-            top_5 = upcoming[:5]
-            
-            if not top_5:
-                bot.reply_to(message, "<i>No upcoming birthdays detected.</i>", parse_mode='HTML')
-                return
-                
-            msg_body = "<b>[DATE] UPCOMING BIRTHDAYS</b>\n"
-            msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            msg_body += f"Date: {datetime.now().strftime('%b %d, %Y')}\n\n"
-            
-            for i, stu in enumerate(top_5, 1):
-                msg_body += f"<b>{i}. {stu['name']}</b>\n"
-                msg_body += f"<code>{stu['date']} · {stu['days']} Days Left</code>\n\n"
-                
-            msg_body += "<i>Data Protocol :: System Retrieval</i>"
-            
-            bot.send_message(message.chat.id, msg_body, parse_mode='HTML')
-            
-        except Exception as e:
-            print(f"Birthdays Error: {e}")
-            bot.reply_to(message, "<i>System error retrieving records.</i>", parse_mode='HTML')
+            return rows
 
-    @bot.message_handler(commands=['birthday_search', 'bdaysearch'])
-    def handle_birthday_search(message):
-        args = message.text.split(maxsplit=1)
-        if len(args) < 2:
-            bot.reply_to(message, "<b>[SEARCH] BIRTHDAY SEARCH</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or student ID.\n\nExample: <code>/bdaysearch delin</code>")
-            return
-            
-        query = args[1].strip()
-        bot.send_chat_action(message.chat.id, 'typing')
-        
-        try:
-            # 1. Animated Progress Sweep
-            sweep_msg = bot.send_message(message.chat.id, "[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
-            
-            for i in range(1, 6):
-                time.sleep(0.3)
-                filled = i * 2
-                bar = "█" * filled + "░" * (10 - filled)
-                bot.edit_message_text(
-                    f"[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
-                    message.chat.id,
-                    sweep_msg.message_id,
-                    parse_mode='HTML'
-                )
-            
-            time.sleep(0.2)
-            bot.delete_message(message.chat.id, sweep_msg.message_id)
-
-            # 2. Database Search
+        def get_eligible_students(recording_type, subject_id=None):
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            search_query = f"%{query}%"
-            cursor.execute("""
-                SELECT first_name, last_name, birthday 
-                FROM users 
-                WHERE (qr_code = ? OR name LIKE ? OR first_name LIKE ? OR last_name LIKE ?)
-                AND birthday IS NOT NULL 
-                AND deleted_at IS NULL
-                LIMIT 5
-            """, (query, search_query, search_query, search_query))
-            rows = cursor.fetchall()
-            conn.close()
-
-            if not rows:
-                bot.send_message(message.chat.id, f"<i>No birthday records found for: '{query}'</i>", parse_mode='HTML')
-                return
-
-            msg_body = "<b>[SEARCH] BIRTHDAY SEARCH RESULTS</b>\n"
-            msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            msg_body += f"Query: '{query}'\n\n"
-            
-            for f_name, l_name, b_day_str in rows:
-                try:
-                    bday_dt = datetime.strptime(b_day_str, '%Y-%m-%d')
-                    full_date = bday_dt.strftime("%B %d, %Y")
-                    msg_body += f"<b>{f_name} {l_name}</b>\n"
-                    msg_body += f"<code>{full_date}</code>\n\n"
-                except:
-                    msg_body += f"<b>{f_name} {l_name}</b>\n"
-                    msg_body += f"<code>{b_day_str}</code>\n\n"
-
-            msg_body += "<b>───────────────────</b>\n"
-            msg_body += "<i>Data Protocol 2.0 :: Admin Retrieval</i>"
-            
-            bot.send_message(message.chat.id, msg_body, parse_mode='HTML')
-
-        except Exception as e:
-            print(f"B-Day Search Error: {e}")
-            bot.reply_to(message, "<i>System error during search.</i>", parse_mode='HTML')
-
-    @bot.message_handler(commands=['order'])
-    def handle_order_command(message):
-        """Starts the ordering process with a frame-animated UI."""
-        products = get_products()
-        if not products:
-            bot.reply_to(message, "[BOX] <b>ORDER SYSTEM</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>Currently, no products are available for order.</i>")
-            return
-            
-        _, _, _, store_name, _ = get_settings()
-        markup = InlineKeyboardMarkup(row_width=1)
-        for p_id, p_name, p_price, p_stock, _, _ in products:
-            markup.add(InlineKeyboardButton(f"{p_name} - ₱{p_price}", callback_data=f"ord_sel_{p_id}"))
-        markup.add(InlineKeyboardButton("[X] Cancel", callback_data="ord_cancel"))
-        
-        frame_msg = bot.send_message(
-            message.chat.id, 
-            f"[BOX] <b>{store_name}</b>\n━━━━━━━━━━━━━━━━━━━━\nSelect a product you wish to order from the list below.\n\n<i>All orders are subject to stock availability and validation.</i>",
-            reply_markup=markup
-        )
-        # Initialize state
-        user_states[message.from_user.id] = {
-            'state': 'ordering_select',
-            'frame_msg_id': frame_msg.message_id
-        }
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('ord_'))
-    def handle_order_callbacks(call):
-        state_data = user_states.get(call.from_user.id)
-        if not state_data or state_data.get('frame_msg_id') != call.message.message_id:
-            # If state is missing or message is different, but it's a selection, we can try to recover
-            if call.data.startswith('ord_sel_'):
-                user_states[call.from_user.id] = {'state': 'ordering_select', 'frame_msg_id': call.message.message_id}
-                state_data = user_states[call.from_user.id]
-
-        if call.data == 'ord_cancel':
-            bot.edit_message_text(
-                "[X] <b>Order Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe ordering process was terminated. Feel free to browse again anytime.",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id
-            )
-            user_states[call.from_user.id] = {'state': 'idle'}
-            bot.answer_callback_query(call.id)
-            return
-
-        if call.data.startswith('ord_sel_'):
-            p_id = int(call.data.split('_')[2])
-            product = get_product(p_id)
-            
-            if not product or product[2] <= 0: # Check stock
-                bot.answer_callback_query(call.id, "Sorry, this product is out of stock.")
-                return
-                
-            state_data['selected_product'] = product
-            state_data['state'] = 'ordering_qty'
-            
-            p_name, p_price, p_stock = product[1], product[2], product[3]
-            is_even_only = product[5]
-            
-            msg = (
-                f"[CART] <b>ORDERING: {p_name}</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                f"Price: <b>₱{p_price}</b>\n"
-                f"Stock: <b>{p_stock} pcs</b>\n\n"
-                f"<b>STEP: Enter Quantity</b>\n"
-                f"Please type the quantity you wish to order.\n"
-            )
-            if is_even_only:
-                msg += f"[WARN] <i>Note: Must be an <b>even number</b>.</i>"
-            
-            markup = InlineKeyboardMarkup()
-            markup.add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
-            
-            bot.edit_message_text(msg, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
-            bot.answer_callback_query(call.id)
-
-        if call.data == 'ord_confirm':
-            p_id, p_name, p_price = state_data['selected_product'][0:3]
-            qty = state_data['quantity']
-            total = state_data['total_price']
-            name = state_data['customer_name']
-            
-            # Final Stock Check wrap in transaction
-            try:
-                conn = sqlite3.connect(DB_PATH)
-                cursor = conn.cursor()
-                cursor.execute("SELECT stock FROM products WHERE id = ?", (p_id,))
-                current_stock = cursor.fetchone()[0]
-                
-                if current_stock < qty:
-                    bot.edit_message_text("[X] <b>Stock Error</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nSomeone else might have ordered. Low stock alert.", chat_id=call.message.chat.id, message_id=call.message.message_id)
-                    conn.close()
-                    return
-                    
-                # Record Order
+            if recording_type == 'daily':
                 cursor.execute("""
-                    INSERT INTO orders (product_id, telegram_id, customer_name, quantity, total_price)
-                    VALUES (?, ?, ?, ?, ?)
-                """, (p_id, str(call.from_user.id), name, qty, total))
-                
-                # Deduct Stock
-                cursor.execute("UPDATE products SET stock = stock - ? WHERE id = ?", (qty, p_id))
-                
-                conn.commit()
-                conn.close()
-                
-                bot.edit_message_text(
-                    f"[OK] <b>ORDER PLACED!</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                    f"<b>Product:</b> {p_name}\n"
-                    f"<b>Quantity:</b> {qty} pcs\n"
-                    f"<b>Total:</b> ₱{total}\n\n"
-                    f"Thank you, <b>{name}</b>. Your order is recorded and will be processed shortly.",
-                    chat_id=call.message.chat.id,
-                    message_id=call.message.message_id
-                )
-                
-                # Notify Admin
-                _, _, ADMIN_ID, _, _ = get_settings()
-                if ADMIN_ID:
-                    admin_msg = (
-                        f"[CART] <b>NEW ORDER RECEIVED</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                        f"<b>Item:</b> {p_name}\n"
-                        f"<b>Qty:</b> {qty}\n"
-                        f"<b>Total:</b> ₱{total}\n"
-                        f"<b>Customer:</b> {name} (@{call.from_user.username or 'NoUser'})\n"
-                    )
-                    bot.send_message(ADMIN_ID, admin_msg)
-                
-            except Exception as e:
-                print(f"Order error: {e}")
-                bot.edit_message_text("[X] <b>Order Failed</b>\nSystem error. Try again later.", chat_id=call.message.chat.id, message_id=call.message.message_id)
-            
-            user_states[call.from_user.id] = {'state': 'idle'}
-            bot.answer_callback_query(call.id)
-
-    @bot.message_handler(commands=['orders'])
-    def handle_view_orders(message):
-        """Allows admins to view the latest orders from the database."""
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-            
-        try:
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT o.customer_name, p.name, o.quantity, o.total_price, o.status, o.created_at
-                FROM orders o JOIN products p ON o.product_id = p.id
-                ORDER BY o.created_at DESC LIMIT 15
-            """)
-            orders = cursor.fetchall()
+                    SELECT qr_code, name, course, student_type 
+                    FROM users 
+                    WHERE deleted_at IS NULL 
+                    ORDER BY name ASC
+                """)
+            else:
+                cursor.execute("""
+                    SELECT qr_code, name, course, student_type 
+                    FROM users 
+                    WHERE deleted_at IS NULL 
+                      AND (
+                        student_type != 'irregular' 
+                        OR qr_code IN (SELECT qr_code FROM student_subjects WHERE subject_id = ?)
+                      )
+                    ORDER BY name ASC
+                """, (subject_id,))
+            students = cursor.fetchall()
             conn.close()
-            
-            if not orders:
-                bot.reply_to(message, "[LIST] <b>ORDER LOG</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>No orders recorded in the system.</i>")
-                return
-                
-            msg = "[LIST] <b>LATEST ORDERS (15)</b>\n"
-            msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
-            
-            for cust, item, qty, total, status, date in orders:
-                # Status prefix
-                status_icon = "[WAIT]" if status == 'pending' else "[OK]"
-                date_str = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').strftime('%b %d, %H:%M')
-                
-                msg += f"<b>{cust}</b> · <i>{date_str}</i>\n"
-                msg += f" {status_icon} <code>{item} x{qty}</code> | <b>₱{total}</b>\n\n"
-                
-            msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n"
-            msg += "<i>Tip: View full logs on the Web Dash.</i>"
-            
-            bot.send_message(message.chat.id, msg, parse_mode='HTML')
-            
-        except Exception as e:
-            print(f"Orders view error: {e}")
-            bot.reply_to(message, "[X] System error retrieving orders.")
+            return students
 
-    @bot.message_handler(commands=['search'])
-    def handle_search(message):
-        args = message.text.split(maxsplit=1)
-        if len(args) < 2:
-            bot.reply_to(message, "<b>[SEARCH] Search Required</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or ID.\n\nExample: <code>/search John</code>")
-            return
+        def show_subject_select_screen(chat_id, message_id, state_data):
+            state_data['state'] = 'recording_subject_select'
+            subjects = get_active_subjects()
         
-        query = args[1].strip()
-        bot.send_chat_action(message.chat.id, 'typing')
-        results = find_students(query)
-        
-        if not results:
-            bot.reply_to(message, f"<b>No Match Found</b>\nNo records found for '<b>{query}</b>'.")
-        elif len(results) == 1:
-            # Single match - Add Animation
-            loading_id = animate_loading(message.chat.id, title="RETRIEVING PROFILE", speed=0.2)
-            stats = get_student_stats(results[0][0])
-            if loading_id: bot.delete_message(message.chat.id, loading_id)
-            bot.reply_to(message, stats)
-        else:
-            # Multiple matches
             markup = InlineKeyboardMarkup(row_width=1)
-            for qr_code, name, course in results[:5]:
-                course_tag = f" ({course})" if course else ""
-                markup.add(InlineKeyboardButton(f"{name}{course_tag}", callback_data=f"view_{qr_code}"))
+            for sub_id, name in subjects:
+                markup.add(InlineKeyboardButton(name, callback_data=f"rec_subsel_{sub_id}"))
             
-            if len(results) > 5:
-                bot.reply_to(message, f"<b>Multiple Results</b>\nFound several matches for '<b>{query}</b>'.\n\n<i>Select a profile:</i>", reply_markup=markup)
-            else:
-                bot.reply_to(message, f"<b>Multiple Results</b>\nFound {len(results)} matches.\n\n<i>Select a profile:</i>", reply_markup=markup)
-
-    @bot.message_handler(commands=['dossier_all'])
-    def handle_dossier_all(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            return
-            
-        bot.send_message(message.chat.id, "[SYNC] <b>BATCH PROCESSING</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nInitializing mass dossier generation...")
-        students = get_all_active_students()
-        total = len(students)
-        
-        if total == 0:
-            bot.send_message(message.chat.id, "[X] No active students found.")
-            return
-
-        status_msg = bot.send_message(message.chat.id, f"[STATS] <b>Dossier Batch (0/{total})</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
-        
-        for i, (qr_code, name) in enumerate(students, 1):
-            try:
-                # Individual Animation for 'Data Retrieval' feel
-                load_msg = bot.send_message(message.chat.id, f"[SYNC] <b>FETCHING:</b> {name}\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
-                for step in range(1, 4):
-                    time.sleep(0.2)
-                    filled = step * 3
-                    bar = "█" * filled + "░" * (10 - filled)
-                    try: bot.edit_message_text(f"[SYNC] <b>FETCHING:</b> {name}\n<code>[{bar}] {step*33}%</code>", message.chat.id, load_msg.message_id, parse_mode='HTML')
-                    except: pass
-                
-                stats = get_student_stats(qr_code)
-                
-                # Cleanup loading message before sending final stats
-                try: bot.delete_message(message.chat.id, load_msg.message_id)
-                except: pass
-                
-                bot.send_message(message.chat.id, stats, parse_mode='HTML')
-                
-                # Update Overall Progress Message
-                if i % 3 == 0 or i == total:
-                    filled = int((i / total) * 10)
-                    bar = "█" * filled + "░" * (10 - filled)
-                    percent = int((i / total) * 100)
-                    bot.edit_message_text(
-                        f"[STATS] <b>Dossier Batch ({i}/{total})</b>\n<code>[{bar}] {percent}%</code>",
-                        message.chat.id, status_msg.message_id, parse_mode='HTML'
-                    )
-                
-                time.sleep(0.4) # Stabilizing delay
-            except Exception as e:
-                print(f"Error sending dossier for {name}: {e}")
-                
-        bot.send_message(message.chat.id, f"[OK] <b>BATCH COMPLETED</b>\nSent {total} dossiers successfully.")
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('view_'))
-    def handle_selection(call):
-        qr_code = call.data.split('_', 1)[1]
-        # Show mid-edit animation
-        animate_loading(call.message.chat.id, title="FETCHING DATA", speed=0.2, message_id=call.message.message_id)
-        
-        stats = get_student_stats(qr_code)
-        if stats:
-            # Edit the message with stats
-            markup = InlineKeyboardMarkup()
-            markup.row(InlineKeyboardButton("[DOC] Export PDF Dossier", callback_data=f"pdf_exp_{qr_code}"))
-            markup.row(InlineKeyboardButton("[SYNC] New Search", switch_inline_query_current_chat=""))
-            bot.edit_message_text(stats, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML', reply_markup=markup)
-        else:
-            bot.answer_callback_query(call.id, "Student not found.")
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('pdf_exp_'))
-    def handle_pdf_callback(call):
-        qr_code = call.data.split('_', 2)[2]
-        bot.answer_callback_query(call.id, "Preparing Dossier...")
-        
-        loading_id = animate_loading(call.message.chat.id, title="GENERATING PDF DOSSIER")
-        bot.send_chat_action(call.message.chat.id, 'upload_document')
-        
-        try:
-            pdf_path = generate_pdf_dossier(qr_code)
-            if pdf_path and os.path.exists(pdf_path):
-                with open(pdf_path, 'rb') as f:
-                    bot.send_document(call.message.chat.id, f, caption=f"[DOC] Attendance Dossier")
-                os.remove(pdf_path)
-            else:
-                bot.send_message(call.message.chat.id, "[X] Failed to generate PDF.")
-        except Exception as e:
-            bot.send_message(call.message.chat.id, f"[X] Error: {e}")
-        finally:
-            if loading_id: bot.delete_message(call.message.chat.id, loading_id)
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('ann_'))
-    def handle_announcement_confirm(call):
-        _, chat_id, ADMIN_ID, _, _ = get_settings()
-        if str(call.from_user.id) != str(ADMIN_ID).strip():
-            bot.answer_callback_query(call.id, "Unauthorized.")
-            return
-            
-        action = call.data.split('_')[1]
-        
-        with user_states_lock:
-            state = user_states.get(call.from_user.id)
-            if not state:
-                bot.answer_callback_query(call.id, "Session expired.")
-                return
-
-            if action == 'confirm':
-                msg_ids = state.get('msg_ids', [])
-                draft_id = state.get('draft_msg_id')
-                if msg_ids:
-                    # Broadcasting Animation
-                    bot.edit_message_text("[UP] <b>BROADCASTING...</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
-                    
-                    try:
-                        step = 100 / len(msg_ids)
-                        for i, mid in enumerate(msg_ids, 1):
-                            bot.copy_message(chat_id, call.message.chat.id, mid)
-                            # Update progress
-                            progress = int(i * step)
-                            filled = int(progress / 10)
-                            bar = "█" * filled + "░" * (10 - filled)
-                            bot.edit_message_text(f"[UP] <b>BROADCASTING...</b>\n<code>[{bar}] {progress}%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
-                            time.sleep(0.5)
-                        
-                        bot.edit_message_text("[OK] <b>Broadcast Successful!</b>\nAll items delivered to the group.", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
-                        time.sleep(2)
-                        bot.delete_message(call.message.chat.id, draft_id)
-                        bot.send_message(call.message.chat.id, "Main menu restored.", reply_markup=get_admin_main_keyboard())
-                    except Exception as e:
-                        bot.edit_message_text(f"[X] <b>Broadcast Failed:</b> {e}", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
-                else:
-                    bot.answer_callback_query(call.id, "No items to send.")
-            else:
-                draft_id = state.get('draft_msg_id')
-                if draft_id: bot.delete_message(call.message.chat.id, draft_id)
-                bot.send_message(call.message.chat.id, "[X] Announcement discarded.", reply_markup=get_admin_main_keyboard())
-            
-            # Cleanup timer and reset state
-            if state.get('timer'):
-                state['timer'].cancel()
-            user_states[call.from_user.id] = {'state': 'idle'}
-            
-        bot.answer_callback_query(call.id)
-
-    @bot.callback_query_handler(func=lambda call: call.data.startswith('rec_'))
-    def handle_recording_callbacks(call):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(call.from_user.id) != str(ADMIN_ID).strip():
-            bot.answer_callback_query(call.id, "Unauthorized.")
-            return
-            
-        state_data = user_states.get(call.from_user.id)
-        if not state_data or state_data.get('frame_msg_id') != call.message.message_id:
-            if call.data in ['rec_mode_daily', 'rec_mode_subject']:
-                user_states[call.from_user.id] = {'state': 'recording_mode_select', 'frame_msg_id': call.message.message_id}
-                state_data = user_states[call.from_user.id]
-            else:
-                bot.answer_callback_query(call.id, "Session expired or invalid message.")
-                return
-                
-        action = call.data
-        
-        if action == 'rec_cancel':
-            bot.edit_message_text(
-                "<b>Recording Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe recording process was terminated.",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                parse_mode='HTML'
+            markup.row(InlineKeyboardButton("Back", callback_data="rec_back_mode"),
+                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+                   
+            msg_text = (
+                "<b>RECORD ATTENDANCE: SELECT SUBJECT</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                "Select the active subject class:"
             )
-            with user_states_lock:
-                user_states[call.from_user.id] = {'state': 'idle'}
-            bot.answer_callback_query(call.id)
-            return
+            if not subjects:
+                msg_text += "\n\n<i>No active subjects found.</i>"
+            
+            bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
 
-        if action == 'rec_mode_daily':
-            state_data['recording_type'] = 'daily'
-            show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+        def show_date_select_screen(chat_id, message_id, state_data):
+            state_data['state'] = 'recording_date_select'
+            today_str = datetime.now().strftime("%Y-%m-%d")
+        
+            markup = InlineKeyboardMarkup()
+            markup.row(InlineKeyboardButton(f"Today ({today_str})", callback_data="rec_date_today"),
+                       InlineKeyboardButton("Custom Date", callback_data="rec_date_custom"))
+        
+            back_callback = "rec_back_mode" if state_data['recording_type'] == 'daily' else "rec_back_subjects"
+        
+            markup.row(InlineKeyboardButton("Back", callback_data=back_callback),
+                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+        
+            context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
+            msg_text = (
+                f"<b>RECORD ATTENDANCE: DATE</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                f"Context: <b>{context_name}</b>\n\n"
+                f"Select the target date for recording:"
+            )
+        
+            bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
+
+        def show_custom_date_buttons_screen(chat_id, message_id, state_data):
+            import datetime as dt_mod
+            state_data['state'] = 'recording_date_custom_select'
+        
+            days = []
+            for i in range(1, 8):
+                d = datetime.now() - dt_mod.timedelta(days=i)
+                days.append(d)
             
-        if action == 'rec_mode_subject':
-            state_data['recording_type'] = 'subject'
-            show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action.startswith('rec_subsel_'):
-            sub_id = int(action.split('_')[2])
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT name FROM subjects WHERE id = ? LIMIT 1", (sub_id,))
-            row = cursor.fetchone()
-            conn.close()
-            
+            markup = InlineKeyboardMarkup()
+            row = []
+            for d in days:
+                date_str = d.strftime("%Y-%m-%d")
+                day_label = d.strftime("%Y-%m-%d (%a)")
+                row.append(InlineKeyboardButton(day_label, callback_data=f"rec_dateval_{date_str}"))
+                if len(row) == 2:
+                    markup.row(*row)
+                    row = []
             if row:
-                state_data['subject_id'] = sub_id
-                state_data['subject_name'] = row[0]
-                show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                markup.row(*row)
             
-        if action == 'rec_back_mode':
-            state_data['state'] = 'recording_mode_select'
+            markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
+                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+                   
+            context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
+            msg_text = (
+                f"<b>RECORD ATTENDANCE: SELECT DATE</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                f"Context: <b>{context_name}</b>\n\n"
+                f"Select one of the past 7 days to record attendance:"
+            )
+        
+            bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
+
+        def show_student_select_screen(chat_id, message_id, state_data):
+            state_data['state'] = 'recording_student_select'
+        
+            recording_type = state_data['recording_type']
+            subject_id = state_data.get('subject_id')
+            students = get_eligible_students(recording_type, subject_id)
+        
+            total_students = len(students)
+            current_page = state_data.get('current_page', 0)
+            page_size = 5
+            max_pages = (total_students + page_size - 1) // page_size if total_students > 0 else 1
+        
+            # bounds check
+            if current_page < 0:
+                current_page = 0
+            elif current_page >= max_pages:
+                current_page = max_pages - 1
+            state_data['current_page'] = current_page
+        
+            start_idx = current_page * page_size
+            end_idx = min(start_idx + page_size, total_students)
+            page_students = students[start_idx:end_idx]
+        
+            markup = InlineKeyboardMarkup(row_width=1)
+        
+            for qr_code, name, course, student_type in page_students:
+                course_tag = f" ({course})" if course else ""
+                type_tag = " (Irregular)" if student_type == 'irregular' else ""
+                btn_text = f"{name}{course_tag}{type_tag}"
+                markup.add(InlineKeyboardButton(btn_text, callback_data=f"rec_stusel_{qr_code}"))
+            
+            nav_row = []
+            if current_page > 0:
+                nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_page_prev"))
+            else:
+                nav_row.append(InlineKeyboardButton("<< Prev", callback_data="rec_noop"))
+            
+            nav_row.append(InlineKeyboardButton(f"Page {current_page + 1}/{max_pages}", callback_data="rec_noop"))
+        
+            if current_page + 1 < max_pages:
+                nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_page_next"))
+            else:
+                nav_row.append(InlineKeyboardButton("Next >>", callback_data="rec_noop"))
+            
+            markup.row(*nav_row)
+        
+            markup.row(InlineKeyboardButton("Back", callback_data="rec_back_dates"),
+                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+        
+            context_name = "Daily Attendance" if recording_type == 'daily' else state_data.get('subject_name', 'Subject')
+            msg_text = (
+                f"<b>RECORD ATTENDANCE: SELECT STUDENT</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                f"Context: <b>{context_name}</b>\n"
+                f"Date: <b>{state_data['date']}</b>\n\n"
+                f"Select a student from the list below to record attendance:"
+            )
+            if not students:
+                msg_text += "\n\n<i>No eligible students found.</i>"
+            
+            bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
+
+        def show_status_select_screen(chat_id, message_id, state_data):
+            state_data['state'] = 'recording_status_select'
+        
+            markup = InlineKeyboardMarkup()
+            markup.row(InlineKeyboardButton("Present", callback_data="rec_status_present"),
+                       InlineKeyboardButton("Late", callback_data="rec_status_late"),
+                       InlineKeyboardButton("Absent", callback_data="rec_status_absent"))
+            markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
+                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+        
+            context_name = "Daily Attendance" if state_data['recording_type'] == 'daily' else state_data['subject_name']
+            msg_text = (
+                f"<b>RECORD ATTENDANCE: STATUS</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                f"Context: <b>{context_name}</b>\n"
+                f"Date: <b>{state_data['date']}</b>\n"
+                f"Student: <b>{state_data['student_name']}</b>\n\n"
+                f"Choose attendance status for the student:"
+            )
+        
+            bot.edit_message_text(msg_text, chat_id, message_id, reply_markup=markup, parse_mode='HTML')
+
+        def handle_record_attendance(message):
+            """Starts the attendance recording process."""
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            
             markup = InlineKeyboardMarkup()
             markup.row(InlineKeyboardButton("Daily Attendance", callback_data="rec_mode_daily"),
                        InlineKeyboardButton("Subject Attendance", callback_data="rec_mode_subject"))
             markup.row(InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-            bot.edit_message_text(
-                "<b>RECORD ATTENDANCE</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nSelect the type of attendance you wish to record:",
-                chat_id=call.message.chat.id,
-                message_id=call.message.message_id,
-                reply_markup=markup,
-                parse_mode='HTML'
+        
+            msg_text = (
+                "<b>RECORD ATTENDANCE</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                "Select the type of attendance you wish to record:"
             )
-            bot.answer_callback_query(call.id)
-            return
+        
+            frame_msg = bot.send_message(message.chat.id, msg_text, reply_markup=markup, parse_mode='HTML')
+        
+            with user_states_lock:
+                user_states[message.from_user.id] = {
+                    'state': 'recording_mode_select',
+                    'frame_msg_id': frame_msg.message_id
+                }
+
+        def trigger_announcement_confirmation(user_id, chat_id, content_type):
+            with user_states_lock:
+                state_data = user_states.get(user_id)
+                if not state_data or state_data.get('state') != 'announcing':
+                    return
             
-        if action == 'rec_back_subjects':
-            show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                msg_ids = state_data.get('msg_ids', [])
+                draft_id = state_data.get('draft_msg_id')
+                if not msg_ids or not draft_id:
+                    return
             
-        if action == 'rec_back_dates':
-            show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                state_data['timer'] = None
+                count = len(msg_ids)
             
-        if action == 'rec_date_today':
-            state_data['date'] = datetime.now().strftime("%Y-%m-%d")
-            state_data['current_page'] = 0
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_date_custom':
-            show_custom_date_buttons_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action.startswith('rec_dateval_'):
-            date_val = action.split('_', 2)[2]
-            state_data['date'] = date_val
-            state_data['current_page'] = 0
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_page_prev':
-            state_data['current_page'] = state_data.get('current_page', 0) - 1
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_page_next':
-            state_data['current_page'] = state_data.get('current_page', 0) + 1
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
-
-        if action == 'rec_noop':
-            bot.answer_callback_query(call.id)
-            return
+                markup = InlineKeyboardMarkup()
+                markup.row(InlineKeyboardButton("[OK] Confirm Broadcast", callback_data="ann_confirm"), 
+                          InlineKeyboardButton("[X] Cancel", callback_data="ann_cancel"))
             
-        if action == 'rec_back_student_select':
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                msg = f"[BOX] <b>ANNOUNCEMENT READY</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffer Stable</b>\nItems: <b>{count} total</b>\n\nReady to deliver these items to the group chat?"
+                try:
+                    bot.edit_message_text(msg, chat_id, draft_id, parse_mode='HTML', reply_markup=markup)
+                except Exception:
+                    pass
 
-        if action.startswith('rec_stusel_'):
-            qr_code = action.split('_', 2)[2]
-            conn = sqlite3.connect(DB_PATH)
-            cursor = conn.cursor()
-            cursor.execute("SELECT qr_code, name, course, student_type FROM users WHERE qr_code = ? LIMIT 1", (qr_code,))
-            row = cursor.fetchone()
-            conn.close()
 
-            if row:
-                state_data['student_qr'] = row[0]
-                state_data['student_name'] = row[1]
-                state_data['student_course'] = row[2]
-                state_data['student_type'] = row[3]
+        @bot.message_handler(commands=['start', 'help'])
+        def send_welcome(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            is_admin = str(message.from_user.id) == str(ADMIN_ID).strip()
+        
+            welcome_text = (
+                "<b>ATTENDANCE INTERFACE</b>\n\n"
+                "Welcome. Available commands:\n"
+                "• <code>/search [Name/ID]</code>\n"
+                "• <code>/order</code> (Store/Products)\n"
+                "• <code>/pdf [ID]</code> (Export PDF)\n"
+                "• <code>/birthdays</code> (Upcoming)\n"
+                "• <code>/bdaysearch [Query]</code> (Search B-Day)\n"
+            )
+        
+            if is_admin:
+                welcome_text += (
+                    "• <code>/today</code> (Daily Stats)\n"
+                    "• <code>/export</code> (Export CSV)\n"
+                    "• <code>/getdb</code> (Admin DB Access)\n"
+                    "• <code>/schedule</code> (Schedule Announcement)\n"
+                    "• <code>/schedules</code> (List Scheduled)\n\n"
+                    "<i>Use the menu below for quick actions.</i>"
+                )
+            else:
+                welcome_text += "\n<i>Please contact an administrator for full access.</i>"
+            
+            bot.reply_to(message, welcome_text, reply_markup=get_admin_main_keyboard() if is_admin else None)
+
+        @bot.message_handler(commands=['announce', 'cancel'])
+        def handle_announce_command(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip():
+                return
+            
+            if message.chat.type != 'private':
+                return # Admin controls only valid in Private Chat
+            
+            if message.text.startswith('/cancel'):
+                with user_states_lock:
+                    state = user_states.get(message.from_user.id)
+                    if state and state.get('timer'):
+                        state['timer'].cancel()
+                    user_states[message.from_user.id] = {'state': 'idle'}
+                bot.reply_to(message, "[X] <b>Announcement cancelled.</b> Returning to normal mode.", reply_markup=get_admin_main_keyboard())
+                return
+            
+            with user_states_lock:
+                # Start drafting session
+                markup = InlineKeyboardMarkup()
+                markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                          InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+            
+                draft_msg = bot.send_message(message.chat.id, "[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Ready for Input</b>\nItems: <code>[0]</code>\n\n<i>Send text, photos, or files to add them to your draft.</i>", parse_mode='HTML', reply_markup=markup)
+            
+                user_states[message.from_user.id] = {
+                    'state': 'announcing', 
+                    'msg_ids': [], 
+                    'timer': None,
+                    'draft_msg_id': draft_msg.message_id
+                }
+
+        @bot.message_handler(commands=['schedule'])
+        def handle_schedule(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            with user_states_lock:
+                user_states[message.from_user.id] = {'state': 'scheduling_date'}
+            bot.reply_to(message, (
+                "[SCHEDULE] <b>SCHEDULE ANNOUNCEMENT</b>\n"
+                "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                "Please enter the date in <b>YYYY-MM-DD</b> format\n"
+                "(e.g. <code>2026-06-15</code>):"
+            ))
+
+        @bot.message_handler(commands=['schedules'])
+        def handle_list_schedules(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS scheduled_announcements (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        message TEXT NOT NULL,
+                        scheduled_date TEXT NOT NULL,
+                        scheduled_time TEXT NOT NULL,
+                        status TEXT DEFAULT 'pending',
+                        created_by TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.commit()
+                cursor.execute(
+                    "SELECT id, scheduled_date, scheduled_time, message, status "
+                    "FROM scheduled_announcements WHERE status = 'pending' "
+                    "ORDER BY scheduled_date ASC, scheduled_time ASC"
+                )
+                rows = cursor.fetchall()
+                conn.close()
+                if not rows:
+                    bot.reply_to(message, "[SCHEDULE] No pending scheduled announcements.")
+                    return
+                lines = ["[SCHEDULE] <b>PENDING SCHEDULED ANNOUNCEMENTS</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"]
+                for row_id, sdate, stime, msg, status in rows:
+                    preview = msg[:60].replace('\n', ' ') + ('...' if len(msg) > 60 else '')
+                    lines.append(f"• <b>#{row_id}</b> — {sdate} {stime}\n  <code>{preview}</code>")
+                bot.reply_to(message, '\n'.join(lines))
+            except Exception as e:
+                bot.reply_to(message, f"[X] <b>Error:</b> {e}")
+
+        @bot.message_handler(commands=['cancelschedule'])
+        def handle_cancel_schedule(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            parts = message.text.split()
+            if len(parts) < 2:
+                bot.reply_to(message, "[X] Usage: <code>/cancelschedule &lt;id&gt;</code>\nUse <code>/schedules</code> to see all pending IDs.")
+                return
+            try:
+                sid = int(parts[1])
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("UPDATE scheduled_announcements SET status = 'cancelled' WHERE id = ? AND status = 'pending'", (sid,))
+                if cursor.rowcount == 0:
+                    bot.reply_to(message, f"[X] No pending scheduled announcement with ID #{sid}.")
+                else:
+                    conn.commit()
+                    bot.reply_to(message, f"[SCHEDULE] Scheduled announcement #{sid} has been cancelled.")
+                conn.close()
+            except ValueError:
+                bot.reply_to(message, "[X] Invalid ID. Please provide a numeric ID.")
+
+        @bot.message_handler(commands=['today'])
+        def handle_today(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            try:
+                bot.send_chat_action(message.chat.id, 'typing')
+                stats = get_today_stats()
+                bot.reply_to(message, stats)
+            except Exception as e:
+                bot.reply_to(message, f"[X] <b>Command Error:</b>\n<code>{str(e)}</code>")
+
+        @bot.message_handler(commands=['export'])
+        def handle_export(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
+            bot.send_chat_action(message.chat.id, 'upload_document')
+            try:
+                path = export_attendance_csv()
+                with open(path, 'rb') as f:
+                    bot.send_document(message.chat.id, f, caption="[STATS] Full Attendance Export (CSV)")
+                os.remove(path)
+            except Exception as e:
+                bot.reply_to(message, f"[X] Export failed: {e}")
+
+        def animate_loading(chat_id, title="GENERATING DOSSIER", speed=0.3, message_id=None):
+            """Standardized loading animation. Can send a new message or edit an existing one."""
+            try:
+                if message_id:
+                    bot.edit_message_text(f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id, message_id, parse_mode='HTML')
+                    working_id = message_id
+                else:
+                    msg = bot.send_message(chat_id, f"[SYNC] <b>{title}</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                    working_id = msg.message_id
                 
-                if state_data['recording_type'] == 'subject' and state_data.get('student_type') == 'irregular':
+                for i in range(1, 6):
+                    time.sleep(speed)
+                    filled = i * 2
+                    bar = "█" * filled + "░" * (10 - filled)
+                    bot.edit_message_text(
+                        f"[SYNC] <b>{title}</b>\n<code>[{bar}] {i*20}%</code>",
+                        chat_id, working_id, parse_mode='HTML'
+                    )
+                return working_id
+            except Exception:
+                return message_id
+
+        @bot.message_handler(commands=['pdf'])
+        def handle_pdf_export(message):
+            args = message.text.split(maxsplit=1)
+            if len(args) < 2:
+                bot.reply_to(message, "<b>[DOC] PDF Export</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a student ID.\n\nExample: <code>/pdf 12345</code>")
+                return
+            
+            qr_code = args[1].strip()
+            loading_id = animate_loading(message.chat.id)
+            bot.send_chat_action(message.chat.id, 'upload_document')
+        
+            try:
+                pdf_path = generate_pdf_dossier(qr_code)
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, 'rb') as f:
+                        bot.send_document(message.chat.id, f, caption=f"[DOC] Attendance Dossier")
+                    os.remove(pdf_path) # Cleanup
+                    if loading_id: bot.delete_message(message.chat.id, loading_id)
+                else:
+                    if loading_id: bot.delete_message(message.chat.id, loading_id)
+                    bot.reply_to(message, "[X] Failed to generate PDF. Ensure ID is correct.")
+            except Exception as e:
+                if loading_id: bot.delete_message(message.chat.id, loading_id)
+                bot.reply_to(message, f"[X] Error: {e}")
+            
+        # --- NEW: Upcoming Birthdays Command ---
+        @bot.message_handler(commands=['birthdays'])
+        def show_upcoming_birthdays(message):
+            try:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT first_name, last_name, birthday FROM users WHERE birthday IS NOT NULL AND deleted_at IS NULL")
+                rows = cursor.fetchall()
+                conn.close()
+            
+                if not rows:
+                    bot.reply_to(message, "<i>No student records found.</i>", parse_mode='HTML')
+                    return
+                
+                today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                upcoming = []
+            
+                for f_name, l_name, b_day_str in rows:
+                    try:
+                        # Parse birthday (assumes YYYY-MM-DD)
+                        bday_dt = datetime.strptime(b_day_str, '%Y-%m-%d')
+                        # Find next occurrence
+                        this_year_bday = bday_dt.replace(year=today.year)
+                        if this_year_bday < today:
+                            next_bday = this_year_bday.replace(year=today.year + 1)
+                        else:
+                            next_bday = this_year_bday
+                        
+                        days_left = (next_bday - today).days
+                        upcoming.append({
+                            'name': f"{f_name} {l_name}",
+                            'date': next_bday.strftime("%B %d"),
+                            'days': days_left
+                        })
+                    except Exception:
+                        continue  # Skip invalid dates
+                
+                # Sort by nearest
+                upcoming.sort(key=lambda x: x['days'])
+                top_5 = upcoming[:5]
+            
+                if not top_5:
+                    bot.reply_to(message, "<i>No upcoming birthdays detected.</i>", parse_mode='HTML')
+                    return
+                
+                msg_body = "<b>[DATE] UPCOMING BIRTHDAYS</b>\n"
+                msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                msg_body += f"Date: {datetime.now().strftime('%b %d, %Y')}\n\n"
+            
+                for i, stu in enumerate(top_5, 1):
+                    msg_body += f"<b>{i}. {stu['name']}</b>\n"
+                    msg_body += f"<code>{stu['date']} · {stu['days']} Days Left</code>\n\n"
+                
+                msg_body += "<i>Data Protocol :: System Retrieval</i>"
+            
+                bot.send_message(message.chat.id, msg_body, parse_mode='HTML')
+            
+            except Exception as e:
+                print(f"Birthdays Error: {e}")
+                bot.reply_to(message, "<i>System error retrieving records.</i>", parse_mode='HTML')
+
+        @bot.message_handler(commands=['birthday_search', 'bdaysearch'])
+        def handle_birthday_search(message):
+            args = message.text.split(maxsplit=1)
+            if len(args) < 2:
+                bot.reply_to(message, "<b>[SEARCH] BIRTHDAY SEARCH</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or student ID.\n\nExample: <code>/bdaysearch delin</code>")
+                return
+            
+            query = args[1].strip()
+            bot.send_chat_action(message.chat.id, 'typing')
+        
+            try:
+                # 1. Animated Progress Sweep
+                sweep_msg = bot.send_message(message.chat.id, "[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+            
+                for i in range(1, 6):
+                    time.sleep(0.3)
+                    filled = i * 2
+                    bar = "█" * filled + "░" * (10 - filled)
+                    bot.edit_message_text(
+                        f"[SEARCH] <b>SYSTEM SWEEP:</b> Scanning database...\n<code>[{bar}] {i*20}%</code>",
+                        message.chat.id,
+                        sweep_msg.message_id,
+                        parse_mode='HTML'
+                    )
+            
+                time.sleep(0.2)
+                bot.delete_message(message.chat.id, sweep_msg.message_id)
+
+                # 2. Database Search
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                search_query = f"%{query}%"
+                cursor.execute("""
+                    SELECT first_name, last_name, birthday 
+                    FROM users 
+                    WHERE (qr_code = ? OR name LIKE ? OR first_name LIKE ? OR last_name LIKE ?)
+                    AND birthday IS NOT NULL 
+                    AND deleted_at IS NULL
+                    LIMIT 5
+                """, (query, search_query, search_query, search_query))
+                rows = cursor.fetchall()
+                conn.close()
+
+                if not rows:
+                    bot.send_message(message.chat.id, f"<i>No birthday records found for: '{query}'</i>", parse_mode='HTML')
+                    return
+
+                msg_body = "<b>[SEARCH] BIRTHDAY SEARCH RESULTS</b>\n"
+                msg_body += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                msg_body += f"Query: '{query}'\n\n"
+            
+                for f_name, l_name, b_day_str in rows:
+                    try:
+                        bday_dt = datetime.strptime(b_day_str, '%Y-%m-%d')
+                        full_date = bday_dt.strftime("%B %d, %Y")
+                        msg_body += f"<b>{f_name} {l_name}</b>\n"
+                        msg_body += f"<code>{full_date}</code>\n\n"
+                    except Exception:
+                        msg_body += f"<b>{f_name} {l_name}</b>\n"
+                        msg_body += f"<code>{b_day_str}</code>\n\n"
+
+                msg_body += "<b>───────────────────</b>\n"
+                msg_body += "<i>Data Protocol 2.0 :: Admin Retrieval</i>"
+            
+                bot.send_message(message.chat.id, msg_body, parse_mode='HTML')
+
+            except Exception as e:
+                print(f"B-Day Search Error: {e}")
+                bot.reply_to(message, "<i>System error during search.</i>", parse_mode='HTML')
+
+        @bot.message_handler(commands=['order'])
+        def handle_order_command(message):
+            """Starts the ordering process with a frame-animated UI."""
+            products = get_products()
+            if not products:
+                bot.reply_to(message, "[BOX] <b>ORDER SYSTEM</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>Currently, no products are available for order.</i>")
+                return
+            
+            _, _, _, store_name, _ = get_settings()
+            markup = InlineKeyboardMarkup(row_width=1)
+            for p_id, p_name, p_price, p_stock, _, _ in products:
+                markup.add(InlineKeyboardButton(f"{p_name} - ₱{p_price}", callback_data=f"ord_sel_{p_id}"))
+            markup.add(InlineKeyboardButton("[X] Cancel", callback_data="ord_cancel"))
+        
+            frame_msg = bot.send_message(
+                message.chat.id, 
+                f"[BOX] <b>{store_name}</b>\n━━━━━━━━━━━━━━━━━━━━\nSelect a product you wish to order from the list below.\n\n<i>All orders are subject to stock availability and validation.</i>",
+                reply_markup=markup
+            )
+            # Initialize state
+            user_states[message.from_user.id] = {
+                'state': 'ordering_select',
+                'frame_msg_id': frame_msg.message_id
+            }
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('ord_'))
+        def handle_order_callbacks(call):
+            state_data = user_states.get(call.from_user.id)
+            if not state_data or state_data.get('frame_msg_id') != call.message.message_id:
+                # If state is missing or message is different, but it's a selection, we can try to recover
+                if call.data.startswith('ord_sel_'):
+                    user_states[call.from_user.id] = {'state': 'ordering_select', 'frame_msg_id': call.message.message_id}
+                    state_data = user_states[call.from_user.id]
+
+            if call.data == 'ord_cancel':
+                bot.edit_message_text(
+                    "[X] <b>Order Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe ordering process was terminated. Feel free to browse again anytime.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id
+                )
+                user_states[call.from_user.id] = {'state': 'idle'}
+                bot.answer_callback_query(call.id)
+                return
+
+            if call.data.startswith('ord_sel_'):
+                try:
+                    p_id = int(call.data.split('_')[2])
+                except (ValueError, IndexError):
+                    bot.answer_callback_query(call.id, "Invalid product ID.")
+                    return
+                product = get_product(p_id)
+            
+                if not product or product[2] <= 0: # Check stock
+                    bot.answer_callback_query(call.id, "Sorry, this product is out of stock.")
+                    return
+                
+                state_data['selected_product'] = product
+                state_data['state'] = 'ordering_qty'
+            
+                p_name, p_price, p_stock = product[1], product[2], product[3]
+                is_even_only = product[5]
+            
+                msg = (
+                    f"[CART] <b>ORDERING: {p_name}</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                    f"Price: <b>₱{p_price}</b>\n"
+                    f"Stock: <b>{p_stock} pcs</b>\n\n"
+                    f"<b>STEP: Enter Quantity</b>\n"
+                    f"Please type the quantity you wish to order.\n"
+                )
+                if is_even_only:
+                    msg += f"[WARN] <i>Note: Must be an <b>even number</b>.</i>"
+            
+                markup = InlineKeyboardMarkup()
+                markup.add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+            
+                bot.edit_message_text(msg, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+                bot.answer_callback_query(call.id)
+
+            if call.data == 'ord_confirm':
+                p_id, p_name, p_price = state_data['selected_product'][0:3]
+                qty = state_data['quantity']
+                total = state_data['total_price']
+                name = state_data['customer_name']
+            
+                # Final Stock Check wrap in transaction
+                try:
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
-                    cursor.execute("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?", 
-                                   (state_data['student_qr'], state_data['subject_id']))
-                    enrolled = cursor.fetchone()
-                    conn.close()
-
-                    if not enrolled:
-                        markup = InlineKeyboardMarkup()
-                        markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
-                                   InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
-                        bot.edit_message_text(
-                            f"<b>Enrollment Restriction</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                            f"Student: <b>{state_data['student_name']}</b> is irregular and NOT enrolled in "
-                            f"<b>{state_data['subject_name']}</b>.\n\nRecording is blocked.",
-                            chat_id=call.message.chat.id,
-                            message_id=call.message.message_id,
-                            reply_markup=markup,
-                            parse_mode='HTML'
-                        )
-                        bot.answer_callback_query(call.id)
-                        return
+                    cursor.execute("SELECT stock FROM products WHERE id = ?", (p_id,))
+                    current_stock = cursor.fetchone()[0]
                 
-                show_status_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                    if current_stock < qty:
+                        bot.edit_message_text("[X] <b>Stock Error</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nSomeone else might have ordered. Low stock alert.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+                        conn.close()
+                        return
+                    
+                    # Record Order
+                    cursor.execute("""
+                        INSERT INTO orders (product_id, telegram_id, customer_name, quantity, total_price)
+                        VALUES (?, ?, ?, ?, ?)
+                    """, (p_id, str(call.from_user.id), name, qty, total))
+                
+                    # Deduct Stock
+                    cursor.execute("UPDATE products SET stock = stock - ? WHERE id = ?", (qty, p_id))
+                
+                    conn.commit()
+                    conn.close()
+                
+                    bot.edit_message_text(
+                        f"[OK] <b>ORDER PLACED!</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                        f"<b>Product:</b> {p_name}\n"
+                        f"<b>Quantity:</b> {qty} pcs\n"
+                        f"<b>Total:</b> ₱{total}\n\n"
+                        f"Thank you, <b>{name}</b>. Your order is recorded and will be processed shortly.",
+                        chat_id=call.message.chat.id,
+                        message_id=call.message.message_id
+                    )
+                
+                    # Notify Admin
+                    _, _, ADMIN_ID, _, _ = get_settings()
+                    if ADMIN_ID:
+                        admin_msg = (
+                            f"[CART] <b>NEW ORDER RECEIVED</b>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                            f"<b>Item:</b> {p_name}\n"
+                            f"<b>Qty:</b> {qty}\n"
+                            f"<b>Total:</b> ₱{total}\n"
+                            f"<b>Customer:</b> {name} (@{call.from_user.username or 'NoUser'})\n"
+                        )
+                        bot.send_message(ADMIN_ID, admin_msg)
+                
+                except Exception as e:
+                    print(f"Order error: {e}")
+                    bot.edit_message_text("[X] <b>Order Failed</b>\nSystem error. Try again later.", chat_id=call.message.chat.id, message_id=call.message.message_id)
+            
+                user_states[call.from_user.id] = {'state': 'idle'}
+                bot.answer_callback_query(call.id)
 
-        if action.startswith('rec_status_'):
-            status = action.split('_')[2]
+        @bot.message_handler(commands=['orders'])
+        def handle_view_orders(message):
+            """Allows admins to view the latest orders from the database."""
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
             
             try:
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
-                
-                recording_type = state_data['recording_type']
-                student_qr = state_data['student_qr']
-                date_val = state_data['date']
-                
-                if recording_type == 'subject':
-                    subject_id = state_data['subject_id']
-                    cursor.execute("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?", 
-                                   (subject_id, student_qr, date_val))
-                    existing = cursor.fetchone()
-                    time_now = datetime.now().strftime("%H:%M:%S")
-                    
-                    if existing:
-                        cursor.execute("UPDATE subject_attendance SET status = ?, time = ?, recorded_at = CURRENT_TIMESTAMP WHERE id = ?",
-                                       (status, time_now, existing[0]))
-                    else:
-                        cursor.execute("INSERT INTO subject_attendance (subject_id, qr_code, date, time, status) VALUES (?, ?, ?, ?, ?)",
-                                       (subject_id, student_qr, date_val, time_now, status))
-                else:
-                    cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
-                    setting_row = cursor.fetchone()
-                    active_sy = setting_row[0] if (setting_row and setting_row[0]) else "SY 2024-2025"
-                    
-                    cursor.execute("SELECT id FROM attendance WHERE qr_code = ? AND date = ?", 
-                                   (student_qr, date_val))
-                    existing = cursor.fetchone()
-                    time_display = datetime.now().strftime("%I:%M %p")
-                    
-                    if existing:
-                        if date_val == datetime.now().strftime("%Y-%m-%d"):
-                            cursor.execute("UPDATE attendance SET status = ?, time = ? WHERE id = ?",
-                                           (status, time_display, existing[0]))
-                        else:
-                            cursor.execute("UPDATE attendance SET status = ? WHERE id = ?",
-                                           (status, existing[0]))
-                    else:
-                        cursor.execute("INSERT INTO attendance (qr_code, date, time, status, school_year) VALUES (?, ?, ?, ?, ?)",
-                                       (student_qr, date_val, time_display, status, active_sy))
-                
-                conn.commit()
+                cursor.execute("""
+                    SELECT o.customer_name, p.name, o.quantity, o.total_price, o.status, o.created_at
+                    FROM orders o JOIN products p ON o.product_id = p.id
+                    ORDER BY o.created_at DESC LIMIT 15
+                """)
+                orders = cursor.fetchall()
                 conn.close()
+            
+                if not orders:
+                    bot.reply_to(message, "[LIST] <b>ORDER LOG</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n<i>No orders recorded in the system.</i>")
+                    return
                 
-                markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("Record Another", callback_data="rec_another"),
-                           InlineKeyboardButton("Finish", callback_data="rec_cancel"))
+                msg = "[LIST] <b>LATEST ORDERS (15)</b>\n"
+                msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+            
+                for cust, item, qty, total, status, date in orders:
+                    # Status prefix
+                    status_icon = "[WAIT]" if status == 'pending' else "[OK]"
+                    date_str = datetime.strptime(date, '%Y-%m-%d %H:%M:%S').strftime('%b %d, %H:%M')
                 
-                context_name = "Daily Attendance" if recording_type == 'daily' else state_data['subject_name']
-                msg_success = (
-                    f"<b>Attendance Recorded Successfully</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                    f"Student: <b>{state_data['student_name']}</b>\n"
-                    f"Context: <b>{context_name}</b>\n"
-                    f"Date: <b>{date_val}</b>\n"
-                    f"Status: <b>{status.capitalize()}</b>"
-                )
-                bot.edit_message_text(msg_success, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode='HTML')
+                    msg += f"<b>{cust}</b> · <i>{date_str}</i>\n"
+                    msg += f" {status_icon} <code>{item} x{qty}</code> | <b>₱{total}</b>\n\n"
                 
+                msg += "━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                msg += "<i>Tip: View full logs on the Web Dash.</i>"
+            
+                bot.send_message(message.chat.id, msg, parse_mode='HTML')
+            
             except Exception as e:
-                bot.send_message(call.message.chat.id, f"Database Error: {e}")
-                
-            bot.answer_callback_query(call.id)
-            return
-            
-        if action == 'rec_another':
-            state_data.pop('student_qr', None)
-            state_data.pop('student_name', None)
-            state_data.pop('student_course', None)
-            state_data.pop('student_type', None)
-            
-            show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
-            bot.answer_callback_query(call.id)
-            return
+                print(f"Orders view error: {e}")
+                bot.reply_to(message, "[X] System error retrieving orders.")
 
-    @bot.message_handler(func=lambda message: not message.text.startswith('/'))
-    def handle_text_interactions(message):
-        """Routes text from buttons or search queries."""
-        _, _, ADMIN_ID, _, _ = get_settings()
-        is_admin = str(message.from_user.id) == str(ADMIN_ID).strip()
-        state = user_states.get(message.from_user.id, {}).get('state', 'idle')
+        @bot.message_handler(commands=['search'])
+        def handle_search(message):
+            args = message.text.split(maxsplit=1)
+            if len(args) < 2:
+                bot.reply_to(message, "<b>[SEARCH] Search Required</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nPlease provide a name or ID.\n\nExample: <code>/search John</code>")
+                return
         
-        text = message.text
+            query = args[1].strip()
+            bot.send_chat_action(message.chat.id, 'typing')
+            results = find_students(query)
         
-        # Intercept manual typing during attendance recording flow
-        if state.startswith('recording_'):
-            try:
-                bot.delete_message(message.chat.id, message.message_id)
-            except:
-                pass
-            return
+            if not results:
+                bot.reply_to(message, f"<b>No Match Found</b>\nNo records found for '<b>{query}</b>'.")
+            elif len(results) == 1:
+                # Single match - Add Animation
+                loading_id = animate_loading(message.chat.id, title="RETRIEVING PROFILE", speed=0.2)
+                stats = get_student_stats(results[0][0])
+                if loading_id: bot.delete_message(message.chat.id, loading_id)
+                bot.reply_to(message, stats)
+            else:
+                # Multiple matches
+                markup = InlineKeyboardMarkup(row_width=1)
+                for qr_code, name, course in results[:5]:
+                    course_tag = f" ({course})" if course else ""
+                    markup.add(InlineKeyboardButton(f"{name}{course_tag}", callback_data=f"view_{qr_code}"))
             
-        # --- ADMIN ONLY / PRIVATE ONLY GATING ---
-        if state.startswith('ordering_'):
-            # Allow active order flows to continue (for students/admins)
-            pass
-        elif is_admin and message.chat.type == 'private':
-            # Allow full bot features for admin in Private Chat
-            pass
-        else:
-            # Silence for all other cases (GC or non-admin auto-replies)
-            return
+                if len(results) > 5:
+                    bot.reply_to(message, f"<b>Multiple Results</b>\nFound several matches for '<b>{query}</b>'.\n\n<i>Select a profile:</i>", reply_markup=markup)
+                else:
+                    bot.reply_to(message, f"<b>Multiple Results</b>\nFound {len(results)} matches.\n\n<i>Select a profile:</i>", reply_markup=markup)
 
-        # Handle Ordering Flow Inputs (Quantity/Name)
-        if state.startswith('ordering_'):
-            state_data = user_states.get(message.from_user.id)
-            frame_id = state_data.get('frame_msg_id')
+        @bot.message_handler(commands=['dossier_all'])
+        def handle_dossier_all(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                return
             
-            # Auto-clean user spam: delete their input message
-            try: bot.delete_message(message.chat.id, message.message_id)
-            except: pass
+            bot.send_message(message.chat.id, "[SYNC] <b>BATCH PROCESSING</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nInitializing mass dossier generation...")
+            students = get_all_active_students()
+            total = len(students)
+        
+            if total == 0:
+                bot.send_message(message.chat.id, "[X] No active students found.")
+                return
 
-            if state == 'ordering_qty':
+            status_msg = bot.send_message(message.chat.id, f"[STATS] <b>Dossier Batch (0/{total})</b>\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+        
+            for i, (qr_code, name) in enumerate(students, 1):
                 try:
-                    qty = int(text)
-                    if qty <= 0: raise ValueError()
-                    
-                    # Selective Even Check
-                    is_even_only = state_data['selected_product'][5]
-                    if is_even_only and qty % 2 != 0:
+                    # Individual Animation for 'Data Retrieval' feel
+                    load_msg = bot.send_message(message.chat.id, f"[SYNC] <b>FETCHING:</b> {name}\n<code>[░░░░░░░░░░] 0%</code>", parse_mode='HTML')
+                    for step in range(1, 4):
+                        time.sleep(0.2)
+                        filled = step * 3
+                        bar = "█" * filled + "░" * (10 - filled)
+                        try:
+                            bot.edit_message_text(f"[SYNC] <b>FETCHING:</b> {name}\n<code>[{bar}] {step*33}%</code>", message.chat.id, load_msg.message_id, parse_mode='HTML')
+                        except Exception:
+                            pass
+                
+                    stats = get_student_stats(qr_code)
+                
+                    # Cleanup loading message before sending final stats
+                    try:
+                        bot.delete_message(message.chat.id, load_msg.message_id)
+                    except Exception:
+                        pass
+                
+                    bot.send_message(message.chat.id, stats, parse_mode='HTML')
+                
+                    # Update Overall Progress Message
+                    if i % 3 == 0 or i == total:
+                        filled = int((i / total) * 10)
+                        bar = "█" * filled + "░" * (10 - filled)
+                        percent = int((i / total) * 100)
                         bot.edit_message_text(
-                            f"[X] <b>Invalid Quantity</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nOrders for <b>{state_data['selected_product'][1]}</b> must be in <b>even numbers</b>.\n\nPlease type an even number (e.g. 10, 50, 100):",
-                            chat_id=message.chat.id, message_id=frame_id,
-                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                            f"[STATS] <b>Dossier Batch ({i}/{total})</b>\n<code>[{bar}] {percent}%</code>",
+                            message.chat.id, status_msg.message_id, parse_mode='HTML'
                         )
-                        return
+                
+                    time.sleep(0.4) # Stabilizing delay
+                except Exception as e:
+                    print(f"Error sending dossier for {name}: {e}")
+                
+            bot.send_message(message.chat.id, f"[OK] <b>BATCH COMPLETED</b>\nSent {total} dossiers successfully.")
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('view_'))
+        def handle_selection(call):
+            qr_code = call.data.split('_', 1)[1]
+            # Show mid-edit animation
+            animate_loading(call.message.chat.id, title="FETCHING DATA", speed=0.2, message_id=call.message.message_id)
+        
+            stats = get_student_stats(qr_code)
+            if stats:
+                # Edit the message with stats
+                markup = InlineKeyboardMarkup()
+                markup.row(InlineKeyboardButton("[DOC] Export PDF Dossier", callback_data=f"pdf_exp_{qr_code}"))
+                markup.row(InlineKeyboardButton("[SYNC] New Search", switch_inline_query_current_chat=""))
+                bot.edit_message_text(stats, chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML', reply_markup=markup)
+            else:
+                bot.answer_callback_query(call.id, "Student not found.")
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('pdf_exp_'))
+        def handle_pdf_callback(call):
+            qr_code = call.data.split('_', 2)[2]
+            bot.answer_callback_query(call.id, "Preparing Dossier...")
+        
+            loading_id = animate_loading(call.message.chat.id, title="GENERATING PDF DOSSIER")
+            bot.send_chat_action(call.message.chat.id, 'upload_document')
+        
+            try:
+                pdf_path = generate_pdf_dossier(qr_code)
+                if pdf_path and os.path.exists(pdf_path):
+                    with open(pdf_path, 'rb') as f:
+                        bot.send_document(call.message.chat.id, f, caption=f"[DOC] Attendance Dossier")
+                    os.remove(pdf_path)
+                else:
+                    bot.send_message(call.message.chat.id, "[X] Failed to generate PDF.")
+            except Exception as e:
+                bot.send_message(call.message.chat.id, f"[X] Error: {e}")
+            finally:
+                if loading_id: bot.delete_message(call.message.chat.id, loading_id)
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('ann_'))
+        def handle_announcement_confirm(call):
+            _, chat_id, ADMIN_ID, _, _ = get_settings()
+            if str(call.from_user.id) != str(ADMIN_ID).strip():
+                bot.answer_callback_query(call.id, "Unauthorized.")
+                return
+            
+            action = call.data.split('_')[1]
+        
+            with user_states_lock:
+                state = user_states.get(call.from_user.id)
+                if not state:
+                    bot.answer_callback_query(call.id, "Session expired.")
+                    return
+
+                if action == 'confirm':
+                    msg_ids = state.get('msg_ids', [])
+                    draft_id = state.get('draft_msg_id')
+                    if msg_ids:
+                        # Broadcasting Animation
+                        bot.edit_message_text("[UP] <b>BROADCASTING...</b>\n<code>[░░░░░░░░░░] 0%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
                     
-                    # Stock Check
-                    stock = state_data['selected_product'][3]
-                    if qty > stock:
-                        bot.edit_message_text(
-                            f"[X] <b>Low Stock</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nRequested: {qty} pcs\nAvailable: <b>{stock} pcs</b>\n\nPlease enter a lower quantity:",
-                            chat_id=message.chat.id, message_id=frame_id,
-                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                        try:
+                            step = 100 / len(msg_ids)
+                            for i, mid in enumerate(msg_ids, 1):
+                                bot.copy_message(chat_id, call.message.chat.id, mid)
+                                # Update progress
+                                progress = int(i * step)
+                                filled = int(progress / 10)
+                                bar = "█" * filled + "░" * (10 - filled)
+                                bot.edit_message_text(f"[UP] <b>BROADCASTING...</b>\n<code>[{bar}] {progress}%</code>", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                                time.sleep(0.5)
+                        
+                            bot.edit_message_text("[OK] <b>Broadcast Successful!</b>\nAll items delivered to the group.", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                            time.sleep(2)
+                            bot.delete_message(call.message.chat.id, draft_id)
+                            bot.send_message(call.message.chat.id, "Main menu restored.", reply_markup=get_admin_main_keyboard())
+                        except Exception as e:
+                            bot.edit_message_text(f"[X] <b>Broadcast Failed:</b> {e}", chat_id=call.message.chat.id, message_id=draft_id, parse_mode='HTML')
+                    else:
+                        bot.answer_callback_query(call.id, "No items to send.")
+                else:
+                    draft_id = state.get('draft_msg_id')
+                    if draft_id: bot.delete_message(call.message.chat.id, draft_id)
+                    bot.send_message(call.message.chat.id, "[X] Announcement discarded.", reply_markup=get_admin_main_keyboard())
+            
+                # Cleanup timer and reset state
+                if state.get('timer'):
+                    state['timer'].cancel()
+                user_states[call.from_user.id] = {'state': 'idle'}
+            
+            bot.answer_callback_query(call.id)
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('sched_'))
+        def handle_schedule_confirm(call):
+            _, chat_id, ADMIN_ID, _, _ = get_settings()
+            if str(call.from_user.id) != str(ADMIN_ID).strip():
+                bot.answer_callback_query(call.id, "Unauthorized.")
+                return
+
+            action = call.data.split('_')[1]
+
+            with user_states_lock:
+                state_data = user_states.get(call.from_user.id)
+                if not state_data or state_data.get('state') != 'scheduling_confirm':
+                    bot.answer_callback_query(call.id, "Session expired.")
+                    return
+
+                if action == 'confirm':
+                    sdate = state_data.get('sched_date')
+                    stime = state_data.get('sched_time')
+                    msg_text = state_data.get('sched_message')
+                    if not sdate or not stime or not msg_text:
+                        bot.answer_callback_query(call.id, "Missing data.")
+                        return
+                    try:
+                        conn = sqlite3.connect(DB_PATH)
+                        cursor = conn.cursor()
+                        cursor.execute("""
+                            CREATE TABLE IF NOT EXISTS scheduled_announcements (
+                                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                message TEXT NOT NULL,
+                                scheduled_date TEXT NOT NULL,
+                                scheduled_time TEXT NOT NULL,
+                                status TEXT DEFAULT 'pending',
+                                created_by TEXT,
+                                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                            )
+                        """)
+                        conn.commit()
+                        cursor.execute(
+                            "INSERT INTO scheduled_announcements (message, scheduled_date, scheduled_time, created_by) VALUES (?, ?, ?, ?)",
+                            (msg_text, sdate, stime, str(call.from_user.id))
                         )
-                        return
+                        conn.commit()
+                        conn.close()
+                        try:
+                            bot.edit_message_text(
+                                f"[SCHEDULE] <b>ANNOUNCEMENT SCHEDULED</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nDate: <b>{sdate}</b>\nTime: <b>{stime}</b>\n\n<i>The message will be sent to the group at the scheduled time.</i>",
+                                chat_id=call.message.chat.id, message_id=call.message.message_id, parse_mode='HTML'
+                            )
+                        except Exception:
+                            pass
+                        bot.send_message(call.message.chat.id, "Main menu restored.", reply_markup=get_admin_main_keyboard())
+                    except Exception as e:
+                        bot.send_message(call.message.chat.id, f"[X] <b>Error saving schedule:</b> {e}")
+                else:
+                    try:
+                        bot.delete_message(call.message.chat.id, call.message.message_id)
+                    except Exception:
+                        pass
+                    bot.send_message(call.message.chat.id, "[X] Scheduling cancelled.", reply_markup=get_admin_main_keyboard())
+
+                user_states[call.from_user.id] = {'state': 'idle'}
+
+            bot.answer_callback_query(call.id)
+
+        @bot.callback_query_handler(func=lambda call: call.data.startswith('rec_'))
+        def handle_recording_callbacks(call):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(call.from_user.id) != str(ADMIN_ID).strip():
+                bot.answer_callback_query(call.id, "Unauthorized.")
+                return
+            
+            state_data = user_states.get(call.from_user.id)
+            if not state_data or state_data.get('frame_msg_id') != call.message.message_id:
+                if call.data in ['rec_mode_daily', 'rec_mode_subject']:
+                    user_states[call.from_user.id] = {'state': 'recording_mode_select', 'frame_msg_id': call.message.message_id}
+                    state_data = user_states[call.from_user.id]
+                else:
+                    bot.answer_callback_query(call.id, "Session expired or invalid message.")
+                    return
+                
+            action = call.data
+        
+            if action == 'rec_cancel':
+                bot.edit_message_text(
+                    "<b>Recording Cancelled.</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nThe recording process was terminated.",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    parse_mode='HTML'
+                )
+                with user_states_lock:
+                    user_states[call.from_user.id] = {'state': 'idle'}
+                bot.answer_callback_query(call.id)
+                return
+
+            if action == 'rec_mode_daily':
+                state_data['recording_type'] = 'daily'
+                show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_mode_subject':
+                state_data['recording_type'] = 'subject'
+                show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action.startswith('rec_subsel_'):
+                try:
+                    sub_id = int(action.split('_')[2])
+                except (ValueError, IndexError):
+                    bot.answer_callback_query(call.id, "Invalid subject ID.")
+                    return
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM subjects WHERE id = ? LIMIT 1", (sub_id,))
+                row = cursor.fetchone()
+                conn.close()
+            
+                if row:
+                    state_data['subject_id'] = sub_id
+                    state_data['subject_name'] = row[0]
+                    show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_back_mode':
+                state_data['state'] = 'recording_mode_select'
+                markup = InlineKeyboardMarkup()
+                markup.row(InlineKeyboardButton("Daily Attendance", callback_data="rec_mode_daily"),
+                           InlineKeyboardButton("Subject Attendance", callback_data="rec_mode_subject"))
+                markup.row(InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+                bot.edit_message_text(
+                    "<b>RECORD ATTENDANCE</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n\nSelect the type of attendance you wish to record:",
+                    chat_id=call.message.chat.id,
+                    message_id=call.message.message_id,
+                    reply_markup=markup,
+                    parse_mode='HTML'
+                )
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_back_subjects':
+                show_subject_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_back_dates':
+                show_date_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_date_today':
+                state_data['date'] = datetime.now().strftime("%Y-%m-%d")
+                state_data['current_page'] = 0
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action == 'rec_date_custom':
+                show_custom_date_buttons_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action.startswith('rec_dateval_'):
+                date_val = action.split('_', 2)[2]
+                state_data['date'] = date_val
+                state_data['current_page'] = 0
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action == 'rec_page_prev':
+                state_data['current_page'] = state_data.get('current_page', 0) - 1
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action == 'rec_page_next':
+                state_data['current_page'] = state_data.get('current_page', 0) + 1
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action == 'rec_noop':
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_back_student_select':
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action.startswith('rec_stusel_'):
+                qr_code = action.split('_', 2)[2]
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT qr_code, name, course, student_type FROM users WHERE qr_code = ? LIMIT 1", (qr_code,))
+                row = cursor.fetchone()
+                conn.close()
+
+                if row:
+                    state_data['student_qr'] = row[0]
+                    state_data['student_name'] = row[1]
+                    state_data['student_course'] = row[2]
+                    state_data['student_type'] = row[3]
+                
+                    if state_data['recording_type'] == 'subject' and state_data.get('student_type') == 'irregular':
+                        conn = sqlite3.connect(DB_PATH)
+                        cursor = conn.cursor()
+                        cursor.execute("SELECT 1 FROM student_subjects WHERE qr_code = ? AND subject_id = ?", 
+                                       (state_data['student_qr'], state_data['subject_id']))
+                        enrolled = cursor.fetchone()
+                        conn.close()
+
+                        if not enrolled:
+                            markup = InlineKeyboardMarkup()
+                            markup.row(InlineKeyboardButton("Back", callback_data="rec_back_student_select"),
+                                       InlineKeyboardButton("Cancel", callback_data="rec_cancel"))
+                            bot.edit_message_text(
+                                f"<b>Enrollment Restriction</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                                f"Student: <b>{state_data['student_name']}</b> is irregular and NOT enrolled in "
+                                f"<b>{state_data['subject_name']}</b>.\n\nRecording is blocked.",
+                                chat_id=call.message.chat.id,
+                                message_id=call.message.message_id,
+                                reply_markup=markup,
+                                parse_mode='HTML'
+                            )
+                            bot.answer_callback_query(call.id)
+                            return
+                
+                    show_status_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
+                return
+
+            if action.startswith('rec_status_'):
+                status = action.split('_')[2]
+            
+                try:
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                
+                    recording_type = state_data['recording_type']
+                    student_qr = state_data['student_qr']
+                    date_val = state_data['date']
+                
+                    if recording_type == 'subject':
+                        subject_id = state_data['subject_id']
+                        cursor.execute("SELECT id FROM subject_attendance WHERE subject_id = ? AND qr_code = ? AND date = ?", 
+                                       (subject_id, student_qr, date_val))
+                        existing = cursor.fetchone()
+                        time_now = datetime.now().strftime("%H:%M:%S")
                     
-                    state_data['quantity'] = qty
-                    state_data['total_price'] = qty * state_data['selected_product'][2]
-                    state_data['state'] = 'ordering_name'
+                        if existing:
+                            cursor.execute("UPDATE subject_attendance SET status = ?, time = ?, recorded_at = CURRENT_TIMESTAMP WHERE id = ?",
+                                           (status, time_now, existing[0]))
+                        else:
+                            cursor.execute("INSERT INTO subject_attendance (subject_id, qr_code, date, time, status) VALUES (?, ?, ?, ?, ?)",
+                                           (subject_id, student_qr, date_val, time_now, status))
+                    else:
+                        cursor.execute("SELECT active_school_year FROM settings LIMIT 1")
+                        setting_row = cursor.fetchone()
+                        active_sy = setting_row[0] if (setting_row and setting_row[0]) else "SY 2024-2025"
                     
-                    bot.edit_message_text(
-                        f"[CART] <b>ORDERING: {state_data['selected_product'][1]}</b>\n"
+                        cursor.execute("SELECT id FROM attendance WHERE qr_code = ? AND date = ?", 
+                                       (student_qr, date_val))
+                        existing = cursor.fetchone()
+                        time_display = datetime.now().strftime("%I:%M %p")
+                    
+                        if existing:
+                            if date_val == datetime.now().strftime("%Y-%m-%d"):
+                                cursor.execute("UPDATE attendance SET status = ?, time = ? WHERE id = ?",
+                                               (status, time_display, existing[0]))
+                            else:
+                                cursor.execute("UPDATE attendance SET status = ? WHERE id = ?",
+                                               (status, existing[0]))
+                        else:
+                            cursor.execute("INSERT INTO attendance (qr_code, date, time, status, school_year) VALUES (?, ?, ?, ?, ?)",
+                                           (student_qr, date_val, time_display, status, active_sy))
+                
+                    conn.commit()
+                    conn.close()
+                
+                    markup = InlineKeyboardMarkup()
+                    markup.row(InlineKeyboardButton("Record Another", callback_data="rec_another"),
+                               InlineKeyboardButton("Finish", callback_data="rec_cancel"))
+                
+                    context_name = "Daily Attendance" if recording_type == 'daily' else state_data['subject_name']
+                    msg_success = (
+                        f"<b>Attendance Recorded Successfully</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                        f"Quantity: <b>{qty} pcs</b>\n"
-                        f"Total: <b>₱{state_data['total_price']}</b>\n\n"
-                        f"<b>STEP: Full Name</b>\n"
-                        f"Please type your full name for the record:",
-                        chat_id=message.chat.id, message_id=frame_id,
-                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                        f"Student: <b>{state_data['student_name']}</b>\n"
+                        f"Context: <b>{context_name}</b>\n"
+                        f"Date: <b>{date_val}</b>\n"
+                        f"Status: <b>{status.capitalize()}</b>"
                     )
-                except ValueError:
-                    bot.edit_message_text(
-                        "[X] <b>Invalid Input</b>\nPlease enter a valid whole number for quantity:",
-                        chat_id=message.chat.id, message_id=frame_id,
-                        reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
-                    )
+                    bot.edit_message_text(msg_success, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup, parse_mode='HTML')
+                
+                except Exception as e:
+                    bot.send_message(call.message.chat.id, f"Database Error: {e}")
+                
+                bot.answer_callback_query(call.id)
+                return
+            
+            if action == 'rec_another':
+                state_data.pop('student_qr', None)
+                state_data.pop('student_name', None)
+                state_data.pop('student_course', None)
+                state_data.pop('student_type', None)
+            
+                show_student_select_screen(call.message.chat.id, call.message.message_id, state_data)
+                bot.answer_callback_query(call.id)
                 return
 
-            if state == 'ordering_name':
-                state_data['customer_name'] = text
-                state_data['state'] = 'ordering_confirm'
-                
-                p_name = state_data['selected_product'][1]
-                qty = state_data['quantity']
-                total = state_data['total_price']
-                
-                msg = (
-                    f"[EDIT] <b>VERIFY ORDER SUMMARY</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
-                    f"<b>Product:</b> {p_name}\n"
-                    f"<b>Quantity:</b> {qty} pcs\n"
-                    f"<b>Total:</b> ₱{total}\n"
-                    f"<b>Customer:</b> {text}\n\n"
-                    f"Ready to finalize this order?"
-                )
-                
-                markup = InlineKeyboardMarkup()
-                markup.row(InlineKeyboardButton("[OK] Confirm Order", callback_data="ord_confirm"), 
-                          InlineKeyboardButton("[X] Discard", callback_data="ord_cancel"))
-                
-                bot.edit_message_text(msg, chat_id=message.chat.id, message_id=frame_id, reply_markup=markup)
+        @bot.message_handler(func=lambda message: not message.text.startswith('/'))
+        def handle_text_interactions(message):
+            """Routes text from buttons or search queries."""
+            _, _, ADMIN_ID, _, _ = get_settings()
+            is_admin = str(message.from_user.id) == str(ADMIN_ID).strip()
+            state = user_states.get(message.from_user.id, {}).get('state', 'idle')
+        
+            text = message.text
+        
+            # Intercept manual typing during attendance recording flow
+            if state.startswith('recording_'):
+                try:
+                    bot.delete_message(message.chat.id, message.message_id)
+                except Exception:
+                    pass
+                return
+            
+            # --- ADMIN ONLY / PRIVATE ONLY GATING ---
+            if state.startswith('ordering_'):
+                # Allow active order flows to continue (for students/admins)
+                pass
+            elif is_admin and message.chat.type == 'private':
+                # Allow full bot features for admin in Private Chat
+                pass
+            else:
+                # Silence for all other cases (GC or non-admin auto-replies)
                 return
 
-        if is_admin and state == 'announcing':
-            # Handle text announcement with buffering and confirmation delay
-            with user_states_lock:
-                state_data = user_states[message.from_user.id]
-                state_data['msg_ids'].append(message.message_id)
-                count = len(state_data['msg_ids'])
-                draft_id = state_data.get('draft_msg_id')
-                
-                # Update Draft UI immediately
-                try:
-                    markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffering Input...</b>\nItems: <b>[{count}]</b>\n\n<i>Sending more items? I'm listening...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
-                except: pass
-
-                if state_data.get('timer'):
-                    state_data['timer'].cancel()
-                
-                # Wait 1.5s for more text or media before asking for final verification
-                state_data['timer'] = threading.Timer(1.5, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, "text"))
-                state_data['timer'].start()
-            return
-
-        # Main Interface Button routing (Admins only, Private only)
-        if text == "Search Student":
-            bot.reply_to(message, "<b>Search</b>\nType the student name or ID to search.")
-        elif text == "Record Attendance":
-            handle_record_attendance(message)
-        elif text == "Today's Stats":
-            handle_today(message)
-        elif text == "Announce":
-            handle_announce_command(message)
-        elif text == "Export CSV":
-            handle_export(message)
-        elif text == "All Dossiers":
-            handle_dossier_all(message)
-        elif text == "Get Database":
-            handle_getdb(message)
-        else:
-            # Fallback to auto-search
-            handle_search(message)
-
-    @bot.message_handler(content_types=['photo', 'video', 'voice', 'audio'])
-    def handle_media_announcement(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if str(message.from_user.id) != str(ADMIN_ID).strip():
-            return
+            # Handle Ordering Flow Inputs (Quantity/Name)
+            if state.startswith('ordering_'):
+                state_data = user_states.get(message.from_user.id)
+                frame_id = state_data.get('frame_msg_id')
             
-        state = user_states.get(message.from_user.id, {}).get('state', 'idle')
-        if state == 'announcing':
-            # Handle media announcement with buffering and confirmation delay
-            with user_states_lock:
-                state_data = user_states[message.from_user.id]
-                state_data['msg_ids'].append(message.message_id)
-                count = len(state_data['msg_ids'])
-                draft_id = state_data.get('draft_msg_id')
-                
-                # Update Draft UI immediately
+                # Auto-clean user spam: delete their input message
                 try:
+                    bot.delete_message(message.chat.id, message.message_id)
+                except Exception:
+                    pass
+
+                if state == 'ordering_qty':
+                    try:
+                        qty = int(text)
+                        if qty <= 0: raise ValueError()
+                    
+                        # Selective Even Check
+                        is_even_only = state_data['selected_product'][5]
+                        if is_even_only and qty % 2 != 0:
+                            bot.edit_message_text(
+                                f"[X] <b>Invalid Quantity</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nOrders for <b>{state_data['selected_product'][1]}</b> must be in <b>even numbers</b>.\n\nPlease type an even number (e.g. 10, 50, 100):",
+                                chat_id=message.chat.id, message_id=frame_id,
+                                reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                            )
+                            return
+                    
+                        # Stock Check
+                        stock = state_data['selected_product'][3]
+                        if qty > stock:
+                            bot.edit_message_text(
+                                f"[X] <b>Low Stock</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nRequested: {qty} pcs\nAvailable: <b>{stock} pcs</b>\n\nPlease enter a lower quantity:",
+                                chat_id=message.chat.id, message_id=frame_id,
+                                reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                            )
+                            return
+                    
+                        state_data['quantity'] = qty
+                        state_data['total_price'] = qty * state_data['selected_product'][2]
+                        state_data['state'] = 'ordering_name'
+                    
+                        bot.edit_message_text(
+                            f"[CART] <b>ORDERING: {state_data['selected_product'][1]}</b>\n"
+                            f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                            f"Quantity: <b>{qty} pcs</b>\n"
+                            f"Total: <b>₱{state_data['total_price']}</b>\n\n"
+                            f"<b>STEP: Full Name</b>\n"
+                            f"Please type your full name for the record:",
+                            chat_id=message.chat.id, message_id=frame_id,
+                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                        )
+                    except ValueError:
+                        bot.edit_message_text(
+                            "[X] <b>Invalid Input</b>\nPlease enter a valid whole number for quantity:",
+                            chat_id=message.chat.id, message_id=frame_id,
+                            reply_markup=InlineKeyboardMarkup().add(InlineKeyboardButton("[X] Abort", callback_data="ord_cancel"))
+                        )
+                    return
+
+                if state == 'ordering_name':
+                    state_data['customer_name'] = text
+                    state_data['state'] = 'ordering_confirm'
+                
+                    p_name = state_data['selected_product'][1]
+                    qty = state_data['quantity']
+                    total = state_data['total_price']
+                
+                    msg = (
+                        f"[EDIT] <b>VERIFY ORDER SUMMARY</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━┳═─\n"
+                        f"<b>Product:</b> {p_name}\n"
+                        f"<b>Quantity:</b> {qty} pcs\n"
+                        f"<b>Total:</b> ₱{total}\n"
+                        f"<b>Customer:</b> {text}\n\n"
+                        f"Ready to finalize this order?"
+                    )
+                
                     markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Receiving Media...</b>\nItems: <b>[{count}]</b>\n\n<i>Processing your file(s)...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
-                except: pass
-
-                if state_data.get('timer'):
-                    state_data['timer'].cancel()
+                    markup.row(InlineKeyboardButton("[OK] Confirm Order", callback_data="ord_confirm"), 
+                              InlineKeyboardButton("[X] Discard", callback_data="ord_cancel"))
                 
-                # Wait 2.0s (buffering for media groups/albums) before asking for confirmation
-                state_data['timer'] = threading.Timer(2.0, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, message.content_type))
-                state_data['timer'].start()
+                    bot.edit_message_text(msg, chat_id=message.chat.id, message_id=frame_id, reply_markup=markup)
+                    return
 
-    @bot.message_handler(commands=['getdb'])
-    def handle_getdb(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
-            bot.reply_to(message, "[X] Unauthorized or invalid chat type.")
-            return
-        
-        if os.path.exists(DB_PATH):
-            with open(DB_PATH, 'rb') as db_file:
-                bot.send_document(message.chat.id, db_file, caption="[FILE] Here is the current attendance database.")
-        else:
-            bot.reply_to(message, "[X] Database file not found.")
-
-    @bot.message_handler(content_types=['document'])
-    def handle_document(message):
-        _, _, ADMIN_ID, _, _ = get_settings()
-        if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID).strip():
-            return
-            
-        state = user_states.get(message.from_user.id, {}).get('state', 'idle')
-        
-        # Priority: Announcement mode
-        if state == 'announcing':
-            # Handle document announcement with buffering and confirmation delay
-            with user_states_lock:
-                state_data = user_states[message.from_user.id]
-                state_data['msg_ids'].append(message.message_id)
-                count = len(state_data['msg_ids'])
-                draft_id = state_data.get('draft_msg_id')
-                
-                # Update Draft UI immediately
+            # Handle Scheduling Flow Inputs
+            if state.startswith('scheduling_'):
+                state_data = user_states.get(message.from_user.id)
                 try:
+                    bot.delete_message(message.chat.id, message.message_id)
+                except Exception:
+                    pass
+
+                if state == 'scheduling_date':
+                    import re
+                    if not re.match(r'^\d{4}-\d{2}-\d{2}$', text):
+                        bot.send_message(message.chat.id, "[X] Invalid format. Please enter the date as <b>YYYY-MM-DD</b> (e.g. <code>2026-06-15</code>):")
+                        return
+                    try:
+                        datetime.strptime(text, '%Y-%m-%d')
+                    except ValueError:
+                        bot.send_message(message.chat.id, "[X] Invalid date. Please enter a valid date in <b>YYYY-MM-DD</b> format.")
+                        return
+                    state_data['sched_date'] = text
+                    state_data['state'] = 'scheduling_time'
+                    bot.send_message(message.chat.id, "[SCHEDULE] Date set. Now enter the time in <b>HH:MM</b> format (24-hour, e.g. <code>14:30</code>):")
+
+                elif state == 'scheduling_time':
+                    import re
+                    if not re.match(r'^\d{2}:\d{2}$', text):
+                        bot.send_message(message.chat.id, "[X] Invalid format. Please enter the time as <b>HH:MM</b> (24-hour, e.g. <code>14:30</code>):")
+                        return
+                    try:
+                        datetime.strptime(text, '%H:%M')
+                    except ValueError:
+                        bot.send_message(message.chat.id, "[X] Invalid time. Please enter a valid time in <b>HH:MM</b> (24-hour) format.")
+                        return
+                    state_data['sched_time'] = text
+                    state_data['state'] = 'scheduling_message'
+                    bot.send_message(message.chat.id, "[SCHEDULE] Time set. Now type the message you want to send to the group chat:")
+
+                elif state == 'scheduling_message':
+                    if not text.strip():
+                        bot.send_message(message.chat.id, "[X] Message cannot be empty. Please type your announcement message:")
+                        return
+                    state_data['sched_message'] = text
+                    state_data['state'] = 'scheduling_confirm'
                     markup = InlineKeyboardMarkup()
-                    markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
-                              InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
-                    bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>File Ingested</b>\nItems: <b>[{count}]</b>\n\n<i>Waiting for more or confirm below.</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
-                except: pass
+                    markup.row(InlineKeyboardButton("[OK] Schedule", callback_data="sched_confirm"),
+                              InlineKeyboardButton("[X] Cancel", callback_data="sched_cancel"))
+                    preview = (
+                        f"[SCHEDULE] <b>ANNOUNCEMENT PREVIEW</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━┳═─\n\n"
+                        f"Date: <b>{state_data['sched_date']}</b>\n"
+                        f"Time: <b>{state_data['sched_time']}</b>\n\n"
+                        f"<b>Message:</b>\n{text[:500]}\n\n"
+                        f"<i>Confirm to schedule this announcement?</i>"
+                    )
+                    bot.send_message(message.chat.id, preview, parse_mode='HTML', reply_markup=markup)
+                return
 
-                if state_data.get('timer'):
-                    state_data['timer'].cancel()
+            if is_admin and state == 'announcing':
+                # Handle text announcement with buffering and confirmation delay
+                with user_states_lock:
+                    state_data = user_states[message.from_user.id]
+                    state_data['msg_ids'].append(message.message_id)
+                    count = len(state_data['msg_ids'])
+                    draft_id = state_data.get('draft_msg_id')
                 
-                # Wait 2.0s for potentially multiple files
-                state_data['timer'] = threading.Timer(2.0, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, "document"))
-                state_data['timer'].start()
-            return
+                    # Update Draft UI immediately
+                    try:
+                        markup = InlineKeyboardMarkup()
+                        markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                                  InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                        bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Buffering Input...</b>\nItems: <b>[{count}]</b>\n\n<i>Sending more items? I'm listening...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    except Exception:
+                        pass
 
-        # Fallback: Database Sync
-        if message.document.file_name.endswith('.db') or message.document.file_name.endswith('.sqlite'):
-            try:
-                msg = bot.reply_to(message, "[WAIT] Downloading and syncing database...")
-                file_info = bot.get_file(message.document.file_id)
-                downloaded_file = bot.download_file(file_info.file_path)
+                    if state_data.get('timer'):
+                        state_data['timer'].cancel()
                 
-                # Create backup
-                backup_dir = os.path.dirname(DB_PATH).replace('database', 'backups')
-                if not os.path.exists(backup_dir):
-                    os.makedirs(backup_dir)
-                    
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                backup_path = os.path.join(backup_dir, f"attendance_backup_{timestamp}.db")
-                
-                if os.path.exists(DB_PATH):
-                    shutil.copy2(DB_PATH, backup_path)
-                    
-                # Save new DB
-                with open(DB_PATH, 'wb') as new_file:
-                    new_file.write(downloaded_file)
-                    
-                bot.edit_message_text(f"[OK] Database synchronized successfully!\nPrevious database backed up as: `{os.path.basename(backup_path)}`", chat_id=msg.chat.id, message_id=msg.message_id, parse_mode='Markdown')
-            except Exception as e:
-                bot.reply_to(message, f"[X] Failed to sync: {e}")
+                    # Wait 1.5s for more text or media before asking for final verification
+                    state_data['timer'] = threading.Timer(1.5, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, "text"))
+                    state_data['timer'].start()
+                return
 
-    if __name__ == "__main__":
-        # Re-use existing threads if already running
-        global threads_started
-        if 'threads_started' not in globals():
-            threads_started = False
+            # Main Interface Button routing (Admins only, Private only)
+            if text == "Search Student":
+                bot.reply_to(message, "<b>Search</b>\nType the student name or ID to search.")
+            elif text == "Record Attendance":
+                handle_record_attendance(message)
+            elif text == "Today's Stats":
+                handle_today(message)
+            elif text == "Announce":
+                handle_announce_command(message)
+            elif text == "Export CSV":
+                handle_export(message)
+            elif text == "All Dossiers":
+                handle_dossier_all(message)
+            elif text == "Get Database":
+                handle_getdb(message)
+            else:
+                # Fallback to auto-search
+                handle_search(message)
 
-        if not threads_started:
-            # Start Background Thread for Queue
-            threading.Thread(target=queue_worker, daemon=True).start()
+        @bot.message_handler(content_types=['photo', 'video', 'voice', 'audio'])
+        def handle_media_announcement(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if str(message.from_user.id) != str(ADMIN_ID).strip():
+                return
             
-            # Start Background Thread for Birthdays
-            threading.Thread(target=birthday_check_worker, daemon=True).start()
-            threads_started = True
+            state = user_states.get(message.from_user.id, {}).get('state', 'idle')
+            if state == 'announcing':
+                # Handle media announcement with buffering and confirmation delay
+                with user_states_lock:
+                    state_data = user_states[message.from_user.id]
+                    state_data['msg_ids'].append(message.message_id)
+                    count = len(state_data['msg_ids'])
+                    draft_id = state_data.get('draft_msg_id')
+                
+                    # Update Draft UI immediately
+                    try:
+                        markup = InlineKeyboardMarkup()
+                        markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                                  InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                        bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>Receiving Media...</b>\nItems: <b>[{count}]</b>\n\n<i>Processing your file(s)...</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    except Exception:
+                        pass
+
+                    if state_data.get('timer'):
+                        state_data['timer'].cancel()
+                
+                    # Wait 2.0s (buffering for media groups/albums) before asking for confirmation
+                    state_data['timer'] = threading.Timer(2.0, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, message.content_type))
+                    state_data['timer'].start()
+
+        @bot.message_handler(commands=['getdb'])
+        def handle_getdb(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID).strip() or message.chat.type != 'private':
+                bot.reply_to(message, "[X] Unauthorized or invalid chat type.")
+                return
         
+            if os.path.exists(DB_PATH):
+                with open(DB_PATH, 'rb') as db_file:
+                    bot.send_document(message.chat.id, db_file, caption="[FILE] Here is the current attendance database.")
+            else:
+                bot.reply_to(message, "[X] Database file not found.")
+
+        @bot.message_handler(content_types=['document'])
+        def handle_document(message):
+            _, _, ADMIN_ID, _, _ = get_settings()
+            if not ADMIN_ID or str(message.from_user.id) != str(ADMIN_ID).strip():
+                return
+            
+            state = user_states.get(message.from_user.id, {}).get('state', 'idle')
+        
+            # Priority: Announcement mode
+            if state == 'announcing':
+                # Handle document announcement with buffering and confirmation delay
+                with user_states_lock:
+                    state_data = user_states[message.from_user.id]
+                    state_data['msg_ids'].append(message.message_id)
+                    count = len(state_data['msg_ids'])
+                    draft_id = state_data.get('draft_msg_id')
+                
+                    # Update Draft UI immediately
+                    try:
+                        markup = InlineKeyboardMarkup()
+                        markup.row(InlineKeyboardButton("[OK] Broadcast Now", callback_data="ann_confirm"), 
+                                  InlineKeyboardButton("[X] Discard", callback_data="ann_cancel"))
+                        bot.edit_message_text(f"[ANNOUNCE] <b>ANNOUNCEMENT DRAFT</b>\n━━━━━━━━━━━━━━━━━━━━┳═─\nStatus: <b>File Ingested</b>\nItems: <b>[{count}]</b>\n\n<i>Waiting for more or confirm below.</i>", chat_id=message.chat.id, message_id=draft_id, parse_mode='HTML', reply_markup=markup)
+                    except Exception:
+                        pass
+
+                    if state_data.get('timer'):
+                        state_data['timer'].cancel()
+                
+                    # Wait 2.0s for potentially multiple files
+                    state_data['timer'] = threading.Timer(2.0, trigger_announcement_confirmation, args=(message.from_user.id, message.chat.id, "document"))
+                    state_data['timer'].start()
+                return
+
+            # Fallback: Database Sync
+            if message.document.file_name.endswith('.db') or message.document.file_name.endswith('.sqlite'):
+                try:
+                    msg = bot.reply_to(message, "[WAIT] Downloading and syncing database...")
+                    file_info = bot.get_file(message.document.file_id)
+                    downloaded_file = bot.download_file(file_info.file_path)
+                
+                    # Create backup
+                    backup_dir = os.path.dirname(DB_PATH).replace('database', 'backups')
+                    if not os.path.exists(backup_dir):
+                        os.makedirs(backup_dir)
+                    
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    backup_path = os.path.join(backup_dir, f"attendance_backup_{timestamp}.db")
+                
+                    if os.path.exists(DB_PATH):
+                        shutil.copy2(DB_PATH, backup_path)
+                    
+                    # Save new DB
+                    with open(DB_PATH, 'wb') as new_file:
+                        new_file.write(downloaded_file)
+                    
+                    bot.edit_message_text(f"[OK] Database synchronized successfully!\nPrevious database backed up as: `{os.path.basename(backup_path)}`", chat_id=msg.chat.id, message_id=msg.message_id, parse_mode='Markdown')
+                except Exception as e:
+                    bot.reply_to(message, f"[X] Failed to sync: {e}")
+
         try:
             me = bot.get_me()
             print(f"Bot fully operational and polling (https://t.me/{me.username})")
@@ -2019,7 +2294,24 @@ while True:
                 print("Please close any other hidden terminal windows or scripts running the bot.")
             else:
                 print(f"Telegram API Error: {e}")
-            time.sleep(5)
+            if not shutdown_event.is_set():
+                shutdown_event.wait(5)
         except Exception as e:
             print(f"Bot crashed or connection lost: {e}")
-            time.sleep(5)
+            if not shutdown_event.is_set():
+                shutdown_event.wait(5)
+        
+        bot.stop_polling()
+
+if __name__ == "__main__":
+    # Start Background Threads (only once, outside the reconnection loop)
+    threading.Thread(target=queue_worker, daemon=True).start()
+    threading.Thread(target=birthday_check_worker, daemon=True).start()
+    threading.Thread(target=scheduled_announcement_worker, daemon=True).start()
+    
+    try:
+        run_bot()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        print("Bot stopped.")

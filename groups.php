@@ -374,7 +374,7 @@ $navbar_actions = '
             });
         });
 
-        const allClassmates = <?= json_encode(array_column($students, 'name')) ?>;
+        const allClassmates = <?= json_encode(array_column($students, 'name'), JSON_HEX_TAG | JSON_HEX_QUOT) ?>;
         let activeClassmates = [...allClassmates];
         
         function openSettings() { document.getElementById('settingsModal').style.display = 'flex'; }
