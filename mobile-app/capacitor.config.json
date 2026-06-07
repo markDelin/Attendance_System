@@ -1,7 +1,7 @@
 {
   "appId": "com.attendance.mobile",
   "appName": "Attendance Recorder",
-  "webDir": "mobile-app",
+  "webDir": ".",
   "server": {
     "androidScheme": "https"
   },
