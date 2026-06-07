@@ -171,6 +171,8 @@ body {
 /* Section Titles */
 .section-title { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.09em; color: var(--text-muted); margin: 22px 0 10px; display: flex; align-items: center; gap: 8px; }
 .section-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--glass-border), transparent); }
+.semester-title { margin-top: 28px; color: var(--primary); font-size: 0.68rem; }
+.semester-title i { font-size: 0.75rem; }
 
 /* Schedule */
 .schedule-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 4px; }
@@ -287,7 +289,7 @@ body {
 .empty-state { text-align: center; padding: 50px 20px; color: var(--text-muted); }
 .empty-state i { font-size: 2rem; display: block; margin-bottom: 12px; }
 
-.student-row { display: flex; align-items: center; gap: 9px; padding: 10px 12px; background: var(--glass-bg); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); transition: border-color 0.2s, background 0.2s; animation: fadeIn 0.25s var(--ease-smooth); animation-fill-mode: both; }
+.student-row { display: flex; align-items: center; gap: 8px; padding: 7px 11px; background: var(--glass-bg); backdrop-filter: blur(var(--blur)); -webkit-backdrop-filter: blur(var(--blur)); border: 1px solid var(--glass-border); border-radius: var(--radius-sm); transition: border-color 0.2s, background 0.2s; animation: fadeIn 0.25s var(--ease-smooth); animation-fill-mode: both; }
 .student-row:nth-child(1) { animation-delay: 0s; }
 .student-row:nth-child(2) { animation-delay: 0.03s; }
 .student-row:nth-child(3) { animation-delay: 0.06s; }
@@ -307,10 +309,10 @@ body {
 .student-row.present { border-color: var(--present-border); background: var(--present-bg); }
 .student-row.late { border-color: var(--late-border); background: var(--late-bg); }
 .student-row.absent { border-color: var(--absent-border); background: var(--absent-bg); }
-.student-info { flex: 1; min-width: 0; cursor: pointer; }
-.student-info:active { opacity: 0.6; }
+.student-line { flex: 1; min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 2px 0; }
+.student-line:active { opacity: 0.6; }
 .student-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.student-id { font-size: 0.63rem; color: var(--text-muted); margin-top: 2px; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; }
+.student-id { font-size: 0.6rem; color: var(--text-muted); flex-shrink: 0; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .btn-stat { width: 36px; height: 36px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 9px; background: rgba(15,23,42,0.5); color: var(--text-muted); font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: opacity 0.12s, background 0.12s, border-color 0.12s, transform 0.12s; display: flex; align-items: center; justify-content: center; }
 [data-theme="light"] .btn-stat { background: rgba(0,0,0,0.03); }

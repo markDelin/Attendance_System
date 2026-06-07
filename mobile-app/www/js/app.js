@@ -285,23 +285,37 @@
       return;
     }
 
-    var html = '';
+    // Group by semester/school year
+    var groups = {};
     for (var i = 0; i < data.length; i++) {
       var s = data[i];
-      var hasPending = false;
-      for (var p = 0; p < pending.length; p++) {
-        if (pending[p].subject_id == s.id) { hasPending = true; break; }
+      var key = s.semester || 'Other';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(s);
+    }
+
+    var html = '';
+    var keys = Object.keys(groups).sort();
+    for (var g = 0; g < keys.length; g++) {
+      var semester = keys[g];
+      var items = groups[semester];
+      html += '<h3 class="section-title semester-title"><i class="bi bi-bookmark"></i> ' + escapeHtml(semester) + '</h3>';
+      for (var i = 0; i < items.length; i++) {
+        var s = items[i];
+        var hasPending = false;
+        for (var p = 0; p < pending.length; p++) {
+          if (pending[p].subject_id == s.id) { hasPending = true; break; }
+        }
+        var meta = [];
+        if (s.code) meta.push(s.code);
+        if (s.lecturer) meta.push(s.lecturer);
+        html += '<div class="subject-card' + (hasPending ? ' has-records' : '') + '" onclick="openSubject(' + s.id + ',\'' + escapeHtml(s.name) + '\')">'
+          + '<div class="subject-icon"><i class="bi bi-journal-text"></i></div>'
+          + '<div class="subject-info"><div class="subject-name">' + escapeHtml(s.name) + '</div>'
+          + '<div class="subject-meta">' + escapeHtml(meta.join(' \u00B7 ')) + '</div></div>'
+          + (hasPending ? '<span class="subject-status"><i class="bi bi-clock"></i> Pending</span>' : '')
+          + '<i class="bi bi-chevron-right subject-arrow"></i></div>';
       }
-      var meta = [];
-      if (s.code) meta.push(s.code);
-      if (s.semester) meta.push(s.semester);
-      if (s.lecturer) meta.push(s.lecturer);
-      html += '<div class="subject-card' + (hasPending ? ' has-records' : '') + '" onclick="openSubject(' + s.id + ',\'' + escapeHtml(s.name) + '\')">'
-        + '<div class="subject-icon"><i class="bi bi-journal-text"></i></div>'
-        + '<div class="subject-info"><div class="subject-name">' + escapeHtml(s.name) + '</div>'
-        + '<div class="subject-meta">' + escapeHtml(meta.join(' \u00B7 ')) + '</div></div>'
-        + (hasPending ? '<span class="subject-status"><i class="bi bi-clock"></i> Pending</span>' : '')
-        + '<i class="bi bi-chevron-right subject-arrow"></i></div>';
     }
     container.innerHTML = html;
     updatePendingBadge();
@@ -341,7 +355,7 @@
         else if (currentRecords[qr] === 'absent') aa = ' active-a';
       }
       html += '<div class="student-row' + cls + '" data-qr="' + escapeHtml(qr) + '">'
-        + '<div class="student-info" onclick="showStudentPopup(\'' + escapeHtml(qr) + '\')"><div class="student-name">' + name + '</div><div class="student-id">' + sid + '</div></div>'
+        + '<div class="student-line" onclick="showStudentPopup(\'' + escapeHtml(qr) + '\')"><span class="student-name">' + name + '</span><span class="student-id">' + sid + '</span></div>'
         + '<div class="student-actions">'
         + '<button class="btn-stat' + ap + '" onclick="setStatus(\'' + escapeHtml(qr) + '\',\'present\')">P</button>'
         + '<button class="btn-stat' + al + '" onclick="setStatus(\'' + escapeHtml(qr) + '\',\'late\')">L</button>'
