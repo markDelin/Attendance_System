@@ -67,12 +67,13 @@ try {
             exit;
         }
 
-        $students = $pdo->query("SELECT qr_code, name, course, year_level FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $students = $pdo->query("SELECT qr_code, name, course, year_level, student_type FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
         $subjects = $pdo->query("SELECT id, name, code, room, lecturer, semester, category FROM subjects WHERE is_active = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
         $schedules = $pdo->query("SELECT sc.id, sc.subject_id, s.name as subject_name, s.code, s.room, s.lecturer, sc.day_of_week, sc.start_time, sc.end_time
             FROM schedules sc JOIN subjects s ON s.id = sc.subject_id
             WHERE s.is_active = 1 ORDER BY sc.start_time ASC")->fetchAll(PDO::FETCH_ASSOC);
-        echo json_encode(["status" => "success", "students" => $students, "subjects" => $subjects, "schedules" => $schedules]);
+        $studentSubjects = $pdo->query("SELECT qr_code, subject_id FROM student_subjects")->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode(["status" => "success", "students" => $students, "subjects" => $subjects, "schedules" => $schedules, "student_subjects" => $studentSubjects]);
         exit;
     }
 

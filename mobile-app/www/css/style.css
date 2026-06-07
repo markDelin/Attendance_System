@@ -76,7 +76,7 @@ body {
 
 .hidden { display: none !important; }
 
-#app { display: flex; flex-direction: column; min-height: 100dvh; max-width: 480px; margin: 0 auto; padding: 0 14px 0; }
+#app { display: flex; flex-direction: column; min-height: 100dvh; max-width: 480px; margin: 0 auto; padding: env(safe-area-inset-top, 0px) 14px 0; }
 
 .glass-card {
   background: var(--glass-bg);
@@ -113,12 +113,12 @@ body {
 @keyframes splashOut { to { opacity: 0; pointer-events: none; } }
 
 /* Header */
-.app-header { padding: 8px 0 6px; position: sticky; top: 0; z-index: 10; background: var(--bg-primary); border-bottom: 1px solid var(--glass-border); }
+.app-header { padding: calc(12px + env(safe-area-inset-top, 0px)) 0 6px; position: sticky; top: 0; z-index: 10; background: var(--bg-primary); border-bottom: 1px solid var(--glass-border); }
 .header-top { display: flex; align-items: center; gap: 10px; }
 .header-icon { font-size: 1.3rem; color: var(--primary); filter: drop-shadow(0 0 6px var(--primary-glow)); }
 .header-top h1 { font-size: 1.15rem; font-weight: 800; flex: 1; letter-spacing: -0.02em; transition: opacity 0.2s; }
 .header-actions { display: flex; gap: 1px; }
-.btn-icon { background: none; border: none; color: var(--text-muted); font-size: 1.15rem; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; transition: background 0.15s, color 0.15s; position: relative; display: flex; align-items: center; justify-content: center; }
+.btn-icon { background: none; border: none; color: var(--text-muted); font-size: 1.2rem; width: 44px; height: 44px; border-radius: 50%; cursor: pointer; transition: background 0.15s, color 0.15s; position: relative; display: flex; align-items: center; justify-content: center; }
 .btn-icon:active { background: var(--primary-subtle); color: var(--primary); }
 .header-sub { display: flex; align-items: center; gap: 6px; margin-top: 3px; font-size: 0.68rem; color: var(--text-muted); padding-bottom: 2px; }
 .status-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; transition: background 0.3s; }
@@ -312,6 +312,7 @@ body {
 .student-line { flex: 1; min-width: 0; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 2px 0; }
 .student-line:active { opacity: 0.6; }
 .student-name { font-size: 0.85rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.student-type-badge { font-size: 0.5rem; font-weight: 900; padding: 1px 5px; border-radius: 4px; background: rgba(234,179,8,0.15); color: var(--warning); letter-spacing: 0.04em; flex-shrink: 0; border: 1px solid rgba(234,179,8,0.2); }
 .student-id { font-size: 0.6rem; color: var(--text-muted); flex-shrink: 0; font-family: 'SF Mono', 'Cascadia Code', 'Consolas', monospace; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .btn-stat { width: 36px; height: 36px; border: 1.5px solid rgba(255,255,255,0.1); border-radius: 9px; background: rgba(15,23,42,0.5); color: var(--text-muted); font-size: 0.72rem; font-weight: 800; cursor: pointer; transition: opacity 0.12s, background 0.12s, border-color 0.12s, transform 0.12s; display: flex; align-items: center; justify-content: center; }

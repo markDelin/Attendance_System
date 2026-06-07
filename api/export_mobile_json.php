@@ -11,7 +11,7 @@ $type = $_GET['type'] ?? 'all';
 
 switch ($type) {
     case 'students':
-        $data = $pdo->query("SELECT qr_code, name, course, year_level FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $data = $pdo->query("SELECT qr_code, name, course, year_level, student_type FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
         header("Content-Disposition: attachment; filename=students.json");
         echo json_encode(["students" => $data], JSON_PRETTY_PRINT);
         break;
@@ -29,10 +29,11 @@ switch ($type) {
         break;
 
     default: // all
-        $students = $pdo->query("SELECT qr_code, name, course, year_level FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $students = $pdo->query("SELECT qr_code, name, course, year_level, student_type FROM users WHERE deleted_at IS NULL ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
         $subjects = $pdo->query("SELECT id, name, code, room, lecturer, semester, category FROM subjects WHERE is_active = 1 ORDER BY name ASC")->fetchAll(PDO::FETCH_ASSOC);
         $schedules = $pdo->query("SELECT sc.id, sc.subject_id, s.name as subject_name, sc.day_of_week, sc.start_time, sc.end_time FROM schedules sc JOIN subjects s ON s.id = sc.subject_id WHERE s.is_active = 1 ORDER BY sc.start_time ASC")->fetchAll(PDO::FETCH_ASSOC);
+        $studentSubjects = $pdo->query("SELECT qr_code, subject_id FROM student_subjects")->fetchAll(PDO::FETCH_ASSOC);
         header("Content-Disposition: attachment; filename=attendance-data.json");
-        echo json_encode(["students" => $students, "subjects" => $subjects, "schedules" => $schedules], JSON_PRETTY_PRINT);
+        echo json_encode(["students" => $students, "subjects" => $subjects, "schedules" => $schedules, "student_subjects" => $studentSubjects], JSON_PRETTY_PRINT);
         break;
 }

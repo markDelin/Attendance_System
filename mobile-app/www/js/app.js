@@ -46,8 +46,16 @@
   }
 
   function getStudents() {
-    if (dbReady) { var r = dbQuery("SELECT qr_code, name, course, year_level FROM users WHERE deleted_at IS NULL ORDER BY name ASC"); if (r) return r; }
-    return getJson('students') || [];
+    if (dbReady) { var r = dbQuery("SELECT qr_code, name, course, year_level, student_type FROM users WHERE deleted_at IS NULL ORDER BY name ASC"); if (r) return r; }
+    var cached = getJson('students') || [];
+    // Ensure student_type field exists (for old cached data)
+    for (var i = 0; i < cached.length; i++) { if (!cached[i].student_type) cached[i].student_type = 'regular'; }
+    return cached;
+  }
+
+  function getStudentSubjects() {
+    if (dbReady) { var r = dbQuery("SELECT qr_code, subject_id FROM student_subjects"); if (r) return r; }
+    return getJson('student_subjects') || [];
   }
 
   function getSubjects() {
@@ -329,8 +337,27 @@
       return;
     }
 
+    // Filter by subject enrollment for irregular students
+    var subjectEnrollments = null;
+    if (currentSubjectId) {
+      var ss = getStudentSubjects();
+      if (ss && ss.length > 0) {
+        subjectEnrollments = {};
+        for (var ei = 0; ei < ss.length; ei++) {
+          var e = ss[ei];
+          if (!subjectEnrollments[e.qr_code]) subjectEnrollments[e.qr_code] = [];
+          subjectEnrollments[e.qr_code].push(Number(e.subject_id));
+        }
+      }
+    }
+
     var searchVal = ($('searchInput').value || '').toLowerCase().trim();
     var filtered = data.filter(function (s) {
+      // Subject enrollment filter for irregular students
+      if (currentSubjectId && (s.student_type || '').toLowerCase() === 'irregular') {
+        var enrolled = subjectEnrollments ? (subjectEnrollments[s.qr_code] || []) : [];
+        if (enrolled.indexOf(Number(currentSubjectId)) === -1) return false;
+      }
       if (!searchVal) return true;
       return (s.name || '').toLowerCase().indexOf(searchVal) !== -1
         || (s.qr_code || '').toLowerCase().indexOf(searchVal) !== -1;
@@ -347,6 +374,7 @@
       var qr = s.qr_code;
       var name = escapeHtml(s.name || '');
       var sid = escapeHtml(qr || '');
+      var isIrregular = (s.student_type || '').toLowerCase() === 'irregular';
       var cls = '', ap = '', al = '', aa = '';
       if (currentRecords[qr]) {
         cls = ' ' + currentRecords[qr];
@@ -355,7 +383,9 @@
         else if (currentRecords[qr] === 'absent') aa = ' active-a';
       }
       html += '<div class="student-row' + cls + '" data-qr="' + escapeHtml(qr) + '">'
-        + '<div class="student-line" onclick="showStudentPopup(\'' + escapeHtml(qr) + '\')"><span class="student-name">' + name + '</span><span class="student-id">' + sid + '</span></div>'
+        + '<div class="student-line" onclick="showStudentPopup(\'' + escapeHtml(qr) + '\')"><span class="student-name">' + name + '</span>'
+        + (isIrregular ? '<span class="student-type-badge">IRR</span>' : '')
+        + '<span class="student-id">' + sid + '</span></div>'
         + '<div class="student-actions">'
         + '<button class="btn-stat' + ap + '" onclick="setStatus(\'' + escapeHtml(qr) + '\',\'present\')">P</button>'
         + '<button class="btn-stat' + al + '" onclick="setStatus(\'' + escapeHtml(qr) + '\',\'late\')">L</button>'
@@ -908,6 +938,7 @@
           if (data.students) { students = data.students; setJson('students', data.students); }
           if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
           if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); renderSchedule(); }
+          if (data.student_subjects) { setJson('student_subjects', data.student_subjects); }
           setVal('lastSync', String(Date.now()));
           setConnectionStatus(true);
         }
@@ -984,6 +1015,7 @@
         if (data.students) { students = data.students; setJson('students', data.students); }
         if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
         if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); }
+        if (data.student_subjects) { setJson('student_subjects', data.student_subjects); }
         setVal('lastSync', String(Date.now()));
         setConnectionStatus(true);
         renderSchedule();
@@ -1049,6 +1081,7 @@
     if (data.students) { students = data.students; setJson('students', data.students); }
     if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
     if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); }
+    if (data.student_subjects) { setJson('student_subjects', data.student_subjects); }
     setVal('lastSync', String(Date.now()));
     setConnectionStatus(true);
     dbReady = false; // imported JSON overrides SQLite
@@ -1132,6 +1165,7 @@
       students: getStudents(),
       subjects: getSubjects(),
       schedules: getSchedules(),
+      student_subjects: getStudentSubjects(),
       exported_at: new Date().toISOString()
     };
     var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -1219,6 +1253,7 @@
             if (data.students) { students = data.students; setJson('students', data.students); }
             if (data.subjects) { subjects = data.subjects; setJson('subjects', data.subjects); }
             if (data.schedules) { schedules = data.schedules; setJson('schedules', data.schedules); renderSchedule(); }
+            if (data.student_subjects) { setJson('student_subjects', data.student_subjects); }
             setVal('lastSync', String(Date.now()));
             setConnectionStatus(true);
             renderSubjects();
